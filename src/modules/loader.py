@@ -10,8 +10,7 @@ if not os.getcwd().endswith('modules'):
     os.chdir('modules')
 import pandas as pd
 import pickle
-from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE
-import numpy as np
+from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE,  CS_IN_DISEASE
 from preprocessing_utils import get_drugs_list
 
 def load_disease_signature(DISEASE, mith=False):
@@ -27,12 +26,12 @@ def load_disease_signature(DISEASE, mith=False):
     '''
     
     if not mith:
-        filename=TSR_OUT_DISEASE+DISEASE+'/'+DISEASE+'_signature_gene_id.csv'
+        filename=TSR_OUT_DISEASE+DISEASE+os.sep+DISEASE+'_signature_gene_id.csv'
         return pd.read_csv(filename, sep=';',decimal=',', dtype={'gene_id':'str'})
    
     else:
-        filename=TSR_OUT_DISEASE+DISEASE+'/'+DISEASE+'_mith3_signature.csv'
-        return pd.read_csv(filename, sep=';')
+        filename=CS_IN_DISEASE+DISEASE+os.sep+DISEASE+'_mith3_signature.csv'
+        return pd.read_csv(filename, sep='\t')
 
 def load_single_drug_signature(drug, mith=False, pkl=True):
     '''
