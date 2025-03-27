@@ -4,37 +4,48 @@ Created on Wed Nov 13 09:55:46 2024
 @ author: L-F-S
 
 extract unique gene-wise perturbation values from MITHrIL output,
-for disease data
+for disease data, and convert into connectivity score calculation input
 """
 
+
 import pandas as pd
-from conf import  MITH_OUT_DISEASE, CS_IN_DISEASE, DISEASE   
+import os
 
 
-def mith_to_tsr(mith_data):
+def mith_to_cs_in(mith_data):
     '''map mithril output to tsr output'''
     
-    mith_data.drop_duplicates('Gene Id', keep='first', inplace=True)
+    # Read MITHrIL perturbation output, taking into account MITHrIL bug in 
+    # header name: last column is adjusted p value, but the column name is missing
+    # There are 8 columns, but 7 column names
+    mith_data=pd.read_csv(mith_file, sep='\t', header=None, skiprows=1)
+    mith_data.drop_duplicates(2, keep='first', inplace=True)
     
-    tsr_like=mith_data[['Gene Id','Gene Name','Perturbation','pValue', 'adj_pValue']].rename(columns={'pValue':'p.value','Gene Name':'gene','adj_pValue' :'adj.p.value', 'Gene Id':'gene_id'})
-
+    cs_in=mith_data[[2,3,4,7]].rename(columns={2:'gene_id',3:'gene',4:'perturbation',7:'adj_p_value'})
     
-    return tsr_like
+    return cs_in
 
 
-#%% Disease mithril3
-# Open MITHRIL condition OutPut
-mith_file=MITH_OUT_DISEASE+DISEASE+'_mith3.perturbations.txt'
-mith_data=pd.read_csv(mith_file, sep='\t')
-
+def write_cs_input(cs_input_name, CS_IN_DISEASE):
+    if not os.path.exists(CS_IN_DISEASE):
+        os.mkdir(CS_IN_DISEASE)
+    cs_data.to_csv(CS_IN_DISEASE+cs_input_name,sep='\t', header=True, index=False)
+    print('Connectivity score disease input file written at',
+          CS_IN_DISEASE,'\nfile name:',cs_input_name)
+    return
 
 #%%
-
-tsr_like=mith_to_tsr(mith_data)
-
-#write file
-tsr_output_name=DISEASE+'_mith3_signature.csv'
-mith_condition_filename=TSR_OUT_DISEASE+DISEASE+'/'+tsr_output_name
-tsr_like.to_csv(mith_condition_filename,sep=';', header=True, index=False)
+if __name__=='__main__':
+    
+    from conf import  MITH_OUT_DISEASE, CS_IN_DISEASE, DISEASE   
+    
+    print(DISEASE)
+    # read MITHrIL perturbation output
+    mith_file=MITH_OUT_DISEASE+DISEASE+'_mith3.perturbations.txt'
+    cs_data=mith_to_cs_in(mith_file)
+    
+    # write CS input
+    cs_input_name=DISEASE+'_mith3_signature.csv'
+    write_cs_input(cs_input_name, CS_IN_DISEASE)
 
 
