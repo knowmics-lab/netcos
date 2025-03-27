@@ -2,10 +2,13 @@
 Created on Wed Nov 13 09:55:46 2024
 
 @ author: L-F-S
+
+extract unique gene-wise perturbation values from MITHrIL output,
+for disease data
 """
 
 import pandas as pd
-from conf import  MITH_OUT_DISEASE, TSR_OUT_DISEASE, DISEASE   
+from conf import  MITH_OUT_DISEASE, CS_IN_DISEASE, DISEASE   
 
 
 def mith_to_tsr(mith_data):
@@ -15,8 +18,6 @@ def mith_to_tsr(mith_data):
     
     tsr_like=mith_data[['Gene Id','Gene Name','Perturbation','pValue', 'adj_pValue']].rename(columns={'pValue':'p.value','Gene Name':'gene','adj_pValue' :'adj.p.value', 'Gene Id':'gene_id'})
 
-    # calculate statistic based on pvalue (inverse of how mithril calculates pvalue from permutations)
-    tsr_like['t.value_like_statistic']=tsr_like['p.value'].apply(lambda p_value : 2001*(1-p_value))
     
     return tsr_like
 
