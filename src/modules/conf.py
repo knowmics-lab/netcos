@@ -8,7 +8,6 @@ Created on Wed Nov 13 09:50:20 2024
 
 import os
 import pickle
-import pandas as pd
 
 ####################
 # FLAGS
