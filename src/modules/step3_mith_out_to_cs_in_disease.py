@@ -16,8 +16,8 @@ def mith_to_cs_in(mith_file):
     '''map mithril output to tsr output'''
     
     # Read MITHrIL perturbation output, taking into account MITHrIL bug in 
-    # header name: last column is adjusted p value, but the column name is missing
-    # There are 8 columns, but 7 column names
+    # header: there are 8 columns, but 7 column names last column is
+    # adjusted p value, but the column name is missing
     mith_data=pd.read_csv(mith_file, sep='\t', header=None, skiprows=1)
     mith_data.drop_duplicates(2, keep='first', inplace=True)
     
