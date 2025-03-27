@@ -30,7 +30,7 @@ def load_disease_signature(DISEASE, mith=False):
         return pd.read_csv(filename, sep=';',decimal=',', dtype={'gene_id':'str'})
    
     else:
-        filename=CS_IN_DISEASE+DISEASE+os.sep+DISEASE+'_mith3_signature.csv'
+        filename=CS_IN_DISEASE+os.sep+DISEASE+'_mith3_signature.csv'
         return pd.read_csv(filename, sep='\t')
 
 def load_single_drug_signature(drug, mith=False, pkl=True):
