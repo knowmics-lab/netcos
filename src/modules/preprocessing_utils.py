@@ -5,21 +5,19 @@ Created on Tue Jan 21 11:47:43 2025
 
 @ author: L-F-S
 
-various utilities to run once before (por during) running the pipeline.
-
-
+various utilities to run once before (or during) running the pipeline.
 """
+
 import os
 if not os.getcwd().endswith('modules'):
     os.chdir('modules')
 import sys
 import numpy as np
 import pandas as pd
-import pickle
+# import pickle
 import pyreadr
 import time
-from conf import BASE_DIR, DISEASE,MITH_IN_DRUG, MITH_OUT_DRUG,\
- TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE, alias_2geneid
+from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE, alias_2geneid
 
 #%% Create a dictionary that maps gene symbols to gene ids using
  # the updated map provided by Alaimo gene_map.tsv
