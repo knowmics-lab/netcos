@@ -5,8 +5,8 @@ Created on Wed Nov 13 09:50:20 2024
 
 @ author: L-F-S
 
-Maps  Mithril 3 batch output into
-tsr metanalysis-like input matrix.
+Maps  Mithril 3 batch output of drugs data into
+cs input drug-wise files.
 """
 
 import os
@@ -109,19 +109,11 @@ if __name__=='__main__':
     for i in range(cores):
         i1,i2=get_chunk_indexes(i, chunk_size)
         parallel_indexes.append((i1,i2))
-     
     
-    
-    # i1=int(sys.argv[1])
-    # i2=int(sys.argv[2])
-    save_csv=False#int(sys.argv[3]) # change to True if you want to save csv readable files
-    # todo fallo carino che puoi chiamarlo wrapper se lo vuoi fare
-    # parallelo, e invece se no lo fai iterativo
-    # e elimina il wrapper 6_mapblablawrapper, xke lo farai sul notebook
-    # e vedi se eliminare il step 8 cioe vedi se il pkl creato da questo
-    # mapmith3 aggiornato a cui ha iaggiunto il pickl, funziona lanciando 
-    # il connectivity score. bel lavoro pronto per il pomeriggio
+    # iterative:
     # mith_out_to_cs_in(drugs_list,i1=0,i2=10, save_csv=False)
+    
+    # parallel:
     results = Parallel(n_jobs=2)(delayed(mith_out_to_cs_in)\
                                  (drugs_list, i1, i2,save_csv=False)\
                             for i1,i2 in parallel_indexes)
