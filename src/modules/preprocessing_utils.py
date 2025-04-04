@@ -19,19 +19,6 @@ import pyreadr
 import time
 from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE, alias_2geneid
 
-#%% Create a dictionary that maps gene symbols to gene ids using
- # the updated map provided by Alaimo gene_map.tsv
-# symbol_to_id_data =pd.read_csv(BASE_DIR+'other_data/gene_map.tsv', sep='\t', dtype={'NCBI.Gene.ID':str}, usecols=[0,3])
-# #symbol_to_id.dropna(inplace=True)
-# symbol_to_id_transformed=symbol_to_id_data.set_index('Approved.symbol').to_dict()
-# symbol_to_id_dict=symbol_to_id_transformed['NCBI.Gene.ID']
-
-# symbol_to_id_data[symbol_to_id_data['Approved.symbol']==gene]
-# #%%
-# with open(BASE_DIR+'other_data/symbol_2geneid.pkl', 'wb') as f:
-#     pickle.dump(symbol_to_id_dict, f)
-#%% filter DEG drug signatures by only keeping non duplicate gene ids 
-#  To run AFTER  creation of LINCS DEG data
 
 def load_unfiltered_single_drug_signature(drug, mith=False):
     '''
