@@ -16,14 +16,17 @@ import pickle
 # Disease symbol. This will be used in the pipeline to 
 # identify the disease. It will be in file names and directories
 # !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
-DISEASE = 'ipf'  # 'als_NYGC' #
+DISEASE = 'ipf'  # 'als_NYGC' # 
 
 
 ################
 # DIRECTORIES
 ################
 
-# BASE_DIR=os.sep+'home'+os.sep+'netcos'+os.sep+'modules'+os.sep
+# BASE_DIR=os.sep+'home'+os.sep+'signorini'+os.sep+'drug_repurposing'+os.sep
+# BASE_DIR=os.sep+'home'+os.sep+'lorenzo'+os.sep+'unict_2024-25'+os.sep+'drug_repurposing'+os.sep
+BASE_DIR='G:'+os.sep+'Il mio Drive'+os.sep+'unict 2024-25'+os.sep+'drug_repurposing'+os.sep+''
+# BASE_DIR=os.sep+'home'+os.sep+'NetCos'+os.sep+'modules'+os.sep
 
 DATA_DIR=BASE_DIR+'data'+os.sep
 DICT_DIR=DATA_DIR+'dictionaries'+os.sep
@@ -52,7 +55,7 @@ IMG_DIR=BASE_DIR+'imgs'+os.sep
 CS_DIR=BASE_DIR+'connectivity_score'+os.sep
 CS_IN_DRUG=CS_DIR+'input'+os.sep+'drug_signature'+os.sep
 CS_IN_DISEASE=CS_DIR+'input'+os.sep+'disease_signature'+os.sep+DISEASE+os.sep
-CS_OUT=CS_DIR+'output'+os.sep
+CS_OUT=CS_DIR+'output'+os.sep+DISEASE+os.sep
 
 # landmark genes file:
     
