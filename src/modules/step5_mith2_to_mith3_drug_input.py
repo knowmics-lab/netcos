@@ -14,13 +14,12 @@ import pandas as pd
 from conf import MITH_IN_DRUG, alias_2geneid
 
 df_list=[]
-for mi2 in os.listdir(MITH_IN_DRUG)[:10]:
+for mi2 in os.listdir(MITH_IN_DRUG):
     drug_condition_name=mi2.rstrip('.mi')
     if not drug_condition_name.startswith('LINCS'):
         print(drug_condition_name)
         df=pd.read_csv(MITH_IN_DRUG+mi2,sep='\t',header=None,index_col=0, names=[drug_condition_name])
         print(df.shape)
-        print(df.columns)
         df_list.append(df)
 
 matrix=pd.concat(df_list, axis=1)
