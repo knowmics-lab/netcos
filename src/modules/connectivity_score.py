@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import time
 from scipy import stats
-from conf import DISEASE, CS_OUT
+from conf import DISEASE
 from loader import load_disease_signature, load_single_drug_signature
 from preprocessing_utils import get_drugs_list
 
@@ -49,7 +49,7 @@ def get_common_genes(disease_signature, drug_signature):
     drug_common_genes_signatures=drug_signature[drug_signature['gene_id'].isin(common_genes)].sort_values(by='gene_id')
     disease_common_genes_signatures=disease_signature[disease_signature.gene_id.isin(common_genes)].sort_values(by='gene_id')
     
-    if not np.unique(disease_signature.iloc[disease_common_genes_signatures.index].reset_index()['gene_id']==drug_signature.iloc[drug_common_genes_signatures.index].reset_index()['gene_id']):
+    if not np.unique(disease_signature.loc[disease_common_genes_signatures.index].reset_index()['gene_id']==drug_signature.loc[drug_common_genes_signatures.index].reset_index()['gene_id']):
         raise ValueError('common gene indexes actually different between drug and disease!')
     return disease_common_genes_signatures.index, drug_common_genes_signatures.index
  
@@ -79,6 +79,7 @@ def rank_genes(drug_signature, disease_signature, drug_col_name, disease_col_nam
     V=merged_data_on_disease_indexes['index'].to_numpy() 
     return V
 
+
 def compute_KS(disease_disregulated_genes, V, drug_genes):
     '''
     Compute Kolmogorov-Smirnov (KS) statistic.
@@ -105,6 +106,7 @@ def compute_KS(disease_disregulated_genes, V, drug_genes):
     b = np.max(V_over_r - (np.arange(s)/s))
     
     return a, b, s, r
+
 
 def compute_KS_evil_twin(disease_disregulated_genes, V, drug_genes):
     '''
@@ -135,7 +137,6 @@ def compute_KS_evil_twin(disease_disregulated_genes, V, drug_genes):
     return ks, s, r
 
 
-
 def lamb_normalize(cs_list):
     '''
     CS normalization following Lamb et al., 2006
@@ -154,6 +155,7 @@ def lamb_normalize(cs_list):
         return -q
     
     return [x/extr(x) for x in cs_list]
+
 
 def calculate_CS(a_up, a_down, b_up, b_down):
     '''
@@ -182,10 +184,11 @@ def calculate_CS(a_up, a_down, b_up, b_down):
         return 0
     return ks_up-ks_down   
 
+
 def calculate_CS_evil_twin(ks_up, ks_down):
     '''
-    Calculate connectivity score.
-    from Lamb et al., 2006
+    Calculate connectivity score. But its evil twin.
+    For testing
     Input:
     - a_up: float, maximum positive difference for upregulated genes
     - a_down: float, maximum positive difference for downregulated genes
@@ -195,6 +198,7 @@ def calculate_CS_evil_twin(ks_up, ks_down):
         - CS: float, CS value in the interval [-1, 1]
     '''
     return ks_up-ks_down 
+
 
 def calculate_RGES(a_up, a_down, b_up, b_down):
     '''
@@ -220,6 +224,7 @@ def calculate_RGES(a_up, a_down, b_up, b_down):
         ks_down=-b_down
     
     return ks_up-ks_down   
+
 
 def montecarlo_connectivity(s_up, s_down, r, n_iterations=1000, score_type='bin_chen'):
     '''
@@ -268,12 +273,17 @@ def montecarlo_connectivity(s_up, s_down, r, n_iterations=1000, score_type='bin_
 
     return random_RGES_list
 
-def bin_chen_connectivity(disease_signature, drug_signature, rank_on='p_value'):
+
+def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude'):
     '''calculates the Reverse Gene Expression Score (RGES), a
    connectivity score, as defined in Bin, Chen, 2017
     Input:
         - disease_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
         - drug_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
+        - rank_on: str ranking column. default='magnitude' 
+                options: {'p_value', 'magnitude'}. Do not change unless you
+                know what you're doing'
+                    
     Output:
         -   measured_RGES: float, calculated RGES value
         -   p_value: float, p-value from Monte Carlo simulation
@@ -309,124 +319,37 @@ def bin_chen_connectivity(disease_signature, drug_signature, rank_on='p_value'):
     p_value=np.sum(np.abs(np.array(random_RGES_list))>np.abs(measured_RGES))/n_iterations
     return measured_RGES, p_value
 
-
-#%% 
-# if __name__=='__main__':
-# ###############################################################################
-# #             CALCULATE CONNECTIVITY FOR DEG/MITH DATA
-# ###############################################################################
-#     start=time.time()
-#     print(    '''calculates connectivity score between a disease and all LINCS database drugs, for given drugs
-#         and given drug perturbation times. 
-#         Output: a dataframe of connectivity scores and  pvalues, for all combinations of conditions''')
-    
-#     # PARAMETERS:
-        
-#     mith=bool(int(sys.argv[3]))#False #loads DEG data
-    
-#     pert_times=['6h','24h','6h_24h'] #which drug experimental perturbation times (not to be confused  with mithril's perturbation value) to use
-
-#     singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
-    
-
-#     print('mith tag:', mith, '\ndisease:', DISEASE)
-
-#     # load disease signature:
-#     disease_signature=load_disease_signature(DISEASE, mith=mith)
-#     disease_signature=disease_signature[['gene_id', singature_uom, 'adj.p.value']]
-    
-    
-#     # Discard disease genes that are 
-#     # not found in drug genes
-#     # DO NOT simply select common genes, as this would impact
-#     # connectrivity calculations
-#         #load one drug signature (all durg signatures have the same genes in the same order)
-#     drug_signature=load_single_drug_signature('ibuprofen', mith=mith)
-    
-#     disease_common_index, drug_common_index = get_common_genes(disease_signature, drug_signature)  
-#     # Note: indexing every time with pandas .iloc is slower than writing
-#     # and loading binaries for filtered dataframes, for each drug
-#     # however this is not relevant, as we only need to filter
-#     # disease data, while we can take all drug data.
-#     # Question for later: with mithril how does metabolite data impact the result?
-    
-#         # filter disease signature with common genes:
-#     disease_signature=disease_signature.iloc[disease_common_index].reset_index(drop=True)
-#     print('common disease genes', len(disease_signature))
-    
-#         # Optional: filter for 150 most significant:
-#             # n_genes=150
-#         #TODO disease_signature=filter_most_significant(disease_signature, n_genes)
-#         # e volendo aggiungici il nuovo drug_common_index se voglio fare i pearsons vari..
-#     # load all drugs list:
-#     drugs_list=get_drugs_list()
-    
-#     # Initialize dataframe:
-#     data = []
-    
-#     #get drug indexes for parallelization:
-#     i1=int(sys.argv[1])
-#     i2=int(sys.argv[2])
-    
-#     #%% Calculate connectivity score between disease and drugs:     
-#     for drug in drugs_list[i1:i2]:
-#         print(drug)
-        
-#         # load drug signature
-        
-#         drug_signature=load_single_drug_signature(drug, mith=mith)
-        
-#         for pert_time in pert_times:
-#             print(pert_time)
-            
-#             # Calculate connectivity score between drug and disease:
-            
-#             # select columns of interest:
-            
-#             p_val_str= 'adj.p.value' if not pert_time=='6h_24h' else 'p.value'
-#             columns_of_interest=['gene_id', singature_uom+'_'+pert_time, p_val_str+'_'+pert_time]
-#             rank_on=sys.argv[4]
-#             cscore, p_value = bin_chen_connectivity(disease_signature, drug_signature[columns_of_interest], rank_on=rank_on)
-            
-#             # Calculate other correlations BETWEEN COMMON GENES
-#             disease_signature_signature=disease_signature[singature_uom]
-#             drug_signature_signature=drug_signature[singature_uom+'_'+pert_time].iloc[drug_common_index]
-#             pearson=stats.pearsonr(disease_signature_signature, drug_signature_signature)
-#             spearman=stats.spearmanr(disease_signature_signature, drug_signature_signature)
-#             cosine_sim=np.dot(np.array(disease_signature_signature),np.array(drug_signature_signature))/(np.linalg.norm(np.array(disease_signature_signature))*np.linalg.norm(np.array(drug_signature_signature)))
-            
-#             data.append([DISEASE, drug, pert_time, cscore, p_value, pearson[0], pearson[1], spearman[0], spearman[1], cosine_sim]) # other correlations, genes subset
-                
-    
-#     connectivity_data= pd.DataFrame(data, columns=["disease","drug","perturbation_time","connectivity_score","cs_p_value",'pearson','pearson_p_value','spearman','spearman_p_value','cos_sim']) #add other correlations, genes subset
-#     print(connectivity_data)
-    
-#     # save connectivity scores
-#     connectivity_dataset_filename=CS_OUT+str(i1)+'_'+str(i2)+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+str(i1)+'_'+str(i2)+'_mith_connectivity_score.tsv'
-
-#     connectivity_data.to_csv(connectivity_dataset_filename, sep='\t', index=False)
-
-#     print('total elapsed time for', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
-
-#%%     CALCULATE CONNECTIVITY FOR ONE DRUG DATA
+#%%     CALCULATE CONNECTIVITY FOR ONE DRUG DATA, FOR ONE PERTURBATION TIME
+# see cs_batch for multiple drugs
 
 if __name__=='__main__':
+    
+    def run_connectivity_score(DISEASE, mith, drug, pert_time ):
+        '''
+        wrapper function to load disease and drug data (for one drug), 
+        and calculate their connectivity score.
+        '''
+        singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
+        # load disease signature:
+        disease_signature=load_disease_signature(DISEASE, mith=mith)
+        disease_signature=disease_signature[['gene_id', singature_uom, 'adj.p.value']]
+        drug_signature=load_single_drug_signature(drug, mith=mith)
+        
+        disease_common_index, drug_common_index = get_common_genes(disease_signature, drug_signature)  
+        
+        # filter disease signature with common genes:
+        disease_signature=disease_signature.iloc[disease_common_index].reset_index(drop=True)
+        print('common disease genes', len(disease_signature))
+        # load drug signature
+        p_val_str= 'adj.p.value' if not pert_time=='6h_24h' else 'p.value'
+        columns_of_interest=['gene_id', singature_uom+'_'+pert_time, p_val_str+'_'+pert_time]
+        cscore, p_value = bin_chen_connectivity(disease_signature, drug_signature[columns_of_interest], rank_on='magnitude')
+        print(cscore, p_value)
+        return cscore, p_value
+    
     mith=True
     pert_time='6h_24h' 
-    drug='ibuprofen'
-    singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
-    # load disease signature:
-    disease_signature=load_disease_signature(DISEASE, mith=mith)
-    disease_signature=disease_signature[['gene_id', singature_uom, 'adj.p.value']]
-    drug_signature=load_single_drug_signature(drug, mith=mith)
-    
-    disease_common_index, drug_common_index = get_common_genes(disease_signature, drug_signature)  
-    
-    # filter disease signature with common genes:
-    disease_signature=disease_signature.iloc[disease_common_index].reset_index(drop=True)
-    print('common disease genes', len(disease_signature))
-    # load drug signature
-    p_val_str= 'adj.p.value' if not pert_time=='6h_24h' else 'p.value'
-    columns_of_interest=['gene_id', singature_uom+'_'+pert_time, p_val_str+'_'+pert_time]
-    cscore, p_value = bin_chen_connectivity(disease_signature, drug_signature[columns_of_interest], rank_on='magnitude')
-    print(cscore, p_value)
+    drug='ibuprofen' #'cortisone' nice value against ipf, ibuprofen, nice against als_NYGC
+    print(DISEASE)
+    print(drug)
+    cscore, p_value = run_connectivity_score(DISEASE, mith, drug, pert_time)    
