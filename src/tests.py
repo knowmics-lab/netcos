@@ -5,11 +5,11 @@ Created on Fri Feb  7 09:31:28 2025
 
 @ author: L-F-S
 
-utility to print 
+utility tests
 """
+
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import sys
 import numpy as np
 import pandas as pd
