@@ -6,11 +6,10 @@ Created on Wed Jan 29 10:24:39 2025
 @ author: L-F-S
 """
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import pandas as pd
 import pickle
-from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE,  CS_IN_DISEASE
+from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG
 from preprocessing_utils import get_drugs_list
 
 def load_disease_signature(DISEASE, mith=False):
@@ -26,7 +25,7 @@ def load_disease_signature(DISEASE, mith=False):
     '''
     
     if not mith:
-        filename=TSR_OUT_DISEASE+DISEASE+os.sep+DISEASE+'_signature_gene_id.csv'
+        filename=TSR_OUT_DISEASE+os.sep+DISEASE+'_signature_gene_id.csv'
         return pd.read_csv(filename, sep=';',decimal=',', dtype={'gene_id':'str'})
    
     else:
@@ -49,8 +48,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
     # print('pikle',pkl)
     if not mith:
         
-        filename=TSR_OUT_DRUG+'LINCS/metanalysis_drug_wise_filtered/'+drug+'_metanalysis'
-        
+        filename=TSR_OUT_DRUG+'LINCS'+os.sep+'metanalysis_drug_wise_filtered'+os.sep+drug+'_metanalysis'
         if not pkl:
             return pd.read_csv(filename+'.csv', sep='\t',  dtype={'gene_id':'str'})
         else:
@@ -62,7 +60,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
                 
     else:
         
-        filename=TSR_OUT_DRUG+'LINCS/metanalysis_mith3_drug_wise/'+drug+'_metanalysis'
+        filename=CS_IN_DRUG+drug+'_metanalysis'
         
         if not pkl:
             return pd.read_csv(filename+'.csv', sep='\t')
