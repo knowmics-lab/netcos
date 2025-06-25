@@ -19,6 +19,7 @@ from loader import load_disease_signature, load_single_drug_signature
 from conf import DISEASE, CS_OUT
 from preprocessing_utils import get_drugs_list, get_chunk_indexes
 from joblib import Parallel, delayed
+from datetime import datetime
 
 
 ###############################################################################
@@ -108,12 +109,11 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1
 
 #%% Parallel run
 # get drugs list
-drugs_list=get_drugs_list()
 # set perturbation times
 pert_times=['6h','24h','6h_24h']
-
 # Set calculation for MITHrIL data
 mith=1
+drugs_list=get_drugs_list(mith)
 
 # set n of cores for parallel execution
 n_jobs= int(sys.argv[1]) #16
@@ -148,6 +148,8 @@ cs_df=pd.concat(results)
 # write results
 if not os.path.exists(CS_OUT):
             os.mkdir(CS_OUT)
-connectivity_dataset_filename=CS_OUT+'DEG_connectivity_score.tsv' if not mith else  CS_OUT+'mith_connectivity_score.tsv'
-
+now =  datetime.now()
+datetime_string = now.strftime("%d_%m_%Y_%H_%M")
+connectivity_dataset_filename=CS_OUT+datetime_string+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+datetime_string+'_mith_connectivity_score.tsv'
+#%%
 cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
