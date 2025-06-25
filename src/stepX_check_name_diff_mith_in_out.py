@@ -11,8 +11,7 @@ Run this to recuperate original file names, if needed.
 Renames mith3 output files by recovering oringinal characters from input files
 """
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import pickle
 import re
 from conf import MITH_IN_DRUG, MITH_OUT_DRUG
