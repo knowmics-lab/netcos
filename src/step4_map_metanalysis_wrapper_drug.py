@@ -10,12 +10,12 @@ import subprocess
 
 
 
-nfinale=1
+n=1
 for i in range(30):
-    string='Rscript map_metanalysis_gene_wise_to_drug_wise.R ' + str(nfinale) + ' ' + str(nfinale+99)
+    string='Rscript map_metanalysis_gene_wise_to_drug_wise.R ' + str(n) + ' ' + str(n+99)
     print(string)
-    subprocess.Popen(['Rscript','map_metanalysis_gene_wise_to_drug_wise.R',str(nfinale), str(nfinale+99)])
-    nfinale+=100
+    subprocess.Popen(['Rscript','map_metanalysis_gene_wise_to_drug_wise.R',str(n), str(n+99)])
+    n+=100
     
 
 subprocess.Popen(['Rscript','map_metanalysis_gene_wise_to_drug_wise.R','3001','3222'])
