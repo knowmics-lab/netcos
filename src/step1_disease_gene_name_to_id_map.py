@@ -10,8 +10,7 @@ gene IDs in the tsr output,
 and creates MITHRiL input
 """
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import pandas as pd
 import pickle
 import numpy as np
