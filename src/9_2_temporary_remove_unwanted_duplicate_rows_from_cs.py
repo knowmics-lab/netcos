@@ -7,8 +7,7 @@ Created on Mon Mar  3 10:52:55 2025
 
 
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import sys
 import numpy as np
 import pandas as pd
