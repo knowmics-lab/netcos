@@ -8,8 +8,6 @@ calculate RGES connectivity score between disease signature and drug sinatures.
 
 """
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
 import sys
 import numpy as np
 import pandas as pd
@@ -17,7 +15,6 @@ import time
 from scipy import stats
 from conf import DISEASE
 from loader import load_disease_signature, load_single_drug_signature
-from preprocessing_utils import get_drugs_list
 
 # FUNCTIONS
 def get_common_genes(disease_signature, drug_signature):
@@ -273,9 +270,55 @@ def montecarlo_connectivity(s_up, s_down, r, n_iterations=1000, score_type='bin_
 
     return random_RGES_list
 
+def random_disease_bin_chen_connectivity(drug_signature, rank_on='magnitude'):
+    '''temp
+    calculates the Reverse Gene Expression Score (RGES), a
+   connectivity score, as defined in Bin, Chen, 2017, of a drug signature versus
+   a random genes  ranking
+    Input:
+        - drug_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
+        - rank_on: str ranking column. default='magnitude' 
+                options: {'p_value', 'magnitude'}. Do not change unless you
+                know what you're doing'
+                    
+    Output:
+        -   measured_RGES: float, calculated RGES value
+        -   p_value: float, p-value from Monte Carlo simulation
+    '''
+    
+    
+    if rank_on=='p_value':
+        ranking_col_name=drug_signature.columns[2]
+    if rank_on=='magnitude':
+        ranking_col_name=drug_signature.columns[1]
+    
+    # generate random up and down regulated disease genes
+    r= drug_signature.shape[0]
+    l=np.random.randint(1,r)
+    s_up = r-l
+    s_down = l
+    gene_id_list = drug_signature.gene_id
+    shuffled_gene_ids = gene_id_list[np.random.choice(gene_id_list.index, len(gene_id_list), replace=False)]
+    random_disease_up = shuffled_gene_ids[:s_up]
+    random_disease_down = shuffled_gene_ids[-s_down:]
+     
+    # Calculate rank map V for up and down regulated genes:
+    V_up = rank_genes(drug_signature, pd.DataFrame(random_disease_up)  , ranking_col_name, 'gene_id')
+    V_down = rank_genes(drug_signature, pd.DataFrame(random_disease_down), ranking_col_name, 'gene_id')
+    
+    # Compute random KS stats:
+    a_up, b_up, _, _ = compute_KS(random_disease_up, V_up, drug_signature['gene_id'])
+    a_down , b_down, _, _ = compute_KS(random_disease_down, V_down, drug_signature['gene_id'])
+    
+    # Compute RGES:
+    measured_RGES_for_random_disease = calculate_RGES(a_up, a_down, b_up, b_down)
+    
+    return measured_RGES_for_random_disease
 
 def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude'):
-    '''calculates the Reverse Gene Expression Score (RGES), a
+    '''
+    TODO corrected ranking column bug
+    calculates the Reverse Gene Expression Score (RGES), a
    connectivity score, as defined in Bin, Chen, 2017
     Input:
         - disease_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
@@ -289,21 +332,21 @@ def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude'
         -   p_value: float, p-value from Monte Carlo simulation
     '''
     
-    disease_p_val_col_name=disease_signature.columns[2]
-    disease_signature_col_name=disease_signature.columns[1]
     
     if rank_on=='p_value':
-        ranking_col_name=drug_signature.columns[2]
+        drug_ranking_col_name=drug_signature.columns[2]
+        disease_ranking_col_name=disease_signature.columns[2]
     if rank_on=='magnitude':
-        ranking_col_name=drug_signature.columns[1]
+        drug_ranking_col_name=drug_signature.columns[1]
+        disease_ranking_col_name=disease_signature.columns[1]
     
     # # Get lists of up (down) regulated genes: older with 2vs
-    disease_signature_up = disease_signature[disease_signature[disease_signature_col_name]>0]
-    disease_signature_down = disease_signature[disease_signature[disease_signature_col_name]<0]
+    disease_signature_up = disease_signature[disease_signature[disease_ranking_col_name]>0]
+    disease_signature_down = disease_signature[disease_signature[disease_ranking_col_name]<0]
     
     # Calculate rank map V for up and down regulated genes:
-    V_up = rank_genes(drug_signature, disease_signature_up  , ranking_col_name, disease_p_val_col_name)
-    V_down = rank_genes(drug_signature, disease_signature_down, ranking_col_name, disease_p_val_col_name)
+    V_up = rank_genes(drug_signature, disease_signature_up  , drug_ranking_col_name, disease_ranking_col_name)  # CHECK THIS LINE
+    V_down = rank_genes(drug_signature, disease_signature_down, drug_ranking_col_name, disease_ranking_col_name)
     
     # Compute KS statistic for up and down regulated genes:
     a_up, b_up, s_up, r = compute_KS(disease_signature_up['gene_id'], V_up, drug_signature['gene_id'])
