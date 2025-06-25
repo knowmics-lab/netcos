@@ -11,8 +11,7 @@ by using the genes of them ithril output which, for some reaso are not the same 
 
 """
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import sys
 import numpy as np
 import pandas as pd
