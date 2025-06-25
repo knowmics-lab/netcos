@@ -9,15 +9,15 @@ various utilities to run once before (or during) running the pipeline.
 """
 
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import sys
 import numpy as np
 import pandas as pd
 # import pickle
 import pyreadr
 import time
-from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE, alias_2geneid
+from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE, alias_2geneid,\
+    MITH_OUT_DRUG
 
 
 def load_unfiltered_single_drug_signature(drug, mith=False):
@@ -68,8 +68,12 @@ def convert_and_remove_duplicates(DEG_drug_signature):
     
     return DEG_drug_signature
 
-def get_drugs_list():
-    drugs_list=os.listdir(MITH_OUT_DRUG)
+def get_drugs_list(mith):
+    '''
+    mith: flag. 1: PF data, 0: FC data
+    '''
+    drugs_path= MITH_OUT_DRUG if mith==1 else TSR_OUT_DRUG+'LINCS'+os.sep+'metanalysis_drug_wise_filtered'+os.sep
+    drugs_list=os.listdir(drugs_path)
     
     drugs_list=[x.split('.')[0] for x in drugs_list]
     drugs_list=[x.split('_')[0] for x in drugs_list]
@@ -98,12 +102,24 @@ def get_common_genes(disease_signature, drug_signature):
         raise ValueError('common gene indexes actually different between drug and disease!')
     return disease_common_genes_signatures.index, drug_common_genes_signatures.index
 
+
+def get_chunk_indexes(i,chunk_size):
+    '''
+    Get first and last index of drug indexes for chunk i,
+    for batched execution in parallel
+    '''
+
+    i1=chunk_size*i
+    i2=chunk_size*i+chunk_size
+    return i1, i2
+
 #%%
 
 if __name__=='__main__':
     
     # called by 7_filter_all_drugs
-    drugs_list =get_drugs_list()
+    mith=1
+    drugs_list =get_drugs_list(mith)
     i1=int(sys.argv[1])
     i2=int(sys.argv[2])
     
