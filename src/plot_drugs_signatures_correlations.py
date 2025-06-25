@@ -5,7 +5,7 @@ Created on Thu Feb  6 14:59:42 2025
 
 @ author: L-F-S
 
-Inspects correlations between DEG signatures and mithril signatures 
+Inspects correlations between DEG signatures and MITHrIL signatures 
 for LINCS drug signatures:
     
 - Creates and save images of the top 5 most and least correlated DEG vs mith 
@@ -14,15 +14,15 @@ drug signatures (and pvalues)
 - Saves list of correlations between DEG and mith signatures and pvalues
      for all drugs in tsv in output/drug_signatures_correlations
 """
+
 from scipy import stats
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from conf import DISEASE, IMG_DIR, MITH_IN_DRUG, MITH_OUT_DRUG,JM_OUT,\
- TSR_OUT_DRUG,TSR_OUT_DISEASE, TSR_OUT_CSCORE
+from conf import DISEASE, IMG_DIR, MITH_IN_DRUG, MITH_OUT_DRUG,\
+ TSR_OUT_DRUG,TSR_OUT_DISEASE, TSR_OUT_CSCORE, OOUT_DIR
 from preprocessing_utils import get_drugs_list
 from loader import load_disease_signature, load_single_drug_signature, load_drug_signatures
 import time
@@ -107,7 +107,9 @@ def plot_10_most_correlated(correlations_dataframe, correlation):
     return
 
 def save_correlation(correlations_dataframe, correlation):
-    correlations_dataframe[correlation].sort_values(ascending=False).to_csv(JM_OUT+'drug_signatures_correlations/'+correlation+'.tsv', sep='\t', index_label='drug')
+    if not os.isdir(OOUT_DIR+'drug_signatures_correlations'+os.sep):
+        os.mkdir(OOUT_DIR+'drug_signatures_correlations'+os.sep)
+    correlations_dataframe[correlation].sort_values(ascending=False).to_csv(OOUT_DIR+'drug_signatures_correlations/'+correlation+'.tsv', sep='\t', index_label='drug')
     return
     
     
