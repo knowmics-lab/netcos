@@ -7,7 +7,6 @@ extract unique gene-wise perturbation values from MITHrIL output,
 for disease data, and convert into connectivity score calculation input
 """
 
-
 import pandas as pd
 import os
 
@@ -16,12 +15,12 @@ def mith_to_cs_in(mith_file):
     '''map mithril output to tsr output'''
     
     # Read MITHrIL perturbation output, taking into account MITHrIL bug in 
-    # header: there are 8 columns, but 7 column names last column is
+    # header: there are 8 columns, but 7 column names. last column is
     # adjusted p value, but the column name is missing
     mith_data=pd.read_csv(mith_file, sep='\t', header=None, skiprows=1)
     mith_data.drop_duplicates(2, keep='first', inplace=True)
     
-    cs_in=mith_data[[2,3,4,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation',7:'adj.p.value'})
+    cs_in=mith_data[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation',6:'p.value',7:'adj.p.value'})
     
     return cs_in
 
