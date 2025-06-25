@@ -10,8 +10,7 @@ cs input drug-wise files.
 """
 
 import os
-if not os.getcwd().endswith('modules'):
-    os.chdir('modules')
+
 import pickle
 import numpy as np
 import pandas as pd
@@ -133,6 +132,7 @@ if __name__=='__main__':
     results = Parallel(n_jobs=cores)(delayed(mith_out_to_cs_in)\
                                   (drugs_list, i1, i2,save_csv=False)\
                             for i1,i2 in parallel_indexes)
+        
     # Run last chunk if rest of division != 0:
     if last_chunk_size!=0:
-        mith_out_to_cs_in(drugs_list, i1, i2,save_csv=False)
+        mith_out_to_cs_in(drugs_list, i1, len(drugs_list),save_csv=False)
