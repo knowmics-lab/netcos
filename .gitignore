@@ -62,3 +62,6 @@ Thumbs.db
 # Secrets / env files
 .env
 secrets.yaml
+
+# misc
+.spyproject/
