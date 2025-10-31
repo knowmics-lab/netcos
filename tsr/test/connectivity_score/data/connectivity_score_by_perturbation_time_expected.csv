@@ -1,0 +1,15 @@
+"disease";"drug";"gene_selection";"perturbation_time";"connectivity_score"
+"BLCA";"10-hydroxycamptothecin";"50_most_significant";"6h";0.925
+"BLCA";"ABT-737";"50_most_significant";"6h";-0.216666666666667
+"BLCA";"ABT-751";"50_most_significant";"6h";-0.175
+"BLCA";"afatinib";"50_most_significant";"6h";-0.216666666666667
+"BLCA";"AG-14361";"50_most_significant";"6h";-0.725
+"BLCA";"albendazole";"50_most_significant";"6h";0.925
+"BLCA";"altretamine";"50_most_significant";"6h";-0.791666666666667
+"BLCA";"alvespimycin";"50_most_significant";"6h";-0.942857142857143
+"BLCA";"alvocidib";"50_most_significant";"6h";-1.16666666666667
+"BLCA";"AM-251";"50_most_significant";"6h";-0.511111111111111
+"BLCA";"AM-404";"50_most_significant";"6h";0.0476190476190476
+"BLCA";"AM-580";"50_most_significant";"6h";0.80952380952381
+"BLCA";"aminoglutethimide";"50_most_significant";"6h";-0.892857142857143
+"BLCA";"aminopurvalanol-a";"50_most_significant";"6h";-0.178571428571429

@@ -1,0 +1,9 @@
+# Track big data directories with Git LFS. Adjust patterns as needed.
+data/** filter=lfs diff=lfs merge=lfs -text
+MITHrIL/input/drug_signature/** filter=lfs diff=lfs merge=lfs -text
+MITHrIL/output/drug_signature/** filter=lfs diff=lfs merge=lfs -text
+other_outputs/** filter=lfs diff=lfs merge=lfs -text
+connectivity_score/input/drug_signature/** filter=lfs diff=lfs merge=lfs -text
+
+
+

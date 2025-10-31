@@ -1,0 +1,46 @@
+library(testthat)
+
+source("test/test_config.R")
+source("modules/config.R")
+source("modules/drug_signature/setuper/LINCSExperimentMetaDataSetuper.R")
+source("modules/drug_signature/loader/RDS_LINCSExperimentDataLoader.R")
+source("modules/drug_signature/loader/GeneInfoListLoader.R")
+source("modules/drug_signature/lmer/LmerLMM.R")
+source("modules/drug_signature/lmer/mapper/LmerLMMToDataFrameMapper.R")
+source("modules/drug_signature/DrugSignature.R")
+source("modules/drug_signature/DrugSignatureByScenarioSync.R")
+source("modules/drug_signature/DrugSignatureByPerturbationTime.R")
+
+# setup
+lincsExperimentMetaDataSetuper <- LINCSExperimentMetaDataSetuper$new(drug_signature_cfg$experiments_meta_data_filename)
+rds_LINCSExperimentDataLoader <- RDS_LINCSExperimentDataLoader$new(drug_signature_cfg$lincs_splitted_level3_dir)
+geneInfoListLoader <- GeneInfoListLoader$new(drug_signature_cfg$gene_info_filename)
+lmm <- LmerLMM$new()
+lmmToDataFrameMapper <- LmerLMMToDataFrameMapper$new()
+drugSignature <- DrugSignature$new(rds_LINCSExperimentDataLoader, lmm, lmmToDataFrameMapper, test_dir$signatures_base)
+drugSignatureByScenarioSync <- DrugSignatureByScenarioSync$new(drugSignature)
+sut <- DrugSignatureByPerturbationTime$new(lincsExperimentMetaDataSetuper, geneInfoListLoader, drugSignatureByScenarioSync)
+
+# given
+drugs_filter <- c("AM-251", "AM-404", "AM-580", "aminoglutethimide", "aminopurvalanol-a")
+gene_symbols <- c("DDR1", "PAX8", "FAU")
+perturbation_time <- "6"
+expected1 <- readRDS("test/drug_signature/data/signatures/DDR1_780_6h-expected.Rds")
+expected2 <- readRDS("test/drug_signature/data/signatures/PAX8_7849_6h-expected.Rds")
+expected3 <- readRDS("test/drug_signature/data/signatures/FAU_2197_6h-expected.Rds")
+
+# when
+startTime <- Sys.time()
+drug_signature_cfg$skip_already_computed_genes <- F
+sut$compute(gene_symbols, perturbation_time, drugs_filter)
+drug_signature_cfg$skip_already_computed_genes <- T
+totalTime <- Sys.time() - startTime
+print(sprintf("end overall computation, time: %s %s", totalTime, attr(totalTime, "units")))
+
+# then
+test_that("DrugSignatureByPerturbationTimeSyncRDSTest", {
+  expect_identical(readRDS("test/drug_signature/data/signatures/DDR1_780_6h.Rds"), expected1)
+  expect_identical(readRDS("test/drug_signature/data/signatures/PAX8_7849_6h.Rds"), expected2)
+  expect_identical(readRDS("test/drug_signature/data/signatures/FAU_2197_6h.Rds"), expected3)
+}
+)

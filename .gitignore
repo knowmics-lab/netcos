@@ -1,0 +1,49 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+
+# VS Code
+.vscode/
+
+# Python-specific
+*.pkl
+*.sqlite3
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Logs and runtime
+logs/
+*.log
+
+# Data and outputs (tracked with LFS or stored outside repo)
+/data/
+/MITHrIL/input/
+/MITHrIL/output/
+/other_outputs/
+/connectivity_score/input/
+/connectivity_score/output/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets / env files
+.env
+secrets.yaml

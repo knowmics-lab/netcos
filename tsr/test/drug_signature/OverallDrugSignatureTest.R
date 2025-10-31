@@ -1,0 +1,51 @@
+library(testthat)
+
+source("test/test_config.R")
+source("modules/config.R")
+source("modules/drug_signature/loader/GeneInfoListLoader.R")
+source("modules/drug_signature/setuper/LINCSExperimentMetaDataSetuper.R")
+source("modules/drug_signature/loader/GCTX_LINCSExperimentDataLoader.R")
+source("modules/drug_signature/lmer/LmerLMM.R")
+source("modules/drug_signature/lmer/mapper/LmerLMMToDataFrameMapper.R")
+source("modules/drug_signature/DrugSignature.R")
+source("modules/drug_signature/DrugSignatureByScenarioAsync.R")
+source("modules/drug_signature/DrugSignatureByPerturbationTime.R")
+source("modules/drug_signature/OverallDrugSignature.R")
+
+# setup
+geneInfoListLoader <- GeneInfoListLoader$new(drug_signature_cfg$gene_info_filename)
+lincsExperimentMetaDataSetuper <- LINCSExperimentMetaDataSetuper$new(drug_signature_cfg$experiments_meta_data_filename)
+gctx_LINCSExperimentDataLoader <- GCTX_LINCSExperimentDataLoader$new(drug_signature_cfg$experiments_data_filename)
+lmm <- LmerLMM$new()
+lmmToDataFrameMapper <- LmerLMMToDataFrameMapper$new()
+drugSignature <- DrugSignature$new(gctx_LINCSExperimentDataLoader, lmm, lmmToDataFrameMapper, "test/drug_signature/data/signatures/")
+drugSignatureByScenarioAsync <- DrugSignatureByScenarioAsync$new(drugSignature)
+drugSignatureByPerturbationTime <- DrugSignatureByPerturbationTime$new(lincsExperimentMetaDataSetuper, geneInfoListLoader, drugSignatureByScenarioAsync)
+sut <- OverallDrugSignature$new(drugSignatureByPerturbationTime)
+
+# given
+drugs_filter <- c("AM-251", "AM-404", "AM-580")
+gene_symbols <- c("ADORA3", "AFTPH")
+perturbation_times <- c("6", "24")
+expected1 <- readRDS("test/drug_signature/data/signatures/ADORA3_140_6h-expected.Rds")
+expected2 <- readRDS("test/drug_signature/data/signatures/ADORA3_140_24h-expected.Rds")
+expected3 <- readRDS("test/drug_signature/data/signatures/AFTPH_54812_6h-expected.Rds")
+expected4 <- readRDS("test/drug_signature/data/signatures/AFTPH_54812_24h-expected-b.Rds")
+
+# when
+drug_signature_cfg$skip_already_computed_genes <- F
+sut$compute(gene_symbols, drugs_filter, perturbation_times)
+drug_signature_cfg$skip_already_computed_genes <- T
+result1 <- readRDS("test/drug_signature/data/signatures/ADORA3_140_6h.Rds")
+result2 <- readRDS("test/drug_signature/data/signatures/ADORA3_140_24h.Rds")
+result3 <- readRDS("test/drug_signature/data/signatures/AFTPH_54812_6h.Rds")
+result4 <- readRDS("test/drug_signature/data/signatures/AFTPH_54812_24h.Rds")
+
+# then
+test_that("OverallDrugSignatureTest", {
+  expect_equal(result1, expected1)
+  expect_equal(result2, expected2)
+  expect_equal(result3, expected3)
+  expect_equal(result4, expected4)
+}
+)
