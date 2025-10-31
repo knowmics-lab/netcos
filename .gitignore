@@ -46,8 +46,9 @@ logs and instructoins/
 tsr/data/
 /tsr/output/
 /tsr/test/
+/tsr/.gitignore
+/tsr/.Rprofile
 /tsr/log_data/
-/tsr/modules/local_config
 /MITHrIL/input/
 /MITHrIL/output/
 /other_outputs/

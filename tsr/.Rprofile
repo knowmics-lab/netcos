@@ -1,1 +1,0 @@
-Sys.setlocale(locale="C")
