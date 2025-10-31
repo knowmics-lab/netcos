@@ -62,9 +62,9 @@ secrets.yaml
 
 # misc
 .spyproject/
-imgs/
-paper/
-presentations/
+/imgs/
+/paper/
+/presentations/
 
 # tsr model files
 tsr/data/
