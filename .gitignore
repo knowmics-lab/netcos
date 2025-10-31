@@ -29,8 +29,8 @@ env.bak/
 .ipynb_checkpoints
 
 # Logs and runtime
-logs/
-*.log
+logs and instructions/
+logs and instructoins/
 
 # Data and outputs (tracked with LFS or stored outside repo)
 /data/
