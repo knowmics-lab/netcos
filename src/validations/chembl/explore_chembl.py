@@ -4,6 +4,7 @@ Created on Thu Jul  3 09:33:55 2025
 
 @author: L-F-S
 """
+#%%
 
 from conf import cell_lines, DATA_DIR
 from validations.chembl.chembl_loader import load_raw_chembl
@@ -16,7 +17,6 @@ act_df= load_raw_chembl(cell_line, activity_index=True)
 
 
 #%% get InChIKey 
-
 # map molecule_chembl_id to InChIKey
 formulas = act_df.canonical_smiles.unique()
 ex_molecule = formulas[0]
