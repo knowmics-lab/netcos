@@ -43,12 +43,6 @@ logs and instructoins/
 
 # Data and outputs (tracked with LFS or stored outside repo)
 /data/
-tsr/data/
-/tsr/output/
-/tsr/test/
-/tsr/.gitignore
-/tsr/.Rprofile
-/tsr/log_data/
 /MITHrIL/input/
 /MITHrIL/output/
 /other_outputs/
@@ -71,3 +65,12 @@ secrets.yaml
 imgs/
 paper/
 presentations/
+
+# tsr model files
+tsr/data/
+/tsr/output/
+/tsr/test/
+/tsr/draft/
+/tsr/.gitignore
+/tsr/.Rprofile
+/tsr/log_data/
