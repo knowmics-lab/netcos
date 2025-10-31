@@ -43,7 +43,8 @@ logs and instructoins/
 
 # Data and outputs (tracked with LFS or stored outside repo)
 /data/
-tsr/data/
+/tsr/data/
+/tsr/output/
 /MITHrIL/input/
 /MITHrIL/output/
 /other_outputs/
