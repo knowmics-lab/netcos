@@ -48,11 +48,11 @@ logs and instructoins/
 /other_outputs/
 /connectivity_score/input/
 /connectivity_score/output/
-/imgs/
-/paper/
-/presentations/
-/validations/SAveRUNNER/
-/validations/octad tests/
+imgs/
+paper/
+presentations/
+validations/SAveRUNNER/
+validations/octad tests/
 data.zip
 
 # OS files
