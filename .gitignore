@@ -21,6 +21,14 @@ env.bak/
 # VS Code
 .vscode/
 
+# R files
+.RDataTmp
+.Rhistory
+*.RData
+*.RDS 
+*.rds
+*.rdata
+
 # Python-specific
 *.pkl
 *.sqlite3
@@ -39,6 +47,7 @@ logs and instructoins/
 /other_outputs/
 /connectivity_score/input/
 /connectivity_score/output/
+data.zip
 
 # OS files
 .DS_Store
