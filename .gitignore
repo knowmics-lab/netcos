@@ -24,6 +24,7 @@ env.bak/
 # R files
 .RDataTmp
 .Rhistory
+*.Rhistory
 *.RData
 *.RDS 
 *.rds
