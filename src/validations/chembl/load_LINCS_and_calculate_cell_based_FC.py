@@ -5,7 +5,7 @@ Created on Thu Jul  3 09:33:55 2025
 @author: L-F-S
 """
 
-from conf import cell_lines, DATA_DIR, alias_2geneid
+from conf import cell_lines_chembl, DATA_DIR, alias_2geneid
 import pandas as pd
 import os
 import numpy as np
@@ -16,7 +16,7 @@ from tsr_python.LINCS_preprocessing import map_assay_id_and_matrix_idx, main_fil
 LINCS_file = DATA_DIR+'LINCS-GSE92742'+os.sep+'GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx'
 inst_info_file = DATA_DIR + 'LINCS-GSE92742' + os.sep + 'GSE92742_Broad_LINCS_inst_info.txt'
 
-cell_lines = [cell_line.upper() for cell_line in cell_lines]
+cell_lines = [cell_line.upper() for cell_line in cell_lines_chembl]
 print('temp using only one cell line for computability')
 cell_lines = [cell_lines[1]] # 'HEPG2' has the least amount of data, so easier to debug temporary
 pert_times=[6, 24]

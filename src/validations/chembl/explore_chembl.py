@@ -6,13 +6,13 @@ Created on Thu Jul  3 09:33:55 2025
 """
 #%%
 
-from conf import cell_lines, DATA_DIR
+from conf import cell_lines_chembl, DATA_DIR
 from validations.chembl.chembl_loader import load_raw_chembl
 import pandas as pd
 import os
 import numpy as np
 
-cell_line = cell_lines[1]
+cell_line = cell_lines_chembl[1]
 act_df= load_raw_chembl(cell_line, activity_index=True)
 
 

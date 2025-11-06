@@ -5,7 +5,7 @@ Created on Fri Jun 27 16:15:33 2025
 @author: L-F-S
 """
 
-from conf import CHEMBL_INPUT_DATA_DIR, cell_lines
+from conf import CHEMBL_INPUT_DATA_DIR, cell_lines_chembl
 import requests
 import pandas as pd
 from tqdm import tqdm

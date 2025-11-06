@@ -30,6 +30,7 @@ BASE_DIR='G:'+os.sep+'My Drive'+os.sep+'unict'+os.sep+'unict 2024-25'+os.sep+'dr
 # BASE_DIR=os.sep+'home'+os.sep+'NetCos'+os.sep+'src'+os.sep
 
 DATA_DIR=BASE_DIR+'data'+os.sep
+LINCS_DIR=BASE_DIR+'data'+os.sep+'LINCS-GSE92742'+os.sep
 DICT_DIR=DATA_DIR+'dictionaries'+os.sep
 
 MITH_APP="/home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar"
@@ -61,6 +62,22 @@ CS_OUT=CS_DIR+'output'+os.sep+DISEASE+'_2025'+os.sep
 IMG_DIR=BASE_DIR+'imgs'+os.sep
 OOUT_DIR=BASE_DIR+'other_outputs'+os.sep
 
+
+##########################################################################
+# Drug signature calculations using LINCS1000 dataset
+##########################################################################
+
+
+# LINCS1000 data filename (warning: big file)
+LINCS_file = LINCS_DIR+os.sep+'GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx'
+#LINCS1000 metadata filename:
+inst_info_file = LINCS_DIR+os.sep+ 'GSE92742_Broad_LINCS_inst_info.txt'
+#LINCS1000 gene info filename:
+GENE_INFO_FILE = LINCS_DIR+os.sep+ 'GSE92742_Broad_LINCS_gene_info.txt'
+# landmark genes filename:
+BING_GENES = LINCS_DIR+os.sep+"bing_gene_symbols.csv"  # optional
+
+
 ###############################################################################
 # Chembl validation parameters
 ###############################################################################
@@ -68,7 +85,7 @@ VAL_DIR = BASE_DIR+os.sep+'validations'+os.sep
 # Chembl directory
 CHEMBL_BASE_DIR = VAL_DIR+'chembl'+os.sep
 CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR+'chembl_input'+os.sep
-cell_lines = ["MCF7", "HepG2", "HT29"]
+cell_lines_chembl = ["MCF7", "HepG2", "HT29"]
 
 # other validations
 # SaveRunner directory

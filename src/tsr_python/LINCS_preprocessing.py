@@ -5,7 +5,7 @@ Created on Fri Jul 11 17:12:15 2025
 @author: L-F-S
 """
 
-from conf import cell_lines,  alias_2geneid
+from conf import cell_lines_chembl,  alias_2geneid
 import pandas as pd
 import os
 import numpy as np
@@ -79,7 +79,7 @@ def filter_by_dose(inst_df, doses=[]):
         return inst_df
     return inst_df[inst_df['pert_dose'].isin(doses)]
 
-def main_filter(inst_df, id_to_index, min_cell_lines=5, cell_lines=cell_lines,
+def main_filter(inst_df, id_to_index, min_cell_lines=5, cell_lines=cell_lines_chembl,
                 pert_times=[6, 24], doses=[10], only_int=True):
 
     # add/remove filters here:
@@ -106,7 +106,7 @@ def main_filter(inst_df, id_to_index, min_cell_lines=5, cell_lines=cell_lines,
     inst_df = inst_df.dropna(subset=['assay_index'])
     inst_df['assay_index'] = inst_df['assay_index'].astype(int)
     print(f"Found {len(inst_df)} matching samples.")
-    print("Found", len(inst_df['pert_id'].unique()), 'pert_ids')
+    print("Found", len(inst_df['pert_id'].unique()), 'perturbagen (drug) ids')
 
     
     # Sort for h5py slicing (must be ascending)

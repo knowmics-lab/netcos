@@ -5,7 +5,7 @@ Created on Thu Jul  3 09:33:55 2025
 @author: L-F-S
 """
 
-from conf import CHEMBL_INPUT_DATA_DIR, cell_lines
+from conf import CHEMBL_INPUT_DATA_DIR, cell_lines_chembl
 import pandas as pd
 
 def load_raw_chembl(cell_line, activity_index = False):
