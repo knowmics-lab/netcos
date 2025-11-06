@@ -9,7 +9,7 @@ import os
 
 import pandas as pd
 import pickle
-from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG
+from conf import CS_DIR, TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG
 from preprocessing_utils import get_drugs_list
 
 def load_disease_signature(DISEASE, mith=False):

@@ -23,11 +23,11 @@ DISEASE = 'ipf'  # 'als_NYGC' #
 # DIRECTORIES
 ################
 
-# BASE_DIR=os.sep+'home'+os.sep+'signorini'+os.sep+'drug_repurposing'+os.sep
-# BASE_DIR=os.sep+'home'+os.sep+'lorenzo'+os.sep+'unict_2024-25'+os.sep+'drug_repurposing'+os.sep
-BASE_DIR='G:'+os.sep+'Il mio Drive'+os.sep+'unict'+os.sep+'unict 2024-25'+os.sep+'drug_repurposing'+os.sep+''
-BASE_DIR='G:'+os.sep+'My Drive'+os.sep+'unict'+os.sep+'unict 2024-25'+os.sep+'drug_repurposing'+os.sep+''
-# BASE_DIR=os.sep+'home'+os.sep+'NetCos'+os.sep+'src'+os.sep
+# BASE_DIR = os.sep+'home'+os.sep+'signorini'+os.sep+'netcos'+os.sep
+# BASE_DIR = os.sep+'home'+os.sep+'lorenzo'+os.sep+'unict_2024-25'+os.sep+'netcos'+os.sep
+BASE_DIR ='G:'+os.sep+'Il mio Drive'+os.sep+'unict'+os.sep+'unict 2024-25'+os.sep+'netcos'+os.sep+''
+BASE_DIR ='G:'+os.sep+'My Drive'+os.sep+'unict'+os.sep+'unict 2024-25'+os.sep+'netcos'+os.sep+''
+# BASE_DIR = os.sep+'home'+os.sep+'NetCos'+os.sep+'src'+os.sep
 
 DATA_DIR=BASE_DIR+'data'+os.sep
 LINCS_DIR=BASE_DIR+'data'+os.sep+'LINCS-GSE92742'+os.sep
