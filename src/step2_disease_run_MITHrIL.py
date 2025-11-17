@@ -54,5 +54,6 @@ def run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
         process.wait()
     
         return process.returncode
-
-run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE)
+#%%
+if __name__=="__main__":
+    run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE)
