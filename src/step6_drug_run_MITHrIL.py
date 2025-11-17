@@ -8,7 +8,7 @@ Created on Fri Mar 21 10:41:29 2025
 import subprocess
 from conf import MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG
 
-def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa_v2023_03',
+def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa',
                  n_thread="30", verbose=True, printc=True):
     '''
     MITHrIL batch parameters:

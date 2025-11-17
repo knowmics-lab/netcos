@@ -76,3 +76,6 @@ tsr/data/
 
 # server netcos skyder kernel 
 kernel-netcos.json
+
+# local config files
+src/local.py
