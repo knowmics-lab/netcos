@@ -8,16 +8,17 @@ Created on Fri Mar 21 10:41:29 2025
 import subprocess
 from conf import MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG
 
-def run_mithril_batch( MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa',
+def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa_v2023_03',
                  n_thread="30", verbose=True, printc=True):
     '''
     MITHrIL batch parameters:
-    -organism hsa_v2023_03 organism version used in this experiment. For most 
-            up-to-date version, use 'hsa'. for a list of all available
+    -organism: hsa_v2023_03 organism version used in this experiment. For most 
+            up-to-date version, use default 'hsa'. for a list of all available
             organisms, type:
             java -jar MITH_APP organisms
 
     -reactome: also use reactome network
+    -seed: random seed for replicability
     -p a flag (unlike non-batch version) to create perturbation file
     -customize-pathway-matrix : calcola alcone cose come mithril 2. va messo
     -inversion-factory fast-cpu : accelereate calculation with fast-cpu library
@@ -30,7 +31,7 @@ def run_mithril_batch( MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa',
         "mithril-batch", "-reactome", "-p", "-customize-pathway-matrix",
         "-seed", "1234", "-inversion-factory", "fast-cpu", "-multiplication-factory", "fast-cpu",
         "-t", n_thread, "-organism", organism,
-        "-i", f"{MITH_IN_DRUG}LINCS_metanalysis.mi ",
+        "-i", f"{MITH_IN_DRUG}{mith_input_file}",
         "-o", f"{MITH_OUT_DRUG}",
         "-p"
     ]
@@ -53,4 +54,5 @@ def run_mithril_batch( MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa',
     
         return process.returncode
 
-run_mithril_batch(MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, n_thread="30")
+mith_input_file = 'LINCS_metanalysis.mi'
+run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, n_thread="30")

@@ -73,3 +73,6 @@ tsr/data/
 /tsr/.gitignore
 /tsr/.Rprofile
 /tsr/log_data/
+
+# server netcos skyder kernel 
+kernel-netcos.json

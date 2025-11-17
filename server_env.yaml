@@ -1,0 +1,32 @@
+name: drug_repurposing
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  # numerics & data
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - h5py
+  - networkx
+  # kernel/console plumbing
+  - ipykernel
+  - jupyter_client
+  - pyzmq
+  - zeromq
+  # TLS & basics
+  - openssl
+  - libffi
+  - zlib
+  - xz
+  - tk
+  # run from Spyder locally via remote kernel
+  - spyder-kernels=3
+  - pip:
+      - chembl-webresource-client
+      - requests
+      - tqdm
+      # add any pure-Python libs your code imports; we can refine after first run
+EOF

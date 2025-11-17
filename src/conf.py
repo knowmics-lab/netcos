@@ -103,6 +103,11 @@ alias_2geneid_filename=DICT_DIR+'alias_2geneid.pkl'
 with open(alias_2geneid_filename, 'rb') as f:
     alias_2geneid = pickle.load(f)
 
+def map_name_to_id(genename):
+    if genename in alias_2geneid.keys():
+        return alias_2geneid[genename]
+    return genename
+
 # # using alaimo's mapping
 # symbol_to_id_filename=BASE_DIR+'other_data'+os.sep+'symbol_2geneid.pkl'
 # with open(symbol_to_id_filename, 'rb') as f:
