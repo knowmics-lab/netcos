@@ -22,9 +22,13 @@ DISEASE = 'ipf'  # 'als_NYGC' #
 ################
 # DIRECTORIES
 ################
-
-
-DATA_DIR=BASE_DIR+'data'+os.sep
+import local 
+# only override if it exists in local.py
+if hasattr(local, "DATA_DIR"):
+    DATA_DIR = local.DATA_DIR
+else:
+    DATA_DIR=BASE_DIR+'data'+os.sep
+    
 LINCS_DIR=BASE_DIR+'data'+os.sep+'LINCS-GSE92742'+os.sep
 DICT_DIR=DATA_DIR+'dictionaries'+os.sep
 
