@@ -68,7 +68,7 @@ def convert_and_remove_duplicates(DEG_drug_signature):
     
     return DEG_drug_signature
 
-def get_drugs_list(mith):
+def get_drugs_list(mith=True):
     '''
     mith: flag. 1: PF data, 0: FC data
     '''

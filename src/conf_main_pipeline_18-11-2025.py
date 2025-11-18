@@ -5,8 +5,7 @@ Created on Wed Nov 13 09:50:20 2024
 
 @ author: L-F-S
 
-18-11-2025 conf file for chembl valdiation pipeline.
-for HEPG 24h
+conf file for main netcos pipeline
 """
 
 import os
@@ -19,9 +18,7 @@ from local import BASE_DIR
 # Disease symbol. This will be used in the pipeline to 
 # identify the disease. It will be in file names and directories
 # !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
-DISEASE = 'LIHC' #'ipf'  # 'als_NYGC' # 
-cell_line = 'HEPG2'
-pert_time = '24h'
+DISEASE = 'ipf'  # 'als_NYGC' # 
 
 
 ################
@@ -42,7 +39,7 @@ MITH_APP="/home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar"
 MITH_DIR=BASE_DIR+'MITHrIL'+os.sep
 MITH_OUT=MITH_DIR+'output'+os.sep
 MITH_OUT_DISEASE=MITH_DIR+'output'+os.sep+'disease_signature_2025'+os.sep
-MITH_OUT_DRUG=MITH_DIR+'output'+os.sep+'drug_signature_2025'+os.sep+cell_line+'_'+pert_time
+MITH_OUT_DRUG=MITH_DIR+'output'+os.sep+'drug_signature_2025'+os.sep
 
 MITH_IN=MITH_DIR+'input'+os.sep
 MITH_IN_DISEASE=MITH_DIR+'input'+os.sep+'disease_signature'+os.sep

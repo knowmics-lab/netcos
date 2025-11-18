@@ -59,5 +59,5 @@ if __name__=="__main__":
     from sys import argv
     # insert disease name 
     # python step2_disease_run_MITHrIL.py DISEASE
-    DISEASES = argv[0]
+    DISEASE = argv[1]
     run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE)
