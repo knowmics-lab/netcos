@@ -42,7 +42,7 @@ MITH_APP="/home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar"
 MITH_DIR=BASE_DIR+'MITHrIL'+os.sep
 MITH_OUT=MITH_DIR+'output'+os.sep
 MITH_OUT_DISEASE=MITH_DIR+'output'+os.sep+'disease_signature_2025'+os.sep
-MITH_OUT_DRUG=MITH_DIR+'output'+os.sep+'drug_signature_2025'+os.sep+cell_line+'_'+pert_time
+MITH_OUT_DRUG=MITH_DIR+'output'+os.sep+'drug_signature_2025'+os.sep+cell_line+'_'+pert_time+os.sep
 
 MITH_IN=MITH_DIR+'input'+os.sep
 MITH_IN_DISEASE=MITH_DIR+'input'+os.sep+'disease_signature'+os.sep
@@ -58,7 +58,7 @@ TSR_OUT_CSCORE=TSR_OUT+'connectivity_score'+os.sep
 
 # Connectivity score dirs
 CS_DIR=BASE_DIR+'connectivity_score'+os.sep
-CS_IN_DRUG=CS_DIR+'input'+os.sep+'drug_signature_2025'+os.sep
+CS_IN_DRUG=CS_DIR+'input'+os.sep+'drug_signature_2025'+os.sep+cell_line+'_'+pert_time+os.sep
 CS_IN_DISEASE=CS_DIR+'input'+os.sep+'disease_signature_2025'+os.sep+DISEASE+os.sep
 CS_OUT=CS_DIR+'output'+os.sep+DISEASE+'_2025'+os.sep
 

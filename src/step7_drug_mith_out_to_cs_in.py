@@ -38,6 +38,8 @@ def mith_out_to_cs_in(drugs_list,i1=None,i2=None, save_csv=False):
     for h, drug in enumerate(drugs_list[i1:i2]):
         
         output_filename_csv=TSR_OUT_DRUG+'LINCS/metanalysis_mith3_drug_wise/'+drug+'_metanalysis.csv'   
+        if not os.path.isdir(CS_IN_DRUG):
+            os.mkdir(CS_IN_DRUG)
         output_filename_pkl=CS_IN_DRUG+drug+'_metanalysis.pkl'   
         if not os.path.isfile(output_filename_pkl): 
         
@@ -91,6 +93,41 @@ def mith_out_to_cs_in(drugs_list,i1=None,i2=None, save_csv=False):
                 mith_perturb_signature_meta.to_csv(output_filename_csv, sep='\t', index=False)
             with open(output_filename_pkl, 'wb') as f:
                 pickle.dump(mith_perturb_signature_meta, f)
+    print('time elapsed:', time.time()-start)
+    return
+
+def mith_out_to_cs_in_single_time(drugs_list, pert_time, i1=None,i2=None, save_csv=False):
+    print('Mapping mith3 output into tsr connectivity input: \n\
+              Removing pathway duplicates, and filtering ')
+    start=time.time()
+    tot_drugs=len(drugs_list)
+    for h, drug in enumerate(drugs_list[i1:i2]):
+        
+        output_filename_csv=TSR_OUT_DRUG+'LINCS/metanalysis_mith3_drug_wise/'+drug+'_metanalysis.csv'   
+        if not os.path.isdir(CS_IN_DRUG):
+            os.mkdir(CS_IN_DRUG)
+        output_filename_pkl=CS_IN_DRUG+drug+'.pkl'   
+        if not os.path.isfile(output_filename_pkl): 
+        
+        
+            drug_start=time.time()
+            print(drug, h+1, 'of', tot_drugs)
+            #6h
+            mith_perturb_signature_file=drug+'.perturbations.txt'
+            mith_perturb_signature = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file, sep='\t', header=None, skiprows=1)
+            mith_perturb_signature.drop_duplicates(2, keep='first', inplace=True)
+            mith_perturb_signature=mith_perturb_signature[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation_6h',6:'p.value_6h',7:'adj.p.value_6h'})
+            
+            mith_perturb_signature = remove_special_characters(mith_perturb_signature)
+            print('drug', drug, 'processed in', np.round(time.time()-drug_start, 1))
+            
+            print('writing mit3 connectivity input metanalysis files for drug', drug)
+            if save_csv:
+                # to save a human-readable .csv file. 
+                # will slow down the computation and use more space
+                mith_perturb_signature.to_csv(output_filename_csv, sep='\t', index=False)
+            with open(output_filename_pkl, 'wb') as f:
+                pickle.dump(mith_perturb_signature, f)
     print('time elapsed:', time.time()-start)
     return
 
