@@ -9,7 +9,7 @@ import subprocess
 from conf import DISEASE, MITH_APP, MITH_OUT_DISEASE, MITH_IN_DISEASE
 
 def run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
-                organism='hsa_v2023_03', n_thread="30", verbose=True, printc=True): 
+                organism='hsa', n_thread="30", verbose=True, printc=True): 
     '''
     MITHrIL parameters:
     -organism hsa_v2023_03 organism version used in this experiment. For most 
@@ -56,4 +56,8 @@ def run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
         return process.returncode
 #%%
 if __name__=="__main__":
+    from sys import argv
+    # insert disease name 
+    # python step2_disease_run_MITHrIL.py DISEASE
+    DISEASES = argv[0]
     run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE)
