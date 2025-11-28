@@ -7,6 +7,10 @@ Created on Fri Nov 28 09:08:11 2025
 import pandas as pd
 import os
 import pyreadr
+current_file_path = os.path.abspath(__file__)
+parent_directory = os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))
+import sys
+sys.path.insert(0, parent_directory)
 from conf import TSR_OUT_DRUG, cell_line, pert_time,\
     MITH_IN_DRUG
 DRUG_DIR = TSR_OUT_DRUG+'LINCS'+os.sep+cell_line+'_'+pert_time+'_drug_wise'+os.sep
