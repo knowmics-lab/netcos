@@ -13,17 +13,20 @@ import sys
 sys.path.insert(0, parent_directory)
 from conf import TSR_OUT_DRUG, cell_line, pert_time,\
     MITH_IN_DRUG
+print('translating tsr output to mithril input for :', cell_line, pert_time )
 DRUG_DIR = TSR_OUT_DRUG+'LINCS'+os.sep+cell_line+'_'+pert_time+'_drug_wise'+os.sep
 df_list=[]
 for i, drug_file in enumerate(os.listdir(DRUG_DIR)):
     drug = drug_file.rstrip('.Rds')
-    result = pyreadr.read_r(DRUG_DIR+drug_file)
-    print(drug)
-    df = result[None] 
-    df.set_index('gene_id', inplace=True)
-    df.rename(columns = {'DE_log2_FC':drug}, inplace = True)
-    
-    df_list.append(df[drug])
+    try:
+        result = pyreadr.read_r(DRUG_DIR+drug_file)
+        df = result[None] 
+        df.set_index('gene_id', inplace=True)
+        df.rename(columns = {'DE_log2_FC':drug}, inplace = True)
+        
+        df_list.append(df[drug])
+    except:
+        print('.Rds reading error for:', drug_file)
 
 matrix=pd.concat(df_list, axis=1)
 print(matrix.shape)
