@@ -54,6 +54,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 from conf import DISEASE, CS_OUT, DATA_DIR, TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG
+
 print('running correlations between chembl IC50 and drug rankings for disease:', DISEASE)
 
 # select 
@@ -86,8 +87,8 @@ def load_IC50(cancer_type, cell_line, IC50_only=True):
 
     #filter for 1 nM
 #%%   
-cancer_type='BRCA'
-cell_line='MCF7'
+cancer_type='LIHC'
+cell_line='HepG2'
 ic50=load_IC50(cancer_type, cell_line)
 
 #%%
