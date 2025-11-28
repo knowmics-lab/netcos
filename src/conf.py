@@ -85,7 +85,7 @@ BING_GENES = LINCS_DIR+os.sep+"bing_gene_symbols.csv"  # optional
 # MITHrIL parameters
 ########################################################################
 mith_threads = 10
-mith_organism = 'hsa_2025'
+mith_organism = 'hsa'
 
 
 ###############################################################################

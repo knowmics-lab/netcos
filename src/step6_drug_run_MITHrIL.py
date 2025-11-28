@@ -6,7 +6,7 @@ Created on Fri Mar 21 10:41:29 2025
 """
 
 import subprocess
-from conf import MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG, mith_threads, mith_organism
+from conf import cell_line,pert_time, MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG, mith_threads, mith_organism
 
 def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa_2025',
                  n_thread="30", verbose=True, printc=True):
@@ -56,5 +56,5 @@ def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, or
 
 #%% 
 if __name__ == "__main__":
-    mith_input_file = 'LINCS_HEPG2_24h.mi'#'LINCS_metanalysis.mi' 
+    mith_input_file = 'LINCS_'+cell_line+'_'+pert_time+'.mi'
     run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, n_thread=mith_threads, organism=mith_organism)
