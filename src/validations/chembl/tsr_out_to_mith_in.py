@@ -27,13 +27,14 @@ for i, drug_file in enumerate(os.listdir(DRUG_DIR)):
         df_list.append(df[drug])
     except:
         print('.Rds reading error for:', drug_file)
-
+print('building MIThRIL batch matrix input')
 matrix=pd.concat(df_list, axis=1)
 print(matrix.shape)
 print(matrix.columns)
 print(matrix.head(3))
 
 # Save MITHrIL gene id based input file:
+print('saving file..')
 mith_input_filename = 'LINCS_'+cell_line+'_'+pert_time+'.mi'
 matrix.to_csv(MITH_IN_DRUG+mith_input_filename, sep='\t', index=True,  index_label=False)
 print('MITHrIL drug input saved in',MITH_IN_DRUG,'filename:',mith_input_filename)
