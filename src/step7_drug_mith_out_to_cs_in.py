@@ -103,7 +103,7 @@ def mith_out_to_cs_in_single_time(drugs_list, pert_time, i1=None,i2=None, save_c
     tot_drugs=len(drugs_list)
     for h, drug in enumerate(drugs_list[i1:i2]):
         
-        output_filename_csv=TSR_OUT_DRUG+'LINCS/metanalysis_mith3_drug_wise/'+drug+'_metanalysis.csv'   
+        output_filename_csv=TSR_OUT_DRUG+'LINCS/metanalysis_mith3_drug_wise/'+drug+'_metanalysis.csv'
         if not os.path.isdir(CS_IN_DRUG):
             os.mkdir(CS_IN_DRUG)
         output_filename_pkl=CS_IN_DRUG+drug+'.pkl'   
@@ -137,39 +137,46 @@ def mith_out_to_cs_in_single_time(drugs_list, pert_time, i1=None,i2=None, save_c
 if __name__=='__main__':
 
     
-    # Get all drugs
-    drugs_list=get_drugs_list()
+    # # Get all drugs
+    # drugs_list=get_drugs_list()
     
-    # # iterative:
-    # mith_out_to_cs_in(drugs_list, save_csv=False)
+    # # # iterative:
+    # # mith_out_to_cs_in(drugs_list, save_csv=False)
     
-    # parallel:
-    from joblib import Parallel, delayed
+    # # parallel:
+    # from joblib import Parallel, delayed
         
-    # set n of cores
-    cores=2
-    if cores>len(drugs_list):
-        raise ValueError('n_jobs:',cores,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
+    # # set n of cores
+    # cores=2
+    # if cores>len(drugs_list):
+    #     raise ValueError('n_jobs:',cores,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
     
-    # get chunk size
-    chunk_size=int(len(drugs_list)/cores)
-    last_chunk_size=len(drugs_list)%cores
+    # # get chunk size
+    # chunk_size=int(len(drugs_list)/cores)
+    # last_chunk_size=len(drugs_list)%cores
     
-    def get_chunk_indexes(i,chunk_size):
-        i1=chunk_size*i
-        i2=chunk_size*i+chunk_size
-        return i1, i2
+    # def get_chunk_indexes(i,chunk_size):
+    #     i1=chunk_size*i
+    #     i2=chunk_size*i+chunk_size
+    #     return i1, i2
     
-    parallel_indexes=[]
-    for i in range(cores):
-        i1,i2=get_chunk_indexes(i, chunk_size)
-        parallel_indexes.append((i1,i2))
+    # parallel_indexes=[]
+    # for i in range(cores):
+    #     i1,i2=get_chunk_indexes(i, chunk_size)
+    #     parallel_indexes.append((i1,i2))
     
     
-    results = Parallel(n_jobs=cores)(delayed(mith_out_to_cs_in)\
-                                  (drugs_list, i1, i2,save_csv=False)\
-                            for i1,i2 in parallel_indexes)
+    # results = Parallel(n_jobs=cores)(delayed(mith_out_to_cs_in)\
+    #                               (drugs_list, i1, i2,save_csv=False)\
+    #                         for i1,i2 in parallel_indexes)
         
-    # Run last chunk if rest of division != 0:
-    if last_chunk_size!=0:
-        mith_out_to_cs_in(drugs_list, i1, len(drugs_list),save_csv=False)
+    # # Run last chunk if rest of division != 0:
+    # if last_chunk_size!=0:
+    #     mith_out_to_cs_in(drugs_list, i1, len(drugs_list),save_csv=False)
+    #%%
+    from conf import cell_line, pert_time, DISEASE
+    drugs_list=get_drugs_list(True)
+    print(len(drugs_list))
+    print(cell_line, pert_time, DISEASE)
+    print(MITH_OUT_DRUG)
+    print(CS_IN_DRUG)
