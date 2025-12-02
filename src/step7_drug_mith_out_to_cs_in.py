@@ -180,3 +180,5 @@ if __name__=='__main__':
     print(cell_line, pert_time, DISEASE)
     print(MITH_OUT_DRUG)
     print(CS_IN_DRUG)
+    mith_out_to_cs_in_single_time(drugs_list, pert_time)
+
