@@ -97,7 +97,7 @@ def mith_out_to_cs_in(drugs_list,i1=None,i2=None, save_csv=False):
     return
 
 def mith_out_to_cs_in_single_time(drugs_list, pert_time, i1=None,i2=None, save_csv=False):
-    print('Mapping mith3 output into tsr connectivity input: \n\
+    print('Mapping mith3 output into tsr connectivity input for chembl experiment: \n\
               Removing pathway duplicates, and filtering ')
     start=time.time()
     tot_drugs=len(drugs_list)
