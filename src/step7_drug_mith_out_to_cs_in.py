@@ -116,7 +116,7 @@ def mith_out_to_cs_in_single_time(drugs_list, pert_time, i1=None,i2=None, save_c
             mith_perturb_signature_file=drug+'.perturbations.txt'
             mith_perturb_signature = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file, sep='\t', header=None, skiprows=1)
             mith_perturb_signature.drop_duplicates(2, keep='first', inplace=True)
-            mith_perturb_signature=mith_perturb_signature[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation_6h',6:'p.value_6h',7:'adj.p.value_6h'})
+            mith_perturb_signature=mith_perturb_signature[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation_'+pert_time,6:'p.value_'+pert_time,7:'adj.p.value_'+pert_time})
             
             mith_perturb_signature = remove_special_characters(mith_perturb_signature)
             print('drug', drug, 'processed in', np.round(time.time()-drug_start, 1))
