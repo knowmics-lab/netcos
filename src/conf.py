@@ -19,9 +19,13 @@ from local import BASE_DIR
 # Disease symbol. This will be used in the pipeline to 
 # identify the disease. It will be in file names and directories
 # !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
-DISEASE = 'LIHC' #'ipf'  # 'als_NYGC' # 
+# name of cell line for chembl validation
+diseases_of = {'HEPG2':'LIHC',
+               'MCF7':'BRCA',
+               'HT29':'COAD'}
 cell_line = 'HEPG2'
 pert_time = '24h'
+DISEASE = diseases_of[cell_line]
 
 
 ################
