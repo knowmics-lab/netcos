@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-import os
-if not os.getcwd().endswith('src'):
-    os.chdir('../../')
+import os, sys
+HERE = os.path.dirname(__file__)
+REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # go up 3 levels
+sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
+
 from datetime import datetime
 import numpy as np
 import pandas as pd
