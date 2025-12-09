@@ -1,30 +1,30 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 25 12:08:22 2025
-
-@author: L-F-S
-
-Parallel calculation of conectivity score and other similarity measures
-for a list of drugs vs a disease
-"""
-
 import os
-import sys
+from datetime import datetime
 import numpy as np
 import pandas as pd
-import time
 from scipy import stats
+import time
+import pickle
+from loader import load_disease_signature
 from connectivity_score import get_common_genes, bin_chen_connectivity
-from loader import load_disease_signature, load_single_drug_signature
-from conf import DISEASE, CS_OUT
-from preprocessing_utils import get_drugs_list, get_chunk_indexes
-from joblib import Parallel, delayed
-from datetime import datetime
+from conf import  cell_line, pert_time, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
+CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl
 
+print(cell_line, pert_time, DISEASE)
+from cs_batch import run_connectivity_score_drugs_batch
+from preprocessing_utils import get_drugs_list_from_path, get_chunk_indexes
+from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE
+print(DISEASE, cell_line, pert_time)
+print(CS_IN_DRUG, CS_IN_DISEASE, CS_OUT)
 
-###############################################################################
-#             CALCULATE CONNECTIVITY FOR DEG/MITH DATA
-###############################################################################
+#%%
+
+def load_single_drug_signature(filename, mith=1):
+    with open(filename+'.pkl', 'rb') as f:
+        data=pickle.load(f)
+    return data
+
 def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1, i2, rank_on='magnitude', save_file=False):
     '''
     wrapper function to load disease and drug data (for a  batch of drugs in drugs_list[i1:i2]), 
@@ -48,8 +48,9 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1
     # DO NOT simply select common genes, as this would impact
     # connectrivity calculations
         #load one drug signature (all durg signatures have the same genes in the same order)
-    
-    drug_signature=load_single_drug_signature(drugs_list[0], mith=mith)
+    example_drug = drugs_list[0]
+    example_drug_filename=CS_IN_DRUG+example_drug
+    drug_signature=load_single_drug_signature(example_drug_filename, mith=mith)
     
     disease_common_index, drug_common_index = get_common_genes(disease_signature, drug_signature)  
 
@@ -74,7 +75,7 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1
         
         # load drug signature
         
-        drug_signature=load_single_drug_signature(drug, mith=mith)
+        drug_signature=load_single_drug_signature(CS_IN_DRUG+drug, mith=mith)
         
         for pert_time in pert_times:
             
@@ -107,51 +108,29 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1
     
     print('total elapsed time for batch of', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
     return connectivity_data
+#%%
+mith=1
+drugs_list=get_drugs_list_from_path(CS_IN_DRUG)
+print(len(drugs_list))
+# set n of cores for parallel execution
+n_jobs= 4
+if n_jobs>len(drugs_list):
+    raise ValueError('n_jobs:',n_jobs,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
 
-#%% Parallel run for LINCS data
-if __name__=="__main__":
-    # get drugs list
-    # set perturbation times
-    pert_times=['6h','24h','6h_24h']
-    # Set calculation for MITHrIL data
-    mith=1
-    drugs_list=get_drugs_list(mith)
-    
-    # set n of cores for parallel execution
-    n_jobs= int(sys.argv[1]) #16
-    if n_jobs>len(drugs_list):
-        raise ValueError('n_jobs:',n_jobs,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
-    
-    # get chunk size
-    chunk_size=int(len(drugs_list)/n_jobs)
-    last_chunk_size=len(drugs_list)%n_jobs
-    
-    parallel_indexes=[]
-    for i in range(n_jobs):
-        i1,i2=get_chunk_indexes(i, chunk_size)
-        parallel_indexes.append((i1,i2))
-    
-    print('n jobs', n_jobs)
-    print('len drug list', len(drugs_list))
-    print('chunk size',chunk_size)
-    print('last chunk size', last_chunk_size)
-    print('mith tag:', mith, '\ndisease:', DISEASE)
-    results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
-                                 (DISEASE, mith, drugs_list, pert_times, i1, i2)\
-                            for i1,i2 in parallel_indexes)
-    
-    if last_chunk_size>0:
-        last_batch=run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i2,len(drugs_list))
-        results.append(last_batch)
-    
-    # build dataframe    
-    cs_df=pd.concat(results)
-    
-    # write results
-    if not os.path.exists(CS_OUT):
-                os.mkdir(CS_OUT)
-    now =  datetime.now()
-    datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-    connectivity_dataset_filename=CS_OUT+datetime_string+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+datetime_string+'_mith_connectivity_score.tsv'
-    #%%
-    cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
+# get chunk size
+chunk_size=int(len(drugs_list)/n_jobs)
+last_chunk_size=len(drugs_list)%n_jobs
+
+pert_times=[pert_time]
+
+parallel_indexes=[]
+for i in range(n_jobs):
+    i1,i2=get_chunk_indexes(i, chunk_size)
+    parallel_indexes.append((i1,i2))
+
+print('n jobs', n_jobs)
+print('len drug list', len(drugs_list))
+print('chunk size',chunk_size)
+print('last chunk size', last_chunk_size)
+#%%
+run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1, i2, save_file=True)

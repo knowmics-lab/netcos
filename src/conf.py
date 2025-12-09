@@ -19,8 +19,8 @@ from local import BASE_DIR
 # Disease symbol. This will be used in the pipeline to 
 # identify the disease. It will be in file names and directories
 # !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
-DISEASE = 'temp'#'LIHC' #'ipf'  # 'als_NYGC' # 
-cell_line = 'MCF7'
+DISEASE = 'LIHC' #'ipf'  # 'als_NYGC' # 
+cell_line = 'HEPG2'
 pert_time = '24h'
 
 
@@ -60,7 +60,7 @@ TSR_OUT_CSCORE=TSR_OUT+'connectivity_score'+os.sep
 CS_DIR=BASE_DIR+'connectivity_score'+os.sep
 CS_IN_DRUG=CS_DIR+'input'+os.sep+'drug_signature_2025'+os.sep+cell_line+'_'+pert_time+os.sep
 CS_IN_DISEASE=CS_DIR+'input'+os.sep+'disease_signature_2025'+os.sep+DISEASE+os.sep
-CS_OUT=CS_DIR+'output'+os.sep+DISEASE+'_2025'+os.sep
+CS_OUT=CS_DIR+'output'+os.sep+DISEASE+'_2025_'+pert_time+os.sep
 
 # other outputs
 IMG_DIR=BASE_DIR+'imgs'+os.sep

@@ -80,6 +80,17 @@ def get_drugs_list(mith=True):
     drugs_list=list(np.unique(drugs_list))
     return drugs_list
 
+def get_drugs_list_from_path(drugs_path):
+    '''
+    mith: flag. 1: PF data, 0: FC data
+    '''
+    drugs_list=os.listdir(drugs_path)
+    
+    drugs_list=[x.split('.')[0] for x in drugs_list]
+    drugs_list=[x.split('_')[0] for x in drugs_list]
+    drugs_list=list(np.unique(drugs_list))
+    return drugs_list
+
 def get_common_genes(disease_signature, drug_signature):
     missing_genes=set.difference(set(disease_signature.gene_id),set(drug_signature.gene_id))
     # print('missing genes from mithril', len(missing_genes))

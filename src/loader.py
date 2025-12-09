@@ -45,17 +45,14 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
 
     returns a pandas.Dataframe where rows are genes.
     '''
-    # print('pikle',pkl)
     if not mith:
         
         filename=TSR_OUT_DRUG+'LINCS'+os.sep+'metanalysis_drug_wise_filtered'+os.sep+drug+'_metanalysis'
         if not pkl:
             return pd.read_csv(filename+'.csv', sep='\t',  dtype={'gene_id':'str'})
         else:
-            # print('comepossibile',filename)
             with open(filename+'.pkl', 'rb') as f:
                 data=pickle.load(f)
-            # print('\nAOOOOOOOOOOOOOOOOOOOOOOOO',data,'wewew')
             return data
                 
     else:
