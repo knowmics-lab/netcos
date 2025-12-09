@@ -137,7 +137,7 @@ print('n jobs', cs_threads)
 print('len drug list', len(drugs_list))
 print('chunk size',chunk_size)
 print('last chunk size', last_chunk_size)
-results = Parallel(cs_threads=cs_threads)(delayed(run_connectivity_score_drugs_batch)\
+results = Parallel(n_jobs=cs_threads)(delayed(run_connectivity_score_drugs_batch)\
                              (DISEASE, mith, drugs_list, pert_times, i1, i2)\
                         for i1,i2 in parallel_indexes)
 
