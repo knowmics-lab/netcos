@@ -15,7 +15,7 @@ import pickle
 from loader import load_disease_signature
 from connectivity_score import get_common_genes, bin_chen_connectivity
 from conf import  BASE_DIR, cell_line, pert_time, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
-CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl
+CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl, cs_threads, cs_mith
 
 print(cell_line, pert_time, DISEASE)
 from cs_batch import run_connectivity_score_drugs_batch
@@ -115,30 +115,29 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1
     print('total elapsed time for batch of', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
     return connectivity_data
 #%%
-mith=1
+mith=cs_mith
 drugs_list=get_drugs_list_from_path(CS_IN_DRUG)
 print(len(drugs_list))
 # set n of cores for parallel execution
-n_jobs= 4
-if n_jobs>len(drugs_list):
-    raise ValueError('n_jobs:',n_jobs,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
+if cs_threads>len(drugs_list):
+    raise ValueError('cs_threads:',cs_threads,' > len(drugs_list):',len(drugs_list),'! Reduce size of cs_threads')
 
 # get chunk size
-chunk_size=int(len(drugs_list)/n_jobs)
-last_chunk_size=len(drugs_list)%n_jobs
+chunk_size=int(len(drugs_list)/cs_threads)
+last_chunk_size=len(drugs_list)%cs_threads
 
 pert_times=[pert_time]
 
 parallel_indexes=[]
-for i in range(n_jobs):
+for i in range(cs_threads):
     i1,i2=get_chunk_indexes(i, chunk_size)
     parallel_indexes.append((i1,i2))
 
-print('n jobs', n_jobs)
+print('n jobs', cs_threads)
 print('len drug list', len(drugs_list))
 print('chunk size',chunk_size)
 print('last chunk size', last_chunk_size)
-results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
+results = Parallel(cs_threads=cs_threads)(delayed(run_connectivity_score_drugs_batch)\
                              (DISEASE, mith, drugs_list, pert_times, i1, i2)\
                         for i1,i2 in parallel_indexes)
 
