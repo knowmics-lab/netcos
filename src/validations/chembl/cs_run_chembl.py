@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+if not os.getcwd().endswith('src'):
+    os.chdir('../../')
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -18,9 +20,6 @@ from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE
 print(DISEASE, cell_line, pert_time)
 print(CS_IN_DRUG, CS_IN_DISEASE, CS_OUT)
 
-import os
-if not os.getcwd().endswith('src'):
-    os.chdir(BASE_DIR+os.sep+'src')
 #%%
 
 def load_single_drug_signature(filename, mith=1):
