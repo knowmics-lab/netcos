@@ -5,6 +5,8 @@ REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # go up 3 lev
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
 from datetime import datetime
+from joblib import Parallel, delayed
+
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -136,5 +138,22 @@ print('n jobs', n_jobs)
 print('len drug list', len(drugs_list))
 print('chunk size',chunk_size)
 print('last chunk size', last_chunk_size)
+results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
+                             (DISEASE, mith, drugs_list, pert_times, i1, i2)\
+                        for i1,i2 in parallel_indexes)
+
+if last_chunk_size>0:
+    last_batch=run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i2,len(drugs_list))
+    results.append(last_batch)
+
+# build dataframe    
+cs_df=pd.concat(results)
+
+# write results
+if not os.path.exists(CS_OUT):
+            os.mkdir(CS_OUT)
+now =  datetime.now()
+datetime_string = now.strftime("%d_%m_%Y_%H_%M")
+connectivity_dataset_filename=CS_OUT+datetime_string+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+datetime_string+'_mith_connectivity_score.tsv'
 #%%
-run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, pert_times, i1, i2, save_file=True)
+cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
