@@ -8,7 +8,7 @@ import time
 import pickle
 from loader import load_disease_signature
 from connectivity_score import get_common_genes, bin_chen_connectivity
-from conf import  cell_line, pert_time, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
+from conf import  BASE_DIR, cell_line, pert_time, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
 CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl
 
 print(cell_line, pert_time, DISEASE)
@@ -18,6 +18,9 @@ from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE
 print(DISEASE, cell_line, pert_time)
 print(CS_IN_DRUG, CS_IN_DISEASE, CS_OUT)
 
+import os
+if not os.getcwd().endswith('src'):
+    os.chdir(BASE_DIR+os.sep+'src')
 #%%
 
 def load_single_drug_signature(filename, mith=1):
