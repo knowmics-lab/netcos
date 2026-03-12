@@ -147,7 +147,7 @@ if __name__=='__main__':
     # from joblib import Parallel, delayed
         
     # # set n of cores
-    # cores=2
+    # cores=10
     # if cores>len(drugs_list):
     #     raise ValueError('n_jobs:',cores,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
     

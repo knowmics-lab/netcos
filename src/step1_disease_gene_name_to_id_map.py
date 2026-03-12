@@ -21,7 +21,6 @@ from conf import DISEASE,MITH_IN_DISEASE, TSR_OUT_DISEASE, DICT_DIR, alias_2gene
 # DISEASE DATA
 #####################
 # preprocessing to remove duplicates
-
 disease_gene_signature_data=pd.read_csv(TSR_OUT_DISEASE+os.sep+DISEASE+'_signature.csv', sep=';', decimal=',',header=0)
 #%% remove duplicates
 genes_not_in_alias=[]

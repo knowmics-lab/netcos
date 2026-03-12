@@ -24,7 +24,7 @@ diseases_of = {'HEPG2':'LIHC',
                'MCF7':'BRCA',
                'HT29':'COAD'}
 cell_line = 'HEPG2'
-pert_time = '24h'
+pert_time = '6h'
 DISEASE = diseases_of[cell_line]
 
 
@@ -65,6 +65,8 @@ CS_DIR=BASE_DIR+'connectivity_score'+os.sep
 CS_IN_DRUG=CS_DIR+'input'+os.sep+'drug_signature_2025'+os.sep+cell_line+'_'+pert_time+os.sep
 CS_IN_DISEASE=CS_DIR+'input'+os.sep+'disease_signature_2025'+os.sep+DISEASE+os.sep
 CS_OUT=CS_DIR+'output'+os.sep+DISEASE+'_2025_'+pert_time+os.sep
+
+
 
 # other outputs
 IMG_DIR=BASE_DIR+'imgs'+os.sep
