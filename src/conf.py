@@ -6,28 +6,34 @@ Created on Wed Nov 13 09:50:20 2024
 @ author: L-F-S
 
 18-11-2025 conf file for chembl valdiation pipeline.
-for HEPG 24h
+for HEPG cell line, LIHC disease, using landmark genes from BinChen2017 supll data
 """
 
-import os
 from pathlib import Path
 import pickle
 from local import BASE_DIR
+# !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
+
+#######################
+# LINCS data parameters
+#######################
+
+landmark = True  # only select landmark genes 
+# is_gold = 1 # only select high-quality perturbagens. Default for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
+# pert_time = '6h'
+cell_line = 'HEPG2'
+
 ####################
-# FLAGS
+# Disease data parameters
 ####################
  
 # Disease symbol. This will be used in the pipeline to 
 # identify the disease. It will be in file names and directories
-# !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
 # name of cell line for chembl validation
 diseases_of = {'HEPG2':'LIHC',
                'MCF7':'BRCA',
                'HT29':'COAD'}
-cell_line = 'HEPG2'
-pert_time = '6h'
 DISEASE = diseases_of[cell_line]
-
 
 ################
 # DIRECTORIES
@@ -47,7 +53,7 @@ MITH_APP="/home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar"
 MITH_DIR=BASE_DIR / 'MITHrIL'
 MITH_OUT=MITH_DIR / 'output'
 MITH_OUT_DISEASE=MITH_DIR / 'output' / 'disease_signature_2025'
-MITH_OUT_DRUG=MITH_DIR / 'output' / 'drug_signature_2025' / Path(cell_line+'_'+pert_time)
+MITH_OUT_DRUG=MITH_DIR / 'output' / 'drug_signature_2025' / cell_line #Path(cell_line+'_'+pert_time)
 
 MITH_IN=MITH_DIR / 'input'
 MITH_IN_DISEASE=MITH_DIR / 'input' / 'disease_signature'
@@ -63,9 +69,9 @@ TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
 # Connectivity score dirs
 CS_DIR=BASE_DIR / 'connectivity_score'
-CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / Path(cell_line+'_'+pert_time)
+CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line #Path(cell_line+'_'+pert_time)
 CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / DISEASE
-CS_OUT=CS_DIR / 'output' / Path(DISEASE+'_2025_'+pert_time)
+CS_OUT=CS_DIR / 'output' / DISEASE #Path(DISEASE+'_2025_'+pert_time)
 
 
 
