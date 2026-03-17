@@ -36,7 +36,7 @@ diseases_of = {'HEPG2':'LIHC',
 DISEASE = diseases_of[cell_line]
 
 ################
-# DIRECTORIES
+# DIRECTORIES and files
 ################
 import local 
 # only override if it exists in local.py
@@ -47,6 +47,11 @@ else:
     
 LINCS_DIR=BASE_DIR / 'data' / 'LINCS-GSE92742'
 DICT_DIR=DATA_DIR / 'dictionaries'
+
+
+################
+# MITHrIL
+################
 
 MITH_APP="/home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar"
 
