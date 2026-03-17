@@ -26,12 +26,14 @@ def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, or
     -t : number of threads
     -o : output directory (unlike non-batch version, where is output name)'''
     
+    in_file_path = MITH_IN_DRUG / mith_input_file
+    
     command = [
         "java", "-jar", MITH_APP,
         "mithril-batch", "-reactome", "-p", "-customize-pathway-matrix",
         "-seed", "1234", "-inversion-factory", "fast-cpu", "-multiplication-factory", "fast-cpu",
         "-t", str(n_thread), "-organism", organism,
-        "-i", f"{MITH_IN_DRUG}{mith_input_file}",
+        "-i", f"{in_file_path}",
         "-o", f"{MITH_OUT_DRUG}",
         "-p"
     ]
