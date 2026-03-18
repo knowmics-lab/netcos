@@ -58,5 +58,6 @@ def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, or
 
 #%% 
 if __name__ == "__main__":
-    mith_input_file = 'LINCS_LM_'+cell_line+'_LM.mi'
+    from sys import argv
+    mith_input_file = 'LINCS_LM_'+cell_line+'.mi' #argv[1]
     run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, n_thread=mith_threads, organism=mith_organism)

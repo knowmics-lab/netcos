@@ -79,6 +79,6 @@ for cell_line, DISEASE in diseases_of.items():
     
     # 2418 perturbagens for HEPG2
 
-    print('conver LINCS as Mithril input')
+    print('conver LINCS as Mithril input. Remember to manually remove first tab from header!')
     mith_in_lincs_filename = 'LINCS_LM_'+cell_line+'.mi'
     LINCS_FC_bc_filtered.to_csv(MITH_IN_DRUG / mith_in_lincs_filename, header = True , sep = '\t', index = True)
