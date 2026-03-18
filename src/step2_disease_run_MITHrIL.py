@@ -32,10 +32,10 @@ def run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
         "java", "-jar", MITH_APP,
         "mithril", "-reactome", "-p", "-customize-pathway-matrix",
         "-seed", "1234", "-inversion-factory", "fast-cpu", "-multiplication-factory", "fast-cpu",
-        "-t", n_thread, "-i", f"{MITH_IN_DISEASE}{DISEASE}_signature_gene_id.mi",
+        "-t", n_thread, "-i", f"{MITH_IN_DISEASE}/{DISEASE}_signature_gene_id.mi",
         "-organism", organism,
-        "-o", f"{MITH_OUT_DISEASE}{DISEASE}_mith3.output.txt",
-        "-p", f"{MITH_OUT_DISEASE}{DISEASE}_mith3.perturbations.txt"
+        "-o", f"{MITH_OUT_DISEASE}/{DISEASE}_mith3.output.txt",
+        "-p", f"{MITH_OUT_DISEASE}/{DISEASE}_mith3.perturbations.txt"
     ]
 
     if verbose:
