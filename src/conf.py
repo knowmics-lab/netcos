@@ -72,10 +72,10 @@ MITH_IN_DISEASE=MITH_DIR / 'input' / 'disease_signature'
 MITH_IN_DRUG=MITH_DIR / 'input' / 'drug_signature'
 
 
-# TSR_DIR=BASE_DIR / 'tsr'
-# TSR_OUT=TSR_DIR / 'output'
+TSR_DIR=BASE_DIR / 'tsr'
+TSR_OUT=TSR_DIR / 'output'
 # TSR_OUT_DISEASE=TSR_OUT / 'disease_signature' / DISEASE
-# TSR_OUT_DRUG=TSR_OUT / 'drug_signature'
+TSR_OUT_DRUG=TSR_OUT / 'drug_signature'
 # TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
 # TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 

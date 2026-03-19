@@ -36,15 +36,15 @@ def write_cs_input(cs_data, cs_input_name, CS_IN_DISEASE):
 #%%
 if __name__=='__main__':
     
-    from conf import  MITH_OUT_DISEASE, CS_IN_DISEASE, DISEASE   
+    from conf import  MITH_OUT_DISEASE, CS_IN_DISEASE, DISEASE, disease_run_name  
     
     print(DISEASE)
     # read MITHrIL perturbation output
-    mith_file=MITH_OUT_DISEASE+DISEASE+'_mith3.perturbations.txt'
+    mith_file=MITH_OUT_DISEASE+disease_run_name+'_mith3.perturbations.txt'
     cs_data=mith_to_cs_in(mith_file)
     
     # write CS input for MITHrIL data
-    cs_input_name=DISEASE+'_mith3_signature.csv'
+    cs_input_name=disease_run_name+'_mith3_signature.csv'
     write_cs_input(cs_data, cs_input_name, CS_IN_DISEASE)
     
 
