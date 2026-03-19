@@ -19,6 +19,10 @@ from local import BASE_DIR
 #######################
 
 landmark = True  # only select landmark genes 
+LM_flag = ''
+if landmark:
+    LM_flag = '_LM'
+
 # is_gold = 1 # only select high-quality perturbagens. Default for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
 # pert_time = '6h'
 cell_line = 'HEPG2'
@@ -33,7 +37,11 @@ cell_line = 'HEPG2'
 diseases_of = {'HEPG2':'LIHC',
                'MCF7':'BRCA',
                'HT29':'COAD'}
-DISEASE = diseases_of[cell_line]
+
+DISEASE = diseases_of[cell_line] 
+
+disease_run_name = DISEASE + LM_flag
+cell_line_run_name = cell_line+LM_flag
 
 ################
 # DIRECTORIES and files
@@ -45,7 +53,6 @@ if hasattr(local, "DATA_DIR"):
 else:
     DATA_DIR=BASE_DIR / 'data'
     
-LINCS_DIR=BASE_DIR / 'data' / 'LINCS-GSE92742'
 DICT_DIR=DATA_DIR / 'dictionaries'
 
 
@@ -58,25 +65,25 @@ MITH_APP="/home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar"
 MITH_DIR=BASE_DIR / 'MITHrIL'
 MITH_OUT=MITH_DIR / 'output'
 MITH_OUT_DISEASE=MITH_DIR / 'output' / 'disease_signature_2025'
-MITH_OUT_DRUG=MITH_DIR / 'output' / 'drug_signature_2025' / cell_line #Path(cell_line+'_'+pert_time)
+MITH_OUT_DRUG=MITH_DIR / 'output' / 'drug_signature_2025' / Path(cell_line_run_name) #Path(cell_line+'_'+pert_time)
 
 MITH_IN=MITH_DIR / 'input'
 MITH_IN_DISEASE=MITH_DIR / 'input' / 'disease_signature'
 MITH_IN_DRUG=MITH_DIR / 'input' / 'drug_signature'
 
 
-TSR_DIR=BASE_DIR / 'tsr'
-TSR_OUT=TSR_DIR / 'output'
-TSR_OUT_DISEASE=TSR_OUT / 'disease_signature' / DISEASE
-TSR_OUT_DRUG=TSR_OUT / 'drug_signature'
-TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
-TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
+# TSR_DIR=BASE_DIR / 'tsr'
+# TSR_OUT=TSR_DIR / 'output'
+# TSR_OUT_DISEASE=TSR_OUT / 'disease_signature' / DISEASE
+# TSR_OUT_DRUG=TSR_OUT / 'drug_signature'
+# TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
+# TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
 # Connectivity score dirs
 CS_DIR=BASE_DIR / 'connectivity_score'
-CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line #Path(cell_line+'_'+pert_time)
-CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / DISEASE
-CS_OUT=CS_DIR / 'output' / DISEASE #Path(DISEASE+'_2025_'+pert_time)
+CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line_run_name #Path(cell_line+'_'+pert_time)
+CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / disease_run_name
+CS_OUT=CS_DIR / 'output' / disease_run_name #Path(DISEASE+'_2025_'+pert_time)
 
 
 
@@ -86,18 +93,27 @@ OOUT_DIR=BASE_DIR / 'other_outputs'
 
 
 ##########################################################################
-# Drug signature calculations using LINCS1000 dataset
+# Drug signature calculations using LINCS1000 -
+# Catalano dataset
 ##########################################################################
 
+# LINCS_DIR=BASE_DIR / 'data' / 'LINCS-GSE92742'
+# # LINCS1000 data filename (warning: big file):
+# LINCS_file = LINCS_DIR / 'GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx'
+# #LINCS1000 metadata filename:
+# inst_info_file = LINCS_DIR /  'GSE92742_Broad_LINCS_inst_info.txt'
+# #LINCS1000 gene info filename:
+# GENE_INFO_FILE = LINCS_DIR /  'GSE92742_Broad_LINCS_gene_info.txt'
+# # landmark genes filename:
+# BING_GENES = LINCS_DIR / "bing_gene_symbols.csv"  # optional
 
-# LINCS1000 data filename (warning: big file)
-LINCS_file = LINCS_DIR / 'GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx'
-#LINCS1000 metadata filename:
-inst_info_file = LINCS_DIR /  'GSE92742_Broad_LINCS_inst_info.txt'
-#LINCS1000 gene info filename:
-GENE_INFO_FILE = LINCS_DIR /  'GSE92742_Broad_LINCS_gene_info.txt'
-# landmark genes filename:
-BING_GENES = LINCS_DIR / "bing_gene_symbols.csv"  # optional
+##########################################################################
+# Drug signature calculations using LINCS1000:
+# Bin Chen 2017 data
+##########################################################################
+
+BC_DATA = DATA_DIR / 'BinChen2017'
+LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
 
 ###############################################################################
 # MITHrIL hyperparameters
@@ -115,6 +131,7 @@ cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
 ###############################################################################
 # Chembl validation parameters
 ###############################################################################
+
 VAL_DIR = BASE_DIR / 'validations' 
 # Chembl directory
 CHEMBL_BASE_DIR = VAL_DIR / 'chembl'

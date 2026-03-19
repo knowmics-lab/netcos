@@ -8,9 +8,9 @@ import os
 from pathlib import Path
 
 # this works with conf file created on 18/11 related to chembl validation:
-from conf import BASE_DIR, TSR_OUT_DRUG, cell_line, pert_time, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
+from conf import BASE_DIR, TSR_OUT_DRUG, cell_line, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
 CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl, diseases_of, DATA_DIR, CS_DIR,\
-    landmark
+    landmark, BC_DATA, LINCS_BC_DATA
 
 from validations.chembl.chembl_loader import load_raw_chembl
 import numpy as np
@@ -20,8 +20,7 @@ import pyreadr
 from step6_drug_run_MITHrIL import run_mithril_batch
 
 
-BC_DATA = DATA_DIR / 'BinChen2017'
-LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
+
 
 print(' Load LINCS signatures')
 result = pyreadr.read_r(LINCS_BC_DATA / 'lincs_signatures_cmpd_landmark.Rdata') # also works for Rds
@@ -36,6 +35,7 @@ del result
 print(LINCS_FC_bc.shape)
 #%%
 for cell_line, DISEASE in diseases_of.items():
+    
     print(cell_line, DISEASE, 'landmark?', landmark)
     
     print('load disease data')
@@ -74,11 +74,13 @@ for cell_line, DISEASE in diseases_of.items():
 
     print('filter LINCS signatures by perturbagens appearing in selected cell line')
     
+    
+        
     LINCS_FC_bc_filtered = LINCS_FC_bc[ drug_md.id.astype(str)]
     print(LINCS_FC_bc_filtered.shape)
-    
+
     # 2418 perturbagens for HEPG2
 
     print('conver LINCS as Mithril input. Remember to manually remove first tab from header!')
-    mith_in_lincs_filename = 'LINCS_LM_'+cell_line+'.mi'
+    mith_in_lincs_filename = 'LINCS_LM_'+cell_line+'to_finish.mi'
     LINCS_FC_bc_filtered.to_csv(MITH_IN_DRUG / mith_in_lincs_filename, header = True , sep = '\t', index = True)

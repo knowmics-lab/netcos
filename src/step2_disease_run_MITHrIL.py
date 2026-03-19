@@ -57,7 +57,9 @@ def run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
 #%%
 if __name__=="__main__":
     from sys import argv
+    from conf import disease_run_name
     # insert disease name 
     # python step2_disease_run_MITHrIL.py DISEASE
-    DISEASE = argv[1]
-    run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE)
+    if len(argv)>1:
+        disease_run_name = argv[1]
+    run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE)
