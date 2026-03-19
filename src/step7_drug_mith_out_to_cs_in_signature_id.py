@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 from conf import MITH_OUT_DRUG, CS_IN_DRUG
 import pandas as pd
+from time import time
 
 
 MITH_REQUIRED_COLUMNS = {
@@ -173,6 +174,7 @@ def convert_directory(
     print(f"Input directory : {input_dir}")
     print(f"Output directory: {output_dir}")
     print(f"Files to convert: {len(files)}")
+    start = time()
     if metadata_df is not None:
         cols = metadata_columns or DEFAULT_METADATA_COLUMNS
         existing = [c for c in cols if c in metadata_df.columns]
@@ -206,7 +208,7 @@ def convert_directory(
             df.to_csv(out_tsv, sep="\t", index=False)
 
         print(f"[{idx}/{len(files)}] wrote {out_pkl.name} ({len(df)} rows)")
-
+    print('DONE. time passed:', time()-start)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
