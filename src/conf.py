@@ -26,7 +26,8 @@ if landmark:
 # is_gold = 1 # only select high-quality perturbagens. Default for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
 # pert_time = '6h'
 cell_line = 'HEPG2'
-
+cell_line_run_name = cell_line+LM_flag
+mith_input_file = 'LINCS' +LM_flag+'_'+cell_line+'.mi'
 ####################
 # Disease data parameters
 ####################
@@ -41,7 +42,6 @@ diseases_of = {'HEPG2':'LIHC',
 DISEASE = diseases_of[cell_line] 
 
 disease_run_name = DISEASE + LM_flag
-cell_line_run_name = cell_line+LM_flag
 
 ################
 # DIRECTORIES and files

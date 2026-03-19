@@ -10,7 +10,7 @@ from pathlib import Path
 # this works with conf file created on 18/11 related to chembl validation:
 from conf import BASE_DIR, TSR_OUT_DRUG, cell_line, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
 CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl, diseases_of, DATA_DIR, CS_DIR,\
-    landmark, BC_DATA, LINCS_BC_DATA
+    landmark, BC_DATA, LINCS_BC_DATA, disease_run_name, cell_line_run_name
 
 from validations.chembl.chembl_loader import load_raw_chembl
 import numpy as np
@@ -48,7 +48,7 @@ for cell_line, DISEASE in diseases_of.items():
     LM_flag = ''
     if landmark:
         LM_flag = '_LM'
-    mith_disease_in_filename = DISEASE+LM_flag+'_signature_gene_id.mi'
+    mith_disease_in_filename = disease_run_name+'_signature_gene_id.mi'
     lm_tcga_fc.to_csv(MITH_IN_DISEASE/mith_disease_in_filename, sep = '\t', index=False, header=False)
 # # These three cancer types have
 # # 5 (BRCA), 2 (LIHC) and 12 (COAD) cancer cell lines with
@@ -73,8 +73,6 @@ for cell_line, DISEASE in diseases_of.items():
     print(drug_md.shape)
 
     print('filter LINCS signatures by perturbagens appearing in selected cell line')
-    
-    
         
     LINCS_FC_bc_filtered = LINCS_FC_bc[ drug_md.id.astype(str)]
     print(LINCS_FC_bc_filtered.shape)
@@ -82,5 +80,5 @@ for cell_line, DISEASE in diseases_of.items():
     # 2418 perturbagens for HEPG2
 
     print('conver LINCS as Mithril input. Remember to manually remove first tab from header!')
-    mith_in_lincs_filename = 'LINCS_LM_'+cell_line+'to_finish.mi'
+    mith_in_lincs_filename = 'LINCS_LM_'+cell_line_run_name+'.mi'
     LINCS_FC_bc_filtered.to_csv(MITH_IN_DRUG / mith_in_lincs_filename, header = True , sep = '\t', index = True)
