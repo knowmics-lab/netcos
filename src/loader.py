@@ -25,11 +25,11 @@ def load_disease_signature(DISEASE, mith=False):
     '''
     
     if not mith:
-        filename=TSR_OUT_DISEASE+os.sep+DISEASE+'_signature_gene_id.csv'
+        filename=os.path.join(TSR_OUT_DISEASE,DISEASE+'_signature_gene_id.csv')
         return pd.read_csv(filename, sep=';',decimal=',', dtype={'gene_id':'str'})
    
     else:
-        filename=CS_IN_DISEASE+os.sep+DISEASE+'_mith3_signature.csv'
+        filename=os.path.join(CS_IN_DISEASE,DISEASE+'_mith3_signature.csv')
         return pd.read_csv(filename, sep='\t')
 
 def load_single_drug_signature(drug, mith=False, pkl=True):
@@ -47,7 +47,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
     '''
     if not mith:
         
-        filename=TSR_OUT_DRUG+'LINCS'+os.sep+'metanalysis_drug_wise_filtered'+os.sep+drug+'_metanalysis'
+        filename=os.path.join(TSR_OUT_DRUG,'LINCS','metanalysis_drug_wise_filtered',drug+'_metanalysis')
         if not pkl:
             return pd.read_csv(filename+'.csv', sep='\t',  dtype={'gene_id':'str'})
         else:
@@ -57,7 +57,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
                 
     else:
         
-        filename=CS_IN_DRUG+drug+'_metanalysis'
+        filename=os.path.join(CS_IN_DRUG,drug+'_metanalysis')
         
         if not pkl:
             return pd.read_csv(filename+'.csv', sep='\t')
@@ -65,7 +65,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
             with open(filename+'.pkl', 'rb') as f:
                 data=pickle.load(f)
             return data
-            
+           
 
 def load_drug_signatures(mith=False, pkl=True):
     '''
@@ -97,3 +97,8 @@ def load_drug_signatures(mith=False, pkl=True):
     
     print(n+1, 'drugs loaded')
     return pd.concat(DEG_drug_list)
+
+def load_single_signature_cs_input(signature_id, cs_input_dir):
+    filename = os.path.join(cs_input_dir, f"{signature_id}.pkl")
+    with open(filename, "rb") as f:
+        return pickle.load(f)

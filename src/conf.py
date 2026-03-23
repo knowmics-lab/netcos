@@ -23,7 +23,7 @@ LM_flag = ''
 if landmark:
     LM_flag = '_LM'
 
-# is_gold = 1 # only select high-quality perturbagens. Default for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
+# is_gold = 1 # only select high-quality perturbagens. Default:1 for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
 # pert_time = '6h'
 cell_line = 'HEPG2'
 cell_line_run_name = cell_line+LM_flag
@@ -74,10 +74,10 @@ MITH_IN_DRUG=MITH_DIR / 'input' / 'drug_signature'
 
 TSR_DIR=BASE_DIR / 'tsr'
 TSR_OUT=TSR_DIR / 'output'
-# TSR_OUT_DISEASE=TSR_OUT / 'disease_signature' / DISEASE
+TSR_OUT_DISEASE=TSR_OUT / 'disease_signature' / DISEASE
 TSR_OUT_DRUG=TSR_OUT / 'drug_signature'
-# TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
-# TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
+TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
+TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
 # Connectivity score dirs
 CS_DIR=BASE_DIR / 'connectivity_score'
@@ -122,11 +122,13 @@ mith_threads = 10
 mith_organism = 'hsa'
 
 ###############################################################################
-#  CS calculation hyperparameters
+#  CS calculation hyperparameters and parameters
 ###############################################################################
 
-cs_threads = 5
+cs_batch_threads = 5
 cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
+
+#LM = 0 # default 0: 0: calculate cs on all genes list 1: calculate on only landmark genes list
 
 ###############################################################################
 # Chembl validation parameters
@@ -137,9 +139,6 @@ VAL_DIR = BASE_DIR / 'validations'
 CHEMBL_BASE_DIR = VAL_DIR / 'chembl'
 CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR / 'chembl_input'
 cell_lines_chembl = ["MCF7", "HepG2", "HT29"]
-# other validations
-# SaveRunner directory
-SR_DIR = VAL_DIR / 'saverunner_comparison' 
 
 ####################
 # Utility functions
