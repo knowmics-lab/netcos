@@ -15,19 +15,41 @@ import pandas as pd
 import time
 from scipy import stats
 from connectivity_score import get_common_genes, bin_chen_connectivity
-from loader import load_disease_signature, load_single_signature_cs_input
+from loader import load_disease_signature, load_single_signature_cs_input,\
+    load_landmark_gene_ids
 from preprocessing_utils import get_signature_ids_list_from_cs_input
-from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads
-from preprocessing_utils import get_drugs_list, get_chunk_indexes
+from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
+    disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
+        cs_mith, CS_OUT_log
+from preprocessing_utils import get_chunk_indexes
 from joblib import Parallel, delayed
-from datetime import datetime
 
+from pathlib import Path
+from datetime import datetime
+import socket
+
+def append_cs_run_log(metadata_path,row_dict):
+    """
+    Append one run row to cs_runs.tsv, creating the file if it does not exist.
+    """
+    metadata_path = Path(metadata_path)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+
+    row_df = pd.DataFrame([row_dict])
+
+    if metadata_path.exists():
+        old_df = pd.read_csv(metadata_path, sep='\t')
+        out_df = pd.concat([old_df, row_df], ignore_index=True)
+    else:
+        out_df = row_df
+
+    out_df.to_csv(metadata_path, sep='\t', index=False)
 
 ###############################################################################
 #             CALCULATE CONNECTIVITY FOR DEG/MITH DATA
 ###############################################################################
-def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
-                                       rank_on='magnitude', save_file=False):
+def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, \
+                                       rank_on='magnitude', save_file=False, cs_on_LM=False):
     '''
     wrapper function to load disease and drug data (for a  batch of drugs in drugs_list[i1:i2]), 
     and calculate their connectivity score, for given drugs and LINCS drug perturbation times.
@@ -37,13 +59,16 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
     Output: a dataframe of connectivity scores and  pvalues, for all combinations of conditions
     '''
     start=time.time()
+    run_stats = {}
     
     singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
     
     columns_of_interest = ['gene_id', singature_uom, 'adj.p.value']
     
     # load disease signature:
-    disease_signature=load_disease_signature(DISEASE, mith=mith)
+    disease_signature=load_disease_signature(disease_run_name, mith=mith)
+    #log variable
+    run_stats['n_disease_before_common'] = len(disease_signature)
     disease_signature=disease_signature[columns_of_interest]
     
     
@@ -54,7 +79,21 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
     # load one drug signature (all durg signatures have the same genes in the same order)
     
     drug_signature= load_single_signature_cs_input(drugs_list[0], CS_IN_DRUG)
+    # log variable
+    run_stats['n_drug_before_common'] = len(drug_signature)
     
+    # log variables
+    run_stats['n_disease_after_second_lm'] = None
+    run_stats['n_drug_after_second_lm'] = None
+    
+    if cs_on_LM:
+        lm_gene_ids = [str(x) for x in load_landmark_gene_ids(LINCS_BC_DATA)]
+        disease_signature = disease_signature[disease_signature['gene_id'].isin(lm_gene_ids)].reset_index(drop=True)
+        drug_signature = drug_signature[drug_signature['gene_id'].isin(lm_gene_ids)].reset_index(drop=True)
+        run_stats['n_disease_after_second_lm'] = len(disease_signature)
+        run_stats['n_drug_after_second_lm'] = len(drug_signature)
+    
+    # filter common genes
     disease_common_index, drug_common_index = get_common_genes(disease_signature, drug_signature)     
     # filter disease signature with common genes:
     # Note: indexing every time with pandas .iloc is slower than writing
@@ -62,6 +101,10 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
     # however this is not relevant, as we only need to filter
     # disease data, while we can take all drug data.
     disease_signature=disease_signature.iloc[disease_common_index].reset_index(drop=True)
+    
+    #log variables
+    run_stats['n_disease_after_common'] = len(disease_signature)
+    run_stats['n_drug_after_common'] = len(drug_common_index)
     print('common disease genes', len(disease_signature))
     
 
@@ -77,6 +120,8 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
         # load drug signature
         
         drug_signature=load_single_signature_cs_input(drug, CS_IN_DRUG)
+        if cs_on_LM:
+            drug_signature = drug_signature[drug_signature['gene_id'].isin(lm_gene_ids)].reset_index(drop=True)
         
             
         # Calculate connectivity score between drug and disease:
@@ -87,13 +132,14 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
         # Calculate other correlations (between common genes)
         disease_signature_value=disease_signature[singature_uom]
         drug_signature_value=drug_signature[singature_uom].loc[drug_common_index]
+        
         pearson=stats.pearsonr(disease_signature_value, drug_signature_value)
         spearman=stats.spearmanr(disease_signature_value, drug_signature_value)
         cosine_sim=np.dot(np.array(disease_signature_value),np.array(drug_signature_value))/(np.linalg.norm(np.array(disease_signature_value))*np.linalg.norm(np.array(drug_signature_value)))
         
         # carry metadata through if present
         row = {
-            "disease": DISEASE,
+            "disease": disease_run_name,
             "LINCS_id":drug,
             "connectivity_score": cscore,
             "cs_p_value": p_value,
@@ -112,6 +158,11 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
         # data.append([DISEASE, drug, cscore, p_value, pearson[0], pearson[1], spearman[0], spearman[1], cosine_sim]) # other correlations, genes subset
     # connectivity_data= pd.DataFrame(data, columns=["disease","pert_id","connectivity_score","cs_p_value",'pearson','pearson_p_value','spearman','spearman_p_value','cos_sim']) #add other correlations, genes subset
     connectivity_data= pd.DataFrame(data)
+    elapsed = time.time() - start
+    print('total elapsed time for batch of', len(drugs_list[i1:i2]), 'drugs: ', elapsed)
+    
+    run_stats['elapsed']=elapsed
+    run_stats['n_drugs_in_batch']=len(drugs_list[i1:i2])
     
     # save connectivity scores
     if save_file:
@@ -121,13 +172,15 @@ def run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2, \
         connectivity_data.to_csv(CS_OUT/connectivity_dataset_filename, sep='\t', index=False)
     
     print('total elapsed time for batch of', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
-    return connectivity_data
+    return connectivity_data, run_stats
 
 #%% Parallel run for LINCS data
 if __name__=="__main__":
+    start_total = time.time()
     # Set calculation for MITHrIL data
-    mith=1
+    mith=cs_mith
     drugs_list=get_signature_ids_list_from_cs_input(CS_IN_DRUG)
+    lm_flag = cs_on_LM
     
     # set n of cores for parallel execution
     n_jobs= 1#cs_batch_threads # int(sys.argv[1]) #16
@@ -146,26 +199,70 @@ if __name__=="__main__":
     print('len drug list', len(drugs_list))
     print('chunk size',chunk_size)
     print('last chunk size', last_chunk_size)
-    print('mith tag:', mith, '\ndisease:', DISEASE)
+    print('mith tag:', mith, '\ndisease:', disease_run_name)
     
-    run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i1, i2)
-    
+    # results = run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag)
+    # cs_df=results[0]
+    # first_stats=results[1]
     results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
-                                 (DISEASE, mith, drugs_list, i1, i2)\
+                                 (disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag)\
                             for i1,i2 in parallel_indexes)
     
     if last_chunk_size>0:
-        last_batch=run_connectivity_score_drugs_batch(DISEASE, mith, drugs_list, i2,len(drugs_list))
+        last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i2,len(drugs_list), cs_on_LM=lm_flag)
         results.append(last_batch)
     
     # build dataframe    
-    cs_df=pd.concat(results)
+    cs_df=pd.concat([x[0] for x in results], ignore_index=True)
+    
+    # take stats from first batch as representative of filtering sizes
+    first_stats = results[0][1]
+    total_elapsed = time.time() - start_total
     
     # write results
     if not os.path.exists(CS_OUT):
                 os.mkdir(CS_OUT)
+    #%% write file
+    
     now =  datetime.now()
     datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-    connectivity_dataset_filename=CS_OUT+datetime_string+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+datetime_string+'_mith_connectivity_score.tsv'
-    #%%
+    filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
+    connectivity_dataset_filename=CS_OUT/filename
+
+    
     cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
+    
+    #%% write run log
+    metadata_file = Path(CS_OUT_log) / 'cs_runs.tsv'
+
+    cs_run_id = Path(connectivity_dataset_filename).stem
+    
+    metadata_row = {
+        "cs_run_id": cs_run_id,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "hostname": socket.gethostname(),
+        "disease_run_id": disease_run_name,
+        "drug_run_id": "LINCS_id",
+        "mith": int(mith),
+        "cs_on_LM": int(lm_flag),
+        "rank_on": "magnitude",
+        "drug_value_col": "Perturbation" if mith else "DE_log2_FC",
+        "drug_pval_col": "adj.p.value",
+        "disease_value_col": "Perturbation" if mith else "DE_log2_FC",
+        "disease_pval_col": "adj.p.value",
+        "n_signatures_total": len(drugs_list),
+        "n_results_rows": len(cs_df),
+        "n_disease_before_common": first_stats["n_disease_before_common"],
+        "n_drug_before_common": first_stats["n_drug_before_common"],
+        "n_disease_after_second_lm": first_stats["n_disease_after_second_lm"],
+        "n_drug_after_second_lm": first_stats["n_drug_after_second_lm"],
+        "n_disease_after_common": first_stats["n_disease_after_common"],
+        "n_drug_after_common": first_stats["n_drug_after_common"],
+        "n_jobs": n_jobs,
+        "elapsed_sec_total": total_elapsed,
+        "cs_input_dir": str(CS_IN_DRUG),
+        "disease_input_dir": str(CS_IN_DISEASE),
+        "output_file": str(connectivity_dataset_filename),
+    }
+    
+    append_cs_run_log(metadata_file, metadata_row)

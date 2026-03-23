@@ -12,6 +12,7 @@ for HEPG cell line, LIHC disease, using landmark genes from BinChen2017 supll da
 from pathlib import Path
 import pickle
 from local import BASE_DIR
+from datetime import datetime
 # !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
 
 #######################
@@ -55,7 +56,6 @@ else:
     
 DICT_DIR=DATA_DIR / 'dictionaries'
 
-
 ################
 # MITHrIL
 ################
@@ -83,6 +83,7 @@ TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 CS_DIR=BASE_DIR / 'connectivity_score'
 CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line_run_name #Path(cell_line+'_'+pert_time)
 CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / disease_run_name
+CS_OUT_log= CS_DIR / 'output' 
 CS_OUT=CS_DIR / 'output' / disease_run_name #Path(DISEASE+'_2025_'+pert_time)
 
 
@@ -128,7 +129,16 @@ mith_organism = 'hsa'
 cs_batch_threads = 5
 cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
 
-#LM = 0 # default 0: 0: calculate cs on all genes list 1: calculate on only landmark genes list
+cs_on_LM = 1 # default 0: 0: calculate cs on all genes list 1: calculate on only landmark genes list
+
+
+now =  datetime.now()
+datetime_string = now.strftime("%d_%m_%Y_%H_%M")
+filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
+connectivity_dataset_filename=CS_OUT/filename
+
+
+
 
 ###############################################################################
 # Chembl validation parameters

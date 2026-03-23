@@ -103,6 +103,3 @@ def load_single_signature_cs_input(signature_id, cs_input_dir):
     with open(filename, "rb") as f:
         return pickle.load(f)
     
-def load_landmark_gene_ids(path):
-    landmark_genes = pd.read_csv(path / 'lincs_landmark.csv') 
-    return list(landmark_genes.gene_id.sort_values())
