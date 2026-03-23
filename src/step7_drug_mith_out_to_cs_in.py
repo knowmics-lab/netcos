@@ -1,184 +1,273 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov 13 09:50:20 2024
+Map MITHrIL batch output files to NetCos connectivity-score input, 1:1,
+using analysis-neutral column names.
 
-@ author: L-F-S
+Compared with the older NetCos step7 script, this version:
+- keeps a 1:1 mapping between each `*.perturbations.txt` file and one output pickle;
+- preserves the old cleaning rule that removes special gene names;
+- does NOT encode timepoint labels in perturbation column names;
+- can optionally append selected metadata columns from `lincs_sig_info_new.csv`.
 
-Maps  Mithril 3 batch output of drugs data into
-cs input drug-wise files.
+This makes each output file represent one signature-item, while the choice to run
+6h-only, 24h-only, or pooled analyses is deferred to downstream analysis.
 """
 
-import os
+from __future__ import annotations
 
+import argparse
 import pickle
-import numpy as np
+import re
+from pathlib import Path
+from typing import Iterable, Optional
+from conf import MITH_OUT_DRUG, CS_IN_DRUG
 import pandas as pd
-import time
-from conf import MITH_OUT_DRUG, CS_IN_DRUG, TSR_OUT_DRUG
-from preprocessing_utils import get_drugs_list
+from time import time
 
 
-def remove_special_characters(df):
-    special_chars=';/:*?\"|'
-    for char in special_chars:
-        indexes=df[df['gene'].str.contains('\\'+char, na=False)].index
-        if len(indexes)>0:
-            df.drop(index=indexes, inplace=True)
-    return df
+MITH_REQUIRED_COLUMNS = {
+    "gene_id": 2,
+    "gene": 3,
+    "perturbation": 4,
+    "p_value": 6,
+    "adj_p_value": 7,
+}
+
+SPECIAL_GENE_CHARS = ';/:*?"|'
+DEFAULT_METADATA_COLUMNS = [
+    "pert_iname",
+    "pert_desc",
+    "pert_id",
+    "sig_id",
+    "cell_id",
+    "pert_time",
+    "pert_dose",
+    "pert_type",
+    "is_gold",
+    "DrugBank.ID",
+]
 
 
-#%%
-
-def mith_out_to_cs_in(drugs_list,i1=None,i2=None, save_csv=False):
-    print('Mapping mith3 output into tsr connectivity input: \n\
-              Removing pathway duplicates, Merging three timepoint datasets in a single file and filtering ')
-    start=time.time()
-    tot_drugs=len(drugs_list)
-    for h, drug in enumerate(drugs_list[i1:i2]):
-        
-        output_filename_csv=TSR_OUT_DRUG+'LINCS/metanalysis_mith3_drug_wise/'+drug+'_metanalysis.csv'   
-        if not os.path.isdir(CS_IN_DRUG):
-            os.mkdir(CS_IN_DRUG)
-        output_filename_pkl=CS_IN_DRUG+drug+'_metanalysis.pkl'   
-        if not os.path.isfile(output_filename_pkl): 
-        
-        
-            drug_start=time.time()
-            print(drug, h+1, 'of', tot_drugs)
-            #6h
-            mith_perturb_signature_file_6h=drug+'_6h.perturbations.txt'
-            mith_perturb_signature_6h = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file_6h, sep='\t', header=None, skiprows=1)
-            mith_perturb_signature_6h.drop_duplicates(2, keep='first', inplace=True)
-            mith_perturb_signature_6h=mith_perturb_signature_6h[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation_6h',6:'p.value_6h',7:'adj.p.value_6h'})
-            
-            # mith_perturb_signature_6h = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file_6h, sep='\t', index_col=False, engine='c', usecols=['Gene Id', 'Gene Name', 'Perturbation', 'pValue', 'adj_pValue'])
-            # mith_perturb_signature_6h.drop_duplicates(inplace=True, keep='first') # Duplicate gene ids for pathways (reduces row number from 250k to 14k)
-            # mith_perturb_signature_6h.rename(columns={'Gene Id':'gene_id', 'Perturbation':'Perturbation_6h', 'pValue':'p.value_6h', 'adj_pValue':"adj.p.value_6h"}, inplace=True)
-            mith_perturb_signature_6h['drug'] = drug
-            # mith_perturb_signature_6h['t.value_like_statistic_6h']=mith_perturb_signature_6h['p.value_6h'].apply(lambda p_value : 2001*(1-p_value))
-        
-            #24h
-            mith_perturb_signature_file_24h=drug+'_24h.perturbations.txt'
-            mith_perturb_signature_24h = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file_24h, sep='\t', header=None, skiprows=1)
-            mith_perturb_signature_24h.drop_duplicates(2, keep='first', inplace=True)
-            mith_perturb_signature_24h=mith_perturb_signature_24h[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation_24h',6:'p.value_24h',7:'adj.p.value_24h'})
-            # mith_perturb_signature_24h = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file_24h, sep='\t', index_col=False, engine='c', usecols=['Gene Id', 'Perturbation', 'pValue', 'adj_pValue'])
-            # mith_perturb_signature_24h.drop_duplicates(inplace=True, keep='first')
-            # mith_perturb_signature_24h.rename(columns={'Gene Id':'gene_id', 'Perturbation':'Perturbation_24h', 'pValue':'p.value_24h', 'adj_pValue':"adj.p.value_24h"}, inplace=True)
-            # mith_perturb_signature_24h['t.value_like_statistic_24h']=mith_perturb_signature_24h['p.value_24h'].apply(lambda p_value : 2001*(1-p_value))
-        
-            mith_perturb_signature_meta=mith_perturb_signature_6h.merge(mith_perturb_signature_24h, on='gene_id', how='left')
-           
-            #6h 24h
-            mith_perturb_signature_file_6h_24h=drug+'_6h_24h.perturbations.txt'
-            mith_perturb_signature_6h_24h = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file_6h_24h, sep='\t', header=None, skiprows=1)
-            mith_perturb_signature_6h_24h.drop_duplicates(2, keep='first', inplace=True)
-            mith_perturb_signature_6h_24h=mith_perturb_signature_6h_24h[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation_6h_24h',6:'p.value_6h_24h',7:'adj.p.value_6h_24h'})
-            
-            # mith_perturb_signature_6h_24h = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file_6h_24h, sep='\t', index_col=False, engine='c', usecols=['Gene Id','Perturbation', 'pValue', 'adj_pValue'])
-            # mith_perturb_signature_6h_24h.drop_duplicates(inplace=True, keep='first')
-            # mith_perturb_signature_6h_24h.rename(columns={'Gene Id':'gene_id', 'Perturbation':'Perturbation_6h_24h', 'pValue':'p.value_6h_24h', 'adj_pValue':"adj.p.value_6h_24h"}, inplace=True)
-            # mith_perturb_signature_6h_24h['t.value_like_statistic_6h_24h']=mith_perturb_signature_6h_24h['p.value_6h_24h'].apply(lambda p_value : 2001*(1-p_value))
-            
-            mith_perturb_signature_meta=mith_perturb_signature_meta.merge(mith_perturb_signature_6h_24h, on='gene_id', how='left')
-        
-            mith_perturb_signature_meta=remove_special_characters(mith_perturb_signature_meta)
-            print('drug', drug, 'processed in', np.round(time.time()-drug_start, 1))
-            
-            print('writing mit3 connectivity input metanalysis files for drug', drug)
-            if save_csv:
-                # to save a human-readable .csv file. 
-                # will slow down the computation and use more space
-                mith_perturb_signature_meta.to_csv(output_filename_csv, sep='\t', index=False)
-            with open(output_filename_pkl, 'wb') as f:
-                pickle.dump(mith_perturb_signature_meta, f)
-    print('time elapsed:', time.time()-start)
-    return
-
-def mith_out_to_cs_in_single_time(drugs_list, pert_time, i1=None,i2=None, save_csv=False):
-    print('Mapping mith3 output into tsr connectivity input for chembl experiment: \n\
-              Removing pathway duplicates, and filtering ')
-    start=time.time()
-    tot_drugs=len(drugs_list)
-    for h, drug in enumerate(drugs_list[i1:i2]):
-        
-        output_filename_csv=TSR_OUT_DRUG+'LINCS/metanalysis_mith3_drug_wise/'+drug+'_metanalysis.csv'
-        if not os.path.isdir(CS_IN_DRUG):
-            os.mkdir(CS_IN_DRUG)
-        output_filename_pkl=CS_IN_DRUG+drug+'.pkl'   
-        if not os.path.isfile(output_filename_pkl): 
-        
-        
-            drug_start=time.time()
-            print(drug, h+1, 'of', tot_drugs)
-            #6h
-            mith_perturb_signature_file=drug+'.perturbations.txt'
-            mith_perturb_signature = pd.read_csv(MITH_OUT_DRUG+mith_perturb_signature_file, sep='\t', header=None, skiprows=1)
-            mith_perturb_signature.drop_duplicates(2, keep='first', inplace=True)
-            mith_perturb_signature=mith_perturb_signature[[2,3,4,6,7]].rename(columns={2:'gene_id',3:'gene',4:'Perturbation_'+pert_time,6:'p.value_'+pert_time,7:'adj.p.value_'+pert_time})
-            
-            mith_perturb_signature = remove_special_characters(mith_perturb_signature)
-            print('drug', drug, 'processed in', np.round(time.time()-drug_start, 1))
-            
-            print('writing mit3 connectivity input metanalysis files for drug', drug)
-            if save_csv:
-                # to save a human-readable .csv file. 
-                # will slow down the computation and use more space
-                mith_perturb_signature.to_csv(output_filename_csv, sep='\t', index=False)
-            with open(output_filename_pkl, 'wb') as f:
-                pickle.dump(mith_perturb_signature, f)
-    print('time elapsed:', time.time()-start)
-    return
+def remove_special_gene_names(df: pd.DataFrame, gene_col: str = "gene") -> pd.DataFrame:
+    """Reproduce the old NetCos cleaning rule for special gene names."""
+    out = df.copy()
+    for char in SPECIAL_GENE_CHARS:
+        mask = out[gene_col].astype(str).str.contains(re.escape(char), na=False)
+        out = out.loc[~mask]
+    return out
 
 
-#%%
+def infer_signature_id(path: Path) -> str:
+    suffix = ".perturbations.txt"
+    if not path.name.endswith(suffix):
+        raise ValueError(f"Unexpected MITHrIL output filename: {path.name}")
+    return path.name[: -len(suffix)]
 
-if __name__=='__main__':
 
+def load_metadata(metadata_csv: Optional[Path], id_column: str) -> Optional[pd.DataFrame]:
+    if metadata_csv is None:
+        return None
+    meta = pd.read_csv(metadata_csv)
+    if id_column not in meta.columns:
+        raise ValueError(f"Column '{id_column}' not found in metadata file {metadata_csv}")
+    meta = meta.copy()
+    meta[id_column] = meta[id_column].astype(str)
+    if meta[id_column].duplicated().any():
+        dup = meta.loc[meta[id_column].duplicated(), id_column].astype(str).tolist()[:10]
+        raise ValueError(
+            f"Metadata column '{id_column}' contains duplicated IDs. Examples: {dup}"
+        )
+    return meta
+
+
+def build_output_frame(
+    mith_path: Path,
+    metadata_row: Optional[pd.Series] = None,
+    metadata_columns: Optional[list[str]] = None,
+    drop_special_gene_names: bool = True,
+) -> pd.DataFrame:
+    raw = pd.read_csv(mith_path, sep="\t", header=None, skiprows=1)
+    max_required_col = max(MITH_REQUIRED_COLUMNS.values())
+    if raw.shape[1] <= max_required_col:
+        raise ValueError(
+            f"{mith_path.name} has only {raw.shape[1]} columns, but step7 needs at least "
+            f"{max_required_col + 1}."
+        )
+
+    signature_id = infer_signature_id(mith_path)
+
+    frame = raw[[
+        MITH_REQUIRED_COLUMNS["gene_id"],
+        MITH_REQUIRED_COLUMNS["gene"],
+        MITH_REQUIRED_COLUMNS["perturbation"],
+        MITH_REQUIRED_COLUMNS["p_value"],
+        MITH_REQUIRED_COLUMNS["adj_p_value"],
+    ]].copy()
+
+    # Old step7 behaviour: keep the first occurrence of each gene_id across pathways.
+    frame.drop_duplicates(subset=MITH_REQUIRED_COLUMNS["gene_id"], keep="first", inplace=True)
+
+    frame.columns = [
+        "gene_id",
+        "gene",
+        "Perturbation",
+        "p.value",
+        "adj.p.value",
+    ]
+    frame.insert(0, "signature_id", signature_id)
+
+    if drop_special_gene_names:
+        frame = remove_special_gene_names(frame, gene_col="gene")
+
+    frame["gene_id"] = frame["gene_id"].astype(str)
+
+    if metadata_row is not None:
+        columns_to_add = metadata_columns or DEFAULT_METADATA_COLUMNS
+        for col in columns_to_add:
+            if col in metadata_row.index:
+                frame[col] = metadata_row[col]
+
+    return frame.reset_index(drop=True)
+
+
+def iter_input_files(input_dir: Path) -> list[Path]:
+    files = sorted(input_dir.glob("*.perturbations.txt"))
+    if not files:
+        raise FileNotFoundError(f"No '*.perturbations.txt' files found in {input_dir}")
+    return files
+
+
+def filter_files_by_metadata(
+    files: Iterable[Path],
+    metadata_df: Optional[pd.DataFrame],
+    id_column: str,
+) -> list[Path]:
+    files = list(files)
+    if metadata_df is None:
+        return files
+
+    allowed = set(metadata_df[id_column].astype(str))
+    filtered = [p for p in files if infer_signature_id(p) in allowed]
+    missing = sorted(allowed.difference({infer_signature_id(p) for p in files}))
+    if missing:
+        print(f"Warning: {len(missing)} metadata IDs do not have a matching MITHrIL output file.")
+        print("First missing IDs:", missing[:10])
+    return filtered
+
+
+def convert_directory(
+    input_dir: Path,
+    output_dir: Path,
+    metadata_csv: Optional[Path] = None,
+    id_column: str = "id",
+    metadata_columns: Optional[list[str]] = None,
+    save_tsv: bool = False,
+    overwrite: bool = False,
+    drop_special_gene_names: bool = True,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    files = iter_input_files(input_dir)
+    metadata_df = load_metadata(metadata_csv, id_column=id_column)
+    files = filter_files_by_metadata(files, metadata_df=metadata_df, id_column=id_column)
+
+    print(f"Input directory : {input_dir}")
+    print(f"Output directory: {output_dir}")
+    print(f"Files to convert: {len(files)}")
+    start = time()
+    if metadata_df is not None:
+        cols = metadata_columns or DEFAULT_METADATA_COLUMNS
+        existing = [c for c in cols if c in metadata_df.columns]
+        print(f"Metadata columns appended: {existing}")
+
+    for idx, mith_path in enumerate(files, start=1):
+        signature_id = infer_signature_id(mith_path)
+        out_pkl = output_dir / f"{signature_id}.pkl"
+        out_tsv = output_dir / f"{signature_id}.tsv"
+
+        if out_pkl.exists() and not overwrite:
+            print(f"[{idx}/{len(files)}] skipping existing {out_pkl.name}")
+            continue
+
+        metadata_row = None
+        if metadata_df is not None:
+            match = metadata_df.loc[metadata_df[id_column] == signature_id]
+            if not match.empty:
+                metadata_row = match.iloc[0]
+
+        df = build_output_frame(
+            mith_path,
+            metadata_row=metadata_row,
+            metadata_columns=metadata_columns,
+            drop_special_gene_names=drop_special_gene_names,
+        )
+
+        with open(out_pkl, "wb") as fh:
+            pickle.dump(df, fh)
+        if save_tsv:
+            df.to_csv(out_tsv, sep="\t", index=False)
+
+        print(f"[{idx}/{len(files)}] wrote {out_pkl.name} ({len(df)} rows)")
+    print('DONE. time passed:', time()-start)
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Map MITHrIL perturbation outputs to NetCos CS-input files with 1:1 filename preservation "
+            "and neutral perturbation column names."
+        )
+    )
     
-    # # Get all drugs
-    # drugs_list=get_drugs_list()
-    
-    # # # iterative:
-    # # mith_out_to_cs_in(drugs_list, save_csv=False)
-    
-    # # parallel:
-    # from joblib import Parallel, delayed
-        
-    # # set n of cores
-    # cores=10
-    # if cores>len(drugs_list):
-    #     raise ValueError('n_jobs:',cores,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
-    
-    # # get chunk size
-    # chunk_size=int(len(drugs_list)/cores)
-    # last_chunk_size=len(drugs_list)%cores
-    
-    # def get_chunk_indexes(i,chunk_size):
-    #     i1=chunk_size*i
-    #     i2=chunk_size*i+chunk_size
-    #     return i1, i2
-    
-    # parallel_indexes=[]
-    # for i in range(cores):
-    #     i1,i2=get_chunk_indexes(i, chunk_size)
-    #     parallel_indexes.append((i1,i2))
-    
-    
-    # results = Parallel(n_jobs=cores)(delayed(mith_out_to_cs_in)\
-    #                               (drugs_list, i1, i2,save_csv=False)\
-    #                         for i1,i2 in parallel_indexes)
-        
-    # # Run last chunk if rest of division != 0:
-    # if last_chunk_size!=0:
-    #     mith_out_to_cs_in(drugs_list, i1, len(drugs_list),save_csv=False)
-    #%%
-    from conf import cell_line, pert_time, DISEASE
-    drugs_list=get_drugs_list(True)
-    print(len(drugs_list))
-    print(cell_line, pert_time, DISEASE)
-    print(MITH_OUT_DRUG)
-    print(CS_IN_DRUG)
-    mith_out_to_cs_in_single_time(drugs_list, pert_time)
+    parser.add_argument("--input_dir", type=Path, default=MITH_OUT_DRUG, help="Directory containing *.perturbations.txt files")
+    parser.add_argument("--output_dir", type=Path, default=CS_IN_DRUG, help="Directory where .pkl outputs will be written")
 
+    parser.add_argument(
+        "--metadata-csv",
+        type=Path,
+        default=None,
+        help="Optional metadata table (e.g. lincs_sig_info_new.csv)",
+    )
+    parser.add_argument(
+        "--id-column",
+        default="id",
+        help="Column in --metadata-csv containing the signature IDs. Default: id",
+    )
+    parser.add_argument(
+        "--metadata-columns",
+        nargs="+",
+        default=None,
+        help=(
+            "Optional list of metadata columns to append to every output dataframe. "
+            "Default: a standard LINCS/DrugBank subset."
+        ),
+    )
+    parser.add_argument(
+        "--save-tsv",
+        action="store_true",
+        help="Also save a human-readable TSV next to each pickle",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing output files",
+    )
+    parser.add_argument(
+        "--keep-special-gene-names",
+        action="store_true",
+        help="Do not apply the old NetCos special-gene-name cleaning rule",
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    convert_directory(
+        input_dir=args.input_dir,
+        output_dir=args.output_dir,
+        metadata_csv=args.metadata_csv,
+        id_column=args.id_column,
+        metadata_columns=args.metadata_columns,
+        save_tsv=args.save_tsv,
+        overwrite=args.overwrite,
+        drop_special_gene_names=not args.keep_special_gene_names,
+    )
