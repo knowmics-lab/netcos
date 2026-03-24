@@ -141,8 +141,8 @@ cs_on_LM = 1 # default 0: 0: calculate cs on all genes list 1: calculate on only
 
 now =  datetime.now()
 datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
-connectivity_dataset_filename=CS_OUT/filename
+cs_filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
+connectivity_dataset_filename=CS_OUT/cs_filename
 
 
 

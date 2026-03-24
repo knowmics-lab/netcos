@@ -226,8 +226,8 @@ if __name__=="__main__":
     
     now =  datetime.now()
     datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-    filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
-    connectivity_dataset_filename=CS_OUT/filename
+    cs_filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
+    connectivity_dataset_filename=CS_OUT/cs_filename
 
     
     cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)

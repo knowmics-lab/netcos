@@ -53,24 +53,69 @@ HERE = os.path.dirname(__file__)
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # go up 3 levels
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
+from pathlib import Path
 import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,\
-    pert_time, cell_line, diseases_of
+    cell_line, diseases_of, LINCS_BC_DATA, LOGS_DIR,\
+        cs_filename, disease_run_name
+    
+from datetime import datetime
+from pathlib import Path
+
+def add_pert_id_to_cs( lincs_metadata_path,cs_df,
+                      cs_id_col='LINCS_id',
+                      metadata_id_col='id',
+                      metadata_pert_col='pert_id'):
+    """
+    Adds a 'pert_id' column to a CS dataframe by mapping LINCS_id via LINCS metadata.
+    
+    Parameters
+    ----------
+    cs_df : pd.DataFrame
+        Connectivity score dataframe containing LINCS_id column
+    lincs_metadata_path : str
+        Path to lincs_sig_info_new.csv
+    cs_id_col : str
+        Column in cs_df (default 'LINCS_id')
+    metadata_id_col : str
+        Column in metadata corresponding to LINCS_id (default 'id')
+    metadata_pert_col : str
+        Column in metadata for pert_id (default 'pert_id')
+    """
 
 
+    # load only what we need
+    meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
+
+    # build mapping dict
+    id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
+
+    # map
+    cs_df['pert_id'] = cs_df[cs_id_col].map(id_to_pert)
+
+    # optional sanity check
+    n_missing = cs_df['pert_id'].isna().sum()
+    if n_missing > 0:
+        print(f"Warning: {n_missing} LINCS_id values could not be mapped to pert_id")
+
+    return cs_df
 # select 
-def load_drug_rankings(path, filename=None, pert_time='all',mith='mith'):
+def load_drug_rankings(path, filename=None, pert_time='all',mith='mith', lincs_metadata_path =None):
     
     
     if not filename:
         filename=mith+'_connectivity_score.tsv'
-    df= pd.read_csv(path+filename, sep='\t', header=0, usecols=[0,1,2,3])
+    df= pd.read_csv(path/filename, sep='\t', header=0, usecols=[0,1,2,3], dtype='str')
     
     if not pert_time == 'all':
         return dr[dr.perturbation_time==pert_time]
     
+    if lincs_metadata_path:
+        df = add_pert_id_to_cs(lincs_metadata_path, df) 
+        
+        
     return df
 
 def translate_cl(cell_line):
@@ -78,10 +123,10 @@ def translate_cl(cell_line):
         return 'HT-29'
     return cell_line
 
-def load_IC50(cancer_type, cell_line, IC50_only=True):
+def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True):
     
     cell_line = translate_cl(cell_line)
-    df=pd.read_excel(DATA_DIR+'BinChen2017'+os.sep+'SD8.xlsx',\
+    df=pd.read_excel(ic50_file,\
                      sheet_name=cancer_type, header =0, usecols=['pert_iname', 'pert_id','standard_value', 'standard_units',\
                                  'standard_type', 'cell_line','activity', 'standard_value_median'])
     #filter for cell line
@@ -94,24 +139,30 @@ def load_IC50(cancer_type, cell_line, IC50_only=True):
     df.rename( columns = {'pert_iname':'drug'}, inplace=True)
     return df.sort_values(by='standard_value_median')
 
+
 #%%
 if __name__=="__main__":
     
+    cs_drug_colname = 'pert_id'  #"drug"
+    ic50_drug_colname = "pert_id" # "drug"
+    
     print('running correlations between chembl IC50 and drug rankings for disease:', DISEASE)
-    print(DISEASE, CS_OUT, pert_time, cell_line)
-    dr=load_drug_rankings(CS_OUT)
+    print(DISEASE, CS_OUT,  cell_line)
+    cs_drug_file= 'mith_connectivity_score.tsv' #cs_filename
+    lincs_metadata_path = LINCS_BC_DATA / 'lincs_sig_info_new.csv'
+
+    dr=load_drug_rankings(CS_OUT, filename = cs_drug_file , lincs_metadata_path=lincs_metadata_path)
     print(dr.shape, 'drugs ')
     #%%
     
         #filter for 1 nM
-    #%%   
-    ic50=load_IC50(DISEASE, cell_line)
-    print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
     #%%
-    
+    ic50_file = DATA_DIR/'BinChen2017'/'SD8.xlsx'
+    ic50=load_IC50(ic50_file, DISEASE, cell_line)
+    print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
     
     #%% merge on common drugs
-    merged = pd.merge(dr, ic50, on="drug", how="inner", suffixes=("_dr","_ic50"))
+    merged = pd.merge(dr, ic50, left_on=cs_drug_colname, right_on=ic50_drug_colname, how="inner", suffixes=("_dr","_ic50"))
     
     merged = merged.dropna(subset=["connectivity_score","standard_value_median"]).copy()
     print('merged data on common drugs:', merged.shape)
@@ -119,7 +170,7 @@ if __name__=="__main__":
     #%% Optional: check overlap between our overlap of ic50 vs CS score
     # and BinChen's overlap of ic50vs sRGES:
     
-    BC_merged = df=pd.read_excel(DATA_DIR+'BinChen2017'+os.sep+'SD5.xlsx',\
+    BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
                                  sheet_name=DISEASE)
     overlap_BC = set(merged.drug).intersection(set(BC_merged.pert_iname))
     print(overlap_BC, len(overlap_BC))
@@ -140,14 +191,117 @@ if __name__=="__main__":
     #%% Optional: check rho with SD5 data:
     BC_merged["log10_ic50"] = np.log10(BC_merged["standard_value"])
     
-    rho_linear, p_linear = spearmanr(BC_merged["sRGES"], BC_merged["standard_value"])
-    rho_log, p_log = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
+    rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged["standard_value"])
+    rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
     
-    print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
-    print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
+    print('linear IC50 SD5: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
+    print('log IC50 SD5: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
     
     #%%
-    # da fare dopo pranzo: raccogliere i calcoli di sopra in un dizionario che
+    
+
+
+    def log_correlation_run(
+        log_path,
+        cs_file,
+        ic50_file,
+        lincs_metadata_file,
+        disease_run_name,
+        cs_df,
+        ic50_df,
+        merged_df,
+        spearman_corr,
+        spearman_p ,
+        spearman_corr_log,
+        spearman_p_log,
+        spearman_corr_SD5_data,
+        spearman_p_SD5_data ,
+        spearman_corr_log_SD5_data,
+        spearman_p_log_SD5_data,
+        # cs_value_col,
+        # ic50_value_col,
+        cs_drug_colname,
+        ic50_drug_colname,
+        output_plot_file
+    ):
+        run_data = {
+            # identity
+            "correlation_run_id": datetime.now().strftime("%d_%m_%Y_%H_%M_%S"),
+            "datetime": datetime.now().isoformat(),
+    
+            # inputs
+            "cs_file": str(cs_file),
+            "ic50_file": str(ic50_file),
+            "lincs_metadata_file": str(lincs_metadata_file),
+            "disease run name": disease_run_name,
+    
+            # parameters
+            "cs_drug_colname": cs_drug_colname,
+            "ic50_drug_colname": ic50_drug_colname,
+            # "cs_value_col": cs_value_col,
+            # "ic50_value_col": ic50_value_col,
+    
+            # sizes
+            "n_cs_rows": len(cs_df),
+            "n_ic50_rows": len(ic50_df),
+            "n_merged_rows": len(merged_df),
+            "n_unique_drugs": merged_df[cs_drug_colname].nunique(),
+    
+            # results
+            "spearman_r": np.round(spearman_corr,2),
+            "spearman_pval": np.round(spearman_p,2),
+            "spearman_r_log": np.round(spearman_corr_log,2),
+            "spearman_pval_log": np.round(spearman_p_log,2),
+            
+            # optional: correlations with BC data
+            "spearman_r_SD5": np.round(spearman_corr_SD5_data,2),
+            "spearman_pval_SD5": np.round(spearman_p_SD5_data,2),
+            "spearman_r_log_SD5": np.round(spearman_corr_log_SD5_data,2),
+            "spearman_pval_log_SD5": np.round(spearman_p_log_SD5_data,2),
+    
+            # output
+            "output_plot_file": str(output_plot_file)
+        }
+    
+        run_df = pd.DataFrame([run_data])
+    
+        log_path = Path(log_path)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+    
+        if log_path.exists():
+            run_df.to_csv(log_path, sep='\t', mode='a', header=False, index=False)
+        else:
+            run_df.to_csv(log_path, sep='\t', index=False)
+        
+        
+    log_correlation_run(
+    log_path = LOGS_DIR / "BinChen2017_chembl_validation_IC50_correlation_runs.tsv",
+    cs_file=CS_OUT / cs_drug_file,
+    ic50_file=ic50_file,
+    lincs_metadata_file=lincs_metadata_path,
+    disease_run_name = disease_run_name,
+    cs_df=dr,
+    ic50_df=ic50,
+    merged_df=merged,
+    spearman_corr=rho_linear,
+    spearman_p =  p_linear,
+    spearman_corr_log=rho_log,
+    spearman_p_log =  p_log,
+    spearman_corr_SD5_data=rho_linear_bc,
+    spearman_p_SD5_data =  p_linear_bc,
+    spearman_corr_log_SD5_data=rho_log_bc,
+    spearman_p_log_SD5_data =  p_log_bc,
+    # cs_value_col=cs_value_col,
+    # ic50_value_col=ic50_value_col,
+    cs_drug_colname=cs_drug_colname,
+    ic50_drug_colname=ic50_drug_colname,
+    output_plot_file="correlation_plot.png"
+)
+    
+    
+    
+    #%%
+    # todo: raccogliere i calcoli di sopra in un dizionario che
     # abbia tutte le voci, e riempirlo per tutte le disease e eprt time
     # renderlo poi un dizionario, e traslare tutto su ntobeook (lo stesso di cehmbl validation)
     # per printare il dataframe per bene. 
@@ -159,12 +313,12 @@ if __name__=="__main__":
         print('-----------------------',cell_line)
         disease = diseases_of[cell_line]
         ic50 = load_IC50(disease, cell_line)
-        BC_merged = df=pd.read_excel(DATA_DIR+'BinChen2017'+os.sep+'SD5.xlsx',\
+        BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
                                      sheet_name=disease)
         print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
     
         for pert_time in ['6h', '24h']:
-            cs_out=CS_DIR+os.sep+'output'+os.sep+disease+'_2025_'+pert_time+os.sep
+            cs_out=CS_DIR/'output'/disease+'_2025_'+pert_time
             print(cell_line, 'pert time',pert_time)
             dr=load_drug_rankings(cs_out)
     
