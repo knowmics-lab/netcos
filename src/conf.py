@@ -113,8 +113,15 @@ OOUT_DIR=BASE_DIR / 'other_outputs'
 # Bin Chen 2017 data
 ##########################################################################
 
-BC_DATA = DATA_DIR / 'BinChen2017'
-LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
+if hasattr(local, "BC_DATA"):
+    BC_DATA = local.BC_DATA
+else:
+    BC_DATA = DATA_DIR / 'BinChen2017'
+
+if hasattr(local, "LINCS_BC_DATA"):
+    LINCS_BC_DATA = local.LINCS_BC_DATA
+else:
+    LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
 
 ###############################################################################
 # MITHrIL hyperparameters
