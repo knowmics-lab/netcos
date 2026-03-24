@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Feb  5 16:09:56 2026
+Preprocessing of LINCS and TCGA data from
+Bin Chen 2017 for 
+chembl valdiation using NetCos
 
 @author: los4
 """

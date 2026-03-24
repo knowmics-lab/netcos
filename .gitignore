@@ -40,6 +40,7 @@ env.bak/
 # Logs and runtime
 logs and instructions/
 logs and instructoins/
+instructions/
 
 # Data and outputs (tracked with LFS or stored outside repo)
 /data/

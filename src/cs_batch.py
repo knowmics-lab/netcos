@@ -20,7 +20,7 @@ from loader import load_disease_signature, load_single_signature_cs_input,\
 from preprocessing_utils import get_signature_ids_list_from_cs_input
 from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
     disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
-        cs_mith, LOGS_DIR
+        cs_mith, LOGS_DIR, cell_line_run_name
 from preprocessing_utils import get_chunk_indexes
 from joblib import Parallel, delayed
 
@@ -242,7 +242,7 @@ if __name__=="__main__":
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "hostname": socket.gethostname(),
         "disease_run_id": disease_run_name,
-        "drug_run_id": "LINCS_id",
+        "drug_run_id": cell_line_run_name,
         "mith": int(mith),
         "cs_on_LM": int(lm_flag),
         "rank_on": "magnitude",
