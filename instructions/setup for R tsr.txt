@@ -1,0 +1,53 @@
+#required to install some later packges in R god knows why
+sudo apt install cmake 
+
+# reuqired to install PharmacoGx bioconductor package
+sudo apt install libssl-dev 
+sudo apt install libcurl4-openssl-dev
+
+
+#install latest version of R following:
+# https://cran.r-project.org/bin/linux/ubuntu/fullREADME.html
+
+# Inside R:
+install.packages(c("JuliaCall","readr","R6","foreach", "log4r","doParallel","metafor","data.table","R.utils","cmapR"))
+install.packages(c("lme4", "pbkrtest", "lmerTest"))  # requires sudo apt install cmake
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("edgeR")
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("variancePartition")
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("PharmacoGx")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("cmapR")
+
+
+
+
+# Julia
+install Julia:
+curl -fsSL https://install.julialang.org | sh
+# su windows:
+winget install --name Julia --id 9NJNWW8PVKMN -e -s msstore
+
+# set 1.10 LTR version (xke? xke pensavo che servisse, ma magari ci sono altri errori che si risolvono in altro modo, ma proviamo)
+juliaup add 1.10
+juliaup default 1.10
+
+type: julia  to enter julia
+
+# installa pacchetti che non esistono sull'installazione locale di julia 1.10 (ma su server pare di si ? b0? cmq rannarlo non fa nulla se ci son ogià quindi ok?)
+import Pkg; Pkg.add("Suppressor")
+import Pkg; Pkg.add("RCall") 

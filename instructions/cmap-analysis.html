@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>cmap-analysis.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<p>I'll explain this R code in detail. This function implements a modified version of the Connectivity Map (CMap) scoring algorithm, which is commonly used in drug repurposing and gene expression analysis.</p>
+<p>Let me break down the key components and functionality:</p>
+<ol>
+<li>Function Purpose:</li>
+</ol>
+<pre class="hljs"><code><div>cmap_score_new &lt;- <span class="hljs-keyword">function</span>(sig_up, sig_down, drug_signature)
+</div></code></pre>
+<p>This function calculates a connectivity score between a drug signature and disease signature (split into up-regulated and down-regulated genes). The function takes three parameters:</p>
+<ul>
+<li><code>sig_up</code>: Up-regulated genes in the disease signature</li>
+<li><code>sig_down</code>: Down-regulated genes in the disease signature</li>
+<li><code>drug_signature</code>: The drug's gene expression signature</li>
+</ul>
+<ol start="2">
+<li>Initial Setup:</li>
+</ol>
+<pre class="hljs"><code><div>num_genes &lt;- nrow(drug_signature)
+ks_up &lt;- <span class="hljs-number">0</span>
+ks_down &lt;- <span class="hljs-number">0</span>
+connectivity_score &lt;- <span class="hljs-number">0</span>
+</div></code></pre>
+<p>The function initializes variables for:</p>
+<ul>
+<li>Total number of genes in the drug signature</li>
+<li>Kolmogorov-Smirnov (KS) statistics for up and down regulated genes</li>
+<li>The final connectivity score</li>
+</ul>
+<ol start="3">
+<li>Data Preparation:</li>
+</ol>
+<pre class="hljs"><code><div>drug_signature[,<span class="hljs-string">"rank"</span>] &lt;- rank(drug_signature[,<span class="hljs-string">"rank"</span>])
+up_tags_rank &lt;- merge(drug_signature, sig_up, by.x = <span class="hljs-string">"ids"</span>, by.y = <span class="hljs-number">1</span>)
+down_tags_rank &lt;- merge(drug_signature, sig_down, by.x = <span class="hljs-string">"ids"</span>, by.y = <span class="hljs-number">1</span>)
+</div></code></pre>
+<p>This section:</p>
+<ul>
+<li>Re-ranks the drug signature to handle any changes in gene ID mapping</li>
+<li>Merges the drug signature with up and down regulated disease genes</li>
+<li>Creates sorted positions of the matched genes</li>
+</ul>
+<ol start="4">
+<li>KS Statistic Calculation:
+The function calculates modified Kolmogorov-Smirnov statistics separately for up and down regulated genes. For each direction (up/down), it:</li>
+</ol>
+<pre class="hljs"><code><div><span class="hljs-keyword">if</span>(num_tags_up &gt; <span class="hljs-number">1</span>) {
+    a_up &lt;- max(sapply(<span class="hljs-number">1</span>:num_tags_up,<span class="hljs-keyword">function</span>(j) {
+      j/num_tags_up - up_tags_position[j]/num_genes
+    }))
+    b_up &lt;- max(sapply(<span class="hljs-number">1</span>:num_tags_down,<span class="hljs-keyword">function</span>(j) {
+      up_tags_position[j]/num_genes - (j-<span class="hljs-number">1</span>)/num_tags_up
+    }))
+</div></code></pre>
+<ul>
+<li>Checks if there are enough genes (&gt;1) to calculate the statistic</li>
+<li>Calculates two components (a and b) using the empirical cumulative distribution</li>
+<li>Takes the maximum deviation in both positive and negative directions</li>
+<li>Assigns the larger absolute value with appropriate sign</li>
+</ul>
+<ol start="5">
+<li>Final Score Calculation:</li>
+</ol>
+<pre class="hljs"><code><div><span class="hljs-keyword">if</span> (ks_up == <span class="hljs-number">0</span> &amp; ks_down != <span class="hljs-number">0</span>){ <span class="hljs-comment">#only down gene inputed</span>
+    connectivity_score &lt;- -ks_down 
+} <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (ks_up !=<span class="hljs-number">0</span> &amp; ks_down == <span class="hljs-number">0</span>){ <span class="hljs-comment">#only up gene inputed</span>
+    connectivity_score &lt;- ks_up
+} <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (sum(sign(c(ks_down,ks_up))) == <span class="hljs-number">0</span>) {
+    connectivity_score &lt;- ks_up - ks_down <span class="hljs-comment"># different signs</span>
+} <span class="hljs-keyword">else</span> {
+    connectivity_score &lt;- ks_up - ks_down
+}
+</div></code></pre>
+<p>This section handles different cases:</p>
+<ul>
+<li>Only down-regulated genes present</li>
+<li>Only up-regulated genes present</li>
+<li>Both present with different signs</li>
+<li>Both present with same signs</li>
+</ul>
+<p>The connectivity score indicates:</p>
+<ul>
+<li>Positive score: Drug signature matches the disease signature</li>
+<li>Negative score: Drug signature opposes the disease signature</li>
+<li>Magnitude indicates strength of the connection</li>
+</ul>
+<p>This implementation differs from the original CMap approach by:</p>
+<ol>
+<li>Supporting input lists with either all up or all down genes</li>
+<li>Modifying how the final score is calculated when KS statistics have different signs</li>
+<li>Avoiding score enrichment at 0</li>
+</ol>
+<p>The results can be used to identify potential drug candidates that might reverse disease states based on gene expression patterns.</p>
+<h1 id="detailed-analysis-of-cmap-score-function">Detailed Analysis of CMap Score Function</h1>
+<h2 id="function-signature-and-input-types">Function Signature and Input Types</h2>
+<pre class="hljs"><code><div>cmap_score_new &lt;- <span class="hljs-keyword">function</span>(sig_up, sig_down, drug_signature)
+</div></code></pre>
+<h3 id="input-parameters">Input Parameters:</h3>
+<ol>
+<li>
+<p><code>sig_up</code>:</p>
+<ul>
+<li>Type: data.frame or vector</li>
+<li>Content: Gene identifiers for up-regulated genes</li>
+<li>Expected format: Single column with gene IDs that match the <code>ids</code> column in drug_signature</li>
+<li>Can be empty but must exist</li>
+</ul>
+</li>
+<li>
+<p><code>sig_down</code>:</p>
+<ul>
+<li>Type: data.frame or vector</li>
+<li>Content: Gene identifiers for down-regulated genes</li>
+<li>Expected format: Same as sig_up</li>
+<li>Can be empty but must exist</li>
+</ul>
+</li>
+<li>
+<p><code>drug_signature</code>:</p>
+<ul>
+<li>Type: data.frame</li>
+<li>Required columns:
+<ul>
+<li><code>ids</code>: Character or numeric - Gene identifiers</li>
+<li><code>rank</code>: Numeric - Original ranking of genes</li>
+</ul>
+</li>
+<li>Structure: Each row represents a gene with its expression rank</li>
+</ul>
+</li>
+</ol>
+<h2 id="function-components-analysis">Function Components Analysis</h2>
+<h3 id="1-initialization-block">1. Initialization Block</h3>
+<pre class="hljs"><code><div>num_genes &lt;- nrow(drug_signature)
+ks_up &lt;- <span class="hljs-number">0</span>
+ks_down &lt;- <span class="hljs-number">0</span>
+connectivity_score &lt;- <span class="hljs-number">0</span>
+</div></code></pre>
+<ul>
+<li><code>num_genes</code>: Integer - Total number of genes in drug signature</li>
+<li><code>ks_up</code>, <code>ks_down</code>: Numeric - Kolmogorov-Smirnov statistics</li>
+<li><code>connectivity_score</code>: Numeric - Final output score</li>
+</ul>
+<h3 id="2-rank-normalization">2. Rank Normalization</h3>
+<pre class="hljs"><code><div>drug_signature[,<span class="hljs-string">"rank"</span>] &lt;- rank(drug_signature[,<span class="hljs-string">"rank"</span>])
+</div></code></pre>
+<ul>
+<li>Transforms: Original ranks → [1, num_genes]</li>
+<li>Purpose: Standardizes rankings across different datasets</li>
+<li>Note: In-place modification of drug_signature</li>
+</ul>
+<h3 id="3-data-merging">3. Data Merging</h3>
+<pre class="hljs"><code><div>up_tags_rank &lt;- merge(drug_signature, sig_up, by.x = <span class="hljs-string">"ids"</span>, by.y = <span class="hljs-number">1</span>)
+down_tags_rank &lt;- merge(drug_signature, sig_down, by.x = <span class="hljs-string">"ids"</span>, by.y = <span class="hljs-number">1</span>)
+</div></code></pre>
+<ul>
+<li>Returns: data.frame with matched genes</li>
+<li>Purpose: Identifies overlapping genes between signatures</li>
+<li>Note: Non-matching genes are dropped</li>
+</ul>
+<h3 id="4-position-sorting">4. Position Sorting</h3>
+<pre class="hljs"><code><div>up_tags_position &lt;- sort(up_tags_rank$rank)
+down_tags_position &lt;- sort(down_tags_rank$rank)
+
+num_tags_up &lt;- length(up_tags_position)
+num_tags_down &lt;- length(down_tags_position)
+</div></code></pre>
+<ul>
+<li><code>up_tags_position</code>, <code>down_tags_position</code>: Numeric vectors</li>
+<li>Contains: Sorted ranks of matching genes</li>
+<li><code>num_tags_up</code>, <code>num_tags_down</code>: Integer counts</li>
+</ul>
+<h3 id="5-ks-statistic-calculation">5. KS Statistic Calculation</h3>
+<p>For up-regulated genes (similar structure for down-regulated):</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">if</span>(num_tags_up &gt; <span class="hljs-number">1</span>) {
+    a_up &lt;- max(sapply(<span class="hljs-number">1</span>:num_tags_up,<span class="hljs-keyword">function</span>(j) {
+      j/num_tags_up - up_tags_position[j]/num_genes
+    }))
+    b_up &lt;- max(sapply(<span class="hljs-number">1</span>:num_tags_up,<span class="hljs-keyword">function</span>(j) {
+      up_tags_position[j]/num_genes - (j-<span class="hljs-number">1</span>)/num_tags_up
+    }))
+    
+    <span class="hljs-keyword">if</span>(a_up &gt; b_up) {
+      ks_up &lt;- a_up
+    } <span class="hljs-keyword">else</span> {
+      ks_up &lt;- -b_up
+    }
+}
+</div></code></pre>
+<ul>
+<li>Inputs:
+<ul>
+<li><code>num_tags_up</code>: Integer - Number of matching up-regulated genes</li>
+<li><code>up_tags_position</code>: Numeric vector - Sorted ranks</li>
+<li><code>num_genes</code>: Integer - Total genes</li>
+</ul>
+</li>
+<li>Calculations:
+<ul>
+<li><code>a_up</code>: Maximum positive deviation</li>
+<li><code>b_up</code>: Maximum negative deviation</li>
+</ul>
+</li>
+<li>Output:
+<ul>
+<li><code>ks_up</code>: Signed KS statistic</li>
+</ul>
+</li>
+</ul>
+<h3 id="6-final-score-computation">6. Final Score Computation</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">if</span> (ks_up == <span class="hljs-number">0</span> &amp; ks_down != <span class="hljs-number">0</span>){ 
+    connectivity_score &lt;- -ks_down 
+} <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (ks_up !=<span class="hljs-number">0</span> &amp; ks_down == <span class="hljs-number">0</span>){ 
+    connectivity_score &lt;- ks_up
+} <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (sum(sign(c(ks_down,ks_up))) == <span class="hljs-number">0</span>) {
+    connectivity_score &lt;- ks_up - ks_down 
+} <span class="hljs-keyword">else</span> {
+    connectivity_score &lt;- ks_up - ks_down
+}
+</div></code></pre>
+<ul>
+<li>Logic branches:
+<ol>
+<li>Only down-regulated genes: Returns negative of down KS</li>
+<li>Only up-regulated genes: Returns up KS</li>
+<li>Different signs: Subtracts down from up</li>
+<li>Same signs: Subtracts down from up</li>
+</ol>
+</li>
+</ul>
+<h2 id="return-value">Return Value</h2>
+<ul>
+<li>Type: Numeric</li>
+<li>Range: Typically between -2 and 2</li>
+<li>Interpretation:
+<ul>
+<li>Positive: Drug signature aligns with disease signature</li>
+<li>Negative: Drug signature opposes disease signature</li>
+<li>Magnitude: Strength of connection</li>
+</ul>
+</li>
+</ul>
+<h2 id="example-usage">Example Usage</h2>
+<pre class="hljs"><code><div><span class="hljs-comment"># Example input structures</span>
+drug_sig &lt;- data.frame(
+  ids = c(<span class="hljs-string">"GENE1"</span>, <span class="hljs-string">"GENE2"</span>, <span class="hljs-string">"GENE3"</span>, <span class="hljs-string">"GENE4"</span>),
+  rank = c(<span class="hljs-number">1</span>, <span class="hljs-number">4</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>)
+)
+up_genes &lt;- data.frame(c(<span class="hljs-string">"GENE1"</span>, <span class="hljs-string">"GENE3"</span>))
+down_genes &lt;- data.frame(c(<span class="hljs-string">"GENE2"</span>))
+
+score &lt;- cmap_score_new(up_genes, down_genes, drug_sig)
+</div></code></pre>
+<h2 id="error-handling-notes">Error Handling Notes</h2>
+<p>The function assumes:</p>
+<ul>
+<li>All inputs are properly formatted</li>
+<li>Gene IDs are consistent across inputs</li>
+<li>No NA values in ranks</li>
+<li>No duplicate gene IDs</li>
+</ul>
+<p>Consider adding input validation for production use.</p>
+
+</body>
+</html>

@@ -1,0 +1,276 @@
+MITHrIL algorithm ouput:
+
+the final result of our algorithm consists
+of a list of pathways along with their impact factor,
+accumulator and adjusted p-values. Such list is sorted by
+p-value and Acc.
+does it have a propagation value as well? for every gene? is it the perturbation factor PF? Yes, it is.
+
+PF formula:
+Recursive?
+Si recursive, ma c'è un refuson el paper, il secondo PF(n,Pi) dovrebbe essere PF(u, Pi), per cui è moltiplicato tt per il PF del gene upstream, che quindi calcola upstream su tutto. ma questo vuol dire che tutta la rete è direzionata? Si, tutta è direzionata, ma non è a ciclica mi dice. Ma allora se è direzionata ma non a ciclica, come trovo il punto di inizio?? Eh!  lo esprimi in forma matriciale e allora non serve fare le propagazioni.
+
+IF formula:meaning?
+second par normalized by mean foldchange*number of differentially expressed genes? Quindi questo numero è minore di tutti i geni che hanno fold change? DE è dato da threshold?. Metrica con della storia, non mi interessa
+
+Acc: A bit more sofisticated than a sum: but why remove fold change ? meaning?
+remove fold change perche vuole vedere solo l'effetto della perturbazione. xke tipo nell enrichment (che mìpoi inzialmente era nato per fare l'enrichment l'accumulatore) vuole vedere solo la propagazione (che cmq in realtà tiene conto anche del valore iniziale).
+In pratica, l'accumulatore da dei  segni ai nodi, per calcolare la grandezza della inibizione/attivazione della pathway. però in questa cosa i miRNA sono visti come meno, mentre  i geni come piu, e basta. i geni sn sempre piu (attenzione, nei nodi, negli edges no, e i segni dei nodi snn sn presi in considerazioni quando calcoli PF, ma solo con Acc), e la formula usata è un po' diversa da qll sul paper (Acc gene - Acc miRNA), ma è una gneeralizzaione dove sommi tutto, moltiplicato per una lista di pesi, dove i pesi per i geni sono +1 e per i mirna sono -1, quindi piu o meno è uguale
+
+other paper to check about metapahtways: detectid disease specific pathway substructures alaimo 2017
+
+#
+MITHrIL
+
+java -jar MITHrIL2.jar   mithril --help
+
+java -jar MITHrIL2.jar mithril -o outfile -p PF_acc_outfile -i inputFC  -verbose -m  
+
+-m to save the output for some reason (BUG) so ALWAYS WRITE IT
+
+##################################
+# DISEASE MITH 3 als_NYGC        #
+##################################
+
+-su server.
+
+- ho deciso di identificare con .mi come il mithril input,
+
+#prendi l'output di tsr DEG calculation, e salvati la colonna del fold change, e mettila come input di 
+more tsr/output/disease_signature/als_NYGC_lorenzo/als_NYGC_signature.csv | cut -d';' -f1,2 | sed '1d'> MITHRIL/input/als_NYGC_signature.mi2
+python modules/change_delim_for_mith_input.py als_NYGC_signature
+# Converti gli symbols in gene ids (filtrando e rimuovendo i duplicati ids e gli ids mancanti) c
+on
+python modules/2_mith3_name_to_id_map.py # (lancia le celle relative al disease per mithril e basta)
+	output:
+		MITHRIL/inputh/als_NYGC_signature_gene_id.mi   # gene id based mith input
+		other_data/als_NYGC_gene_id_to_symbol.pkl # dizionario of gene ids -> symbols univoci
+		output/disese_signature/als_NYGC/'+DISEASE+'_signature_gene_id.csv' # ; separated with , decimal signature data with gene name s and gene id, univocous
+
+#non serve trasformare input in input batch perche appunto è un input solo e non svariati come le drug (see drug run)
+
+#run mithril 3 for single file:
+
+cd drug_repurposing #giusto per avere le path fatte cosi, ma mith3 lo puoi chiamare da ovunque 	
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -verbose -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 30 -i MITHRIL/input/disease_signature/als_NYGC_signature_gene_id.mi -o MITHRIL/output/disease_signature/als_NYGC_mith3.output.txt -p MITHRIL/output/disease_signature/als_NYGC_mith3.perturbations.txt
+
+#mithril runs parameter runs a single instance of mithril3 (since input is not a batch)
+# see java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril --help for parameter meaning (attenzione sono leggermente diversi dai paramteri di mithril-batch)
+
+
+######################################################
+# ATTENZIONE BUG NEL COLUMN NAME DI MITHRIL OUTPUT
+#######################################################
+
+MANUALLY ADD adj_p_value header, perché gli manca l'header adj_pValue, nell'ultima colonna.
+
+
+
+# Convert als_NYGC_mith3.perturbations.txt in a format usable from connectivity score calculation scripts:
+
+python modules/3_mith_to_tsr_disease.py  #which calls mith_to_tsr from conf module
+	output:
+		TSR_OUT_DISEASE+DISEASE+'/'DISEASE+'_mith3_signature.csv' ';' separated file. dovrei chiamarli  .tsv in effetti
+
+--> back to tsr to calculate connectivity.
+
+###############################
+# Drug mith3 LINCS data       #
+###############################
+
+# 1. extract FC data for all genes, for all drugs at 6h, 24h and metanalysis (6h_24h) timestep from Carmelo's metnalayisis gene files running:
+
+
+cd drug_repurposing/modules
+python 4_map_metanalysis_wrapper.py
+
+# check LOG for pseudocode on  map_metanalysis_gene_wise_to_drug_wise
+# it actually launches 31 Rscrpits of map_metanalysis_gene_wise_to_drug_wise, each of them iterating over 100 drugs at a time 
+
+
+# This will save 3222*3 drug_wise files in MITHRIL input in MITHRIL/input/drug_signature/DRUGNAME_timepointh.mi, with two columns, tab separated, first with gene name, second with FC (no header, no index). These are viable input for mithril2
+# Additionally, it will save 3222 (not*3) drug_wise .Rds files in tsr/output/drug_signature/LINCS/metanalysis_drug_wise, with same columns as metanalysis Rds files, but with genes as rows, and drugs as files. # these files will be used to compare to mithril output which is drug based, and also to run connectivity score calculations with new algorithm. 
+# ADDITIONAL STEP to filter data inside metanalysis_drug_wise, because they are unfortunately still DEG data with non unique gnee filters, run the dedicated section inside preproc_utils.py, create a folder called metanalysis_drug_wise_filtered, and then zip the folder metanalysis_drug_wise.
+
+# Create MITHRIL3 input, chiamato LINCS_metanalysis.mi by merging all the drug-wise files in MITHRIL/input/drug_signature/ files into one:
+# formato input mithril 3:
+
+exp1    exp2    exp3
+g1  v1  v2  v3
+g2  v1  v2  v3
+
+#run:
+
+5_mith2_to_mith3_durg_input.py
+
+#this will create LINCS_metanalysis_genenames.mi , then, translate the gene names to ids (for mithril, not necessary but advised), IF POSSIBLE. (if not, gene name will be kept)
+#run
+
+2_mith3_name_to_id_map.py  # manually run cells related to DRUG data
+
+# then, manually remove first tab from header:
+
+vim LINCS_metanalysismi : manualy remvoe first tab to be consistent with mithril3 input format.
+
+# Lancia MIThRIL3 per tutte le drug contemporanemanete usando mithril-batch e la matrice LINCS_metanalysis.mi
+
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril-batch -verbose -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 30 -i MITHRIL/input/drug_signature/LINCS_metanalysis.mi -o MITHRIL/output/drug_signature -p
+
+parametri:
+-reactome: utilizza anche il network di reactome (piu grande e piu accuranto, mithril2 non ce l aveva)
+-p è solo un flag ora per  diregli di fare il perturbation file
+-customize-pathway-matrix : calcola alcone cose come mithril 2. va messo
+-inversion-factory fast-cpu -multiplication-factory fast-cpu usa la libreria fast-cpu per fare certi calcoli
+-t numero thread
+-o DIRECTOY di output 
+
+#MITHRIL3 output: 3222*3*2 drug files saved in MITHRIL/output/drug_signatures/drugname_timestep.output.txt and .perturbations.txt
+
+# so this  prints the PATHWAYS in which a given gene appears!
+# every line is A GENE IN A PATHWAY, but its value of acc,pval and pert is the same in every pathway.
+
+
+#######################################################################
+## ATTENZIONE COMPORTAMENTO INSOLITO NEL FILE NAMING DI MITHRIL OUTPUT!
+######################################################################
+Non propriuo un bug ma un comportamento voluto in cui quando scrive il file, cambia tutti i caratteri che non sono alfanumerici, '-'' o '_' in '-', perché sono caratteri che possono creare problemi di sicurezza. 
+# TO FIX IT, and resume normal filenames:
+
+python X_bugfix_check_name_diff_mith_in_out.py
+
+######################################################
+# ATTENZIONE BUG NEL COLUMN NAME DI MITHRIL OUTPUT
+#######################################################
+
+Non so se esiste ancora per mithril-batch, da controllare se si rimandasse, ma manca il nome dell'ultima colonna, che è adj_pValue.
+per aggiungerlo, lanciare su bash:
+for i in *; do if [[ $i == *perturbations* ]]; then echo $i; sed '1s/$/\tadj_pValue/' $i > tmp.txt; mv tmp.txt $i; fi; done
+
+
+# Trasforma l'output di mithril in input per connectivity score 
+	python 6_map_mith3_to_tsr_metanalysis_wrapper.py # ci mette circa 20 minuti.
+
+	#prende ogni output di mithril.perturbation, che è un file con 250k o 270 nn ricordo rows, una per  patwhay per gene, e lo traforma in un metanalysis di tsr pronto per essere preso in input dal connectivity score, concatenando i 3 timestep perturbations, e levando le pathway e tenendo una row per gene (geni uguali in pathway diverse hanno la stessa perturbation value ,quindi il mith3 output è i nrealta pieno di doppioni), e agginugendo una t-value like statistic (chè non è proprio uguale al tvalue xke il tvalue ha anche il segno
+
+	output:
+		LINCS/metanalysis_mith3_drug_wise/DRUGNAME_metanalysis.csv #tab separated file, 
+
+#
+
+# Trasforma tutti i metanalysis files d interesse in pickled files binari xloaddarlo piu velocemente
+8_picklenblabla
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+####################################
+MOCK DATA RUN
+################################
+
+make mock data with same 10 gene IDs from als_NYGC and invent FC (uniform (-1,1))
+select first 10 geneIDs di als_NYCS:
+ ''more data/ALS-NYGC-GSE153960/GSE153960_raw_counts_GRCh38.p13_NCBI.tsv | cut -d'  ' -f1 | head -n 10 > als_NYGC_gene_ids.txt'' 
+  manually remove first line (questo file lo tengo in locale),	
+Add mock FC data with python mock_data.py (questo file l'ho fatto in server), e creo il file ALS_NYGC_mock_FC.txt dentro MITHRIL/input. 
+	lanciato dalla home del server.
+.
+Run mithril (from home/user) with:
+
+java -jar MITHrIL2.jar mithril -o MITHRIL/output/ALS_NYGC_mock_fc_main_output -p MITHRIL/output/ALS_NYGC_mock_FC.PF.Acc.Pval -i MITHRIL/input/ALS_NYGC_mock_FC.txt  -verbose -m  
+
+
+
+
+################################
+# REAL DATA RUN (disease mith2) DESUETO
+################################
+
+-su server.
+
+- ho deciso di identificare con .mi come il mithril input, e con .mo il mithril output (che è il main output che per ora non usiamo in realtà) 
+
+-take output of tsr's DEG calculation (es script 01.als_NYGC), transform it into a mithril ready file:
+
+more tsr/output/disease_signature/als_NYGC_lorenzo/als_NYGC_signature.csv | cut -d';' -f1,2 | sed '1d'> MITHRIL/input/als_NYGC_signature.mi2
+python MITHRIL/scripts/change_delim.py als_NYGC_signature
+
+-and then run mithril (from home/user).
+
+cd 
+java -jar MITHrIL2.jar mithril -o drug_repuposing/MITHRIL/output/als_NYGC.mo -p drug_repuposing/MITHRIL/output/als_NYGC.PF.Acc.Pval -i drug_repuposing/MITHRIL/input/als_NYGC_signature.mi  -verbose -m  
+
+runtime: poco, una pausa pranzo
+
+- bring als_NYGC.mo file to tsr/output/disease_signature and convert in a format usable from connectivity score calculation scripts:
+
+python modules/mith_to_tsr.py als_NYGC disease_signature/als_NYGC_lorenzo/
+
+--> back to tsr to calculate connectivity..
+porta output di mithril dentro tsr/output/disease_signature
+
+
+##########
+# DRUG run old metanalysis output conversion
+
+python map_mith3_to_metanalysis_wrapper_2.py # ci mette circa 3 giorni #ATTENZIONE: TODO, se dovessi rilanciare mith3 to tst cambia questa cosa
+#possibile che questo sia semplicemente inutile e il nostro connectivity score calculation si lanci se è con mithril prendendo i files direttamente dal mithril output che facciamo prima? PUO BEN darsi. NO PERCHE MITH HA ANCHE LE PATHWYA CHE NON CI INTERESSANO, QUINIDI FAI UN PMAP_MITH3_TO_METANALYSIS_3 CHE LASCIA DRUG WISE, COMPRIME LE PATH IN UNA COSA SOLA E APPENDE SEMPLICEMENTE LE METANALYSES CHE CI SERVENENO
+
+# Siccome map_mith3_drug_wise_output_to_gene_wise_metanalysis_iterative ha un bug x cui scrive files con il geneid nella colonna del gene name,..
+
+	crea una cartella gene_id, in cui mettere dentro tutti i GENENAME_geneid_metanalysis.txt
+	lancia metanalysis_gene_id_to_name.py per riscrivere dei nuovi file GENENAME_geneid_metanalysis.txt, corretti col genename nella colonna del genename
+	python metanalysis_gene_id_to_name.py 
+	lancia txt_to_Rds per per trasformare tutti i files scritti da mith to tsr in .Rds da .txt
+	Rscript txt_to_Rds.R 
+	comprimi la cartella gene_id perché non ti serve
+	TODO, se dovessi rilanciare mith3_to_tsr cambia questa cosa
+
+## DURG mith3 old thing all merged into step5
+#this will create LINCS_metanalysis_genenames.mi , then, translate the gene names to ids (for mithril, not necessary but advised), IF POSSIBLE. (if not, gene name will be kept)
+#run
+
+2_mith3_name_to_id_map.py  # manually run cells related to DRUG data
+
+# then, manually remove first tab from header:
+
+vim LINCS_metanalysismi : manualy remvoe first tab to be consistent with mithril3 input format.
+
+# MITHRIL3 output BUG:
+ma manca il nome dell'ultima colonna, che è adj_pValue. 
+per aggiungerlo, lanciare su bash:
+for i in *; do if [[ $i == *perturbations* ]]; then echo $i; sed '1s/$/\tadj_pValue/' $i > tmp.txt; mv tmp.txt $i; fi; done
+
+
+
+
+
+OLD BUG DISEASE:
+ ######################################################
+# ATTENZIONE BUG NEL COLUMN NAME DI MITHRIL OUTPUT 
+#######################################################
+
+MANUALLY ADD adj_p_value header, perché gli manca l'header adj_pValue, nell'ultima colonna.
+
+# Convert als_NYGC_mith3.perturbations.txt in a format usable from connectivity score calculation scripts:
+
+python modules/3_mith_to_tsr_disease.py  #which calls mith_to_tsr from conf module
+	output:
+		TSR_OUT_DISEASE+DISEASE+'/'DISEASE+'_mith3_signature.csv' ';' separated file. dovrei chiamarli  .tsv in effetti
+
+--> back to tsr to calculate connectivity.

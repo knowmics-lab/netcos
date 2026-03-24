@@ -1,0 +1,1908 @@
+Letto https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009069#sec002
+che è un loro tool per predire effetto di up/downreg of a gene on a netweork through a perturbatio nscore (= magnitude of effect) and activity score (=likelihood and sign)
+
+TEST CALCOLO DRUG SIGNATURE: (real output mssing)
+
+aggiunto file C:\Users\los4\Documents\catania 2024-25\tsr-system\data\LINCS-GSE92742\single_gene_symbols per calcoalre su solo un gene.
+
+Manca il database LINCS1000. 65GB non ho spazio sul pc
+
+LMM: variabili 'casuali': RNA_plate, cell line
+
+LMM:
+	per DGE farmaco: pacchetto giulia
+	per DGE malattia: voom+Dream (pacchetto vaiancePartition)
+
+Calcolo Disease signature:
+
+output: C:\Users\los4\Documents\catania 2024-25\tsr-system\output\disease_signature
+
+script to run disease signature?
+
+	cariabli casuali disease: tessuto diverso di stessa malattia (per dato ALS)
+
+da fare: 
+provare a scrivere script come LINCS_drug_signature_computation ma per disease signature
+
+strategi pattern:
+
+hai una lavatrice, di solito a programmmi fissi, ma tu la vuoi coi progrmmi ntercambiabili figa. la lavatrice è la classe, e la tua gli cambi i programmi di lavaggio: se vuoi il programma superdelicato te lo sviluppi e lo carichi sulla lavatrice,: lui x calcolo DEG farmaci fa: classe calcola firma, al quale passo l'algoritmo che scelgo (lmero  julia)
+
+dov'è la clss
+R non ha lil concesso di thred e quindi x fare multithred si fa una cosa rozza di duplicare l applicazione e lanciarle insieme. si puo fare in 2 modi: 1) col fork di linux (e mac) che funge li, e 2) che funge anche su windows che simola una specie di sistema di rete non so nn capisco, il problema è che qsta tecnica è lenta nella comunicazione tra varie istanze di stessa cosa, e quindi vbb è lenta, ma l'altra è comunque lenta, coi thread sarebbero cmq migliori ma vabbe. 
+qnd calcolo con julia, ilparallelismo nato x linux, chefa il fork non funziona, devo usare la ocsa 2), quindi duplico l applicaz e ogni applicaz fa il calcolo x i geni che lgi do io, . quante copie fai? dipende dalla mmemoria. su deonco con 128gb, ne uso 8. 
+con 500 farmaci se serve meno memoria ma vbb. BLAS è il modulo di algebra lineare di Julia, e lo sto configurando xke julia supporta i thread, e gli dico quanti thread usare. ogni allicazione chiama julia, e ogni applicazione dice dammi x processori, è variabile, xke in base al numer odi processori e applicazioni che aveva.
+
+cl è questo sistema di cluster, che passi  a clusterapply, e poi stopcluster li fa partire
+
+prcess_chunk è quella che  fa eseguire il software che calcola la firma. e prende chunk in input: lista geni, perturb time, n threads, number= pos  (druginputchunksbuilder.r)
+
+clusterapply siccome drug signature input chunks   una lista, chuiama la funzione process chunks per ogni lista
+
+overaldrugsignaturefctory  è un factory che crea la class eoveralldrugsignature, che è quello che dentro fa la classe che chiama Julia e fa il calcolo ...ma in realta chiama un altro compute lol qunati computes è dentro drug signaturesbyperturbation time il calcolozzo che invec e è dentro un compute dentro abstract_class/drugsignaturebyscenariosync
+
+Classe astratta è un contenitore che ha caratteristiche che dai nomi a i metodi ma che nn sn implementati,e epoi la erediti e implementi i metodi e qst diventera la sua istanza 'reale'. servono x obbligare il programmatore a rispettare una certa struttura.
+
+drugsignaturebyscenario qlcs si verifica che è una cosa di drugsignature
+
+perentrare su deonco, si scarica
+
+LINCS ha 1000 geni circa calcolati in modo perfetto, e altri 11k fatti per inferenze, di questi 9k sono buoni il resto da scartare quindi circa 10k geni buoni,
+
+1. als_NYGC caclolo firma di malattia
+2 most_significant genes fa repurposing: sta calcolando connect. score. 
+(e tu puoi scegliere i geni in cui usare il repurposingi in modo diverso): o i primi 150 significativi , oppure quelli col pvalue > certo valore
+da 2 a 7: diverse iterazioni del calcolo del connect score per diversi gruppi di geni. il 7 cambia l'algoritmo con pGX, che però qst è lento. dettaglio importante: se i geni sono O tutti sovraespressi o tutti sottoespressi non funge l'algoritmo, . quando gestisci i geni della malattia, il valore vero viene ignorato, usi solo + o - e usi il ranking (sulla firma del farmaco, sulla malattia no), 
+
+# 10 oct
+
+problema il LINCS level 3 è compresso a 52 gb, se provo a estrarlo non ho abbastanza spazio nel pc. posso aprirlo serialmente senza unzippalro?
+
+
+
+mi sta mandando su wetransfer uno tsr.zip, con tutto tsr e alcuni file dentro la cartella data.
+
+
+scaricato il .zip su downloads è tutto il progetto. ci sono i file di data a parte split level 3 e lincs
+
+mi ssta scaricando su tsr-system la cartella split level 3 da mettere dentro data/LINCS 
+
+che LINCS paalllel .R che è gia configurato per usare gli split (cioe i dati presi dal megafile e esportati ramite i file export, uno per uno)
+
+xleggere un gene file dai gene file sdi lincs da soli::
+readRDS('data/lincsbalba/diflequalunq')
+
+11 10
+# Current state: server: tsr folder (da ltest tsr.zip), con dentro splitted3
+				local: tsr folder(da latest tsr.zip) con megafileone, senza splitted
+
+non ho gli exported su locale, provo a vedere se si possono fare, anche se cmq non so se potrei perche nn posso unzippare il filleone, pero vedo che dentro modules/drug_signature(setuper/ non ci sono i files (che sono richiamati da LINCS_export.R)
+
+16/10/2024
+Stiamo copiando tutti i files di splitted_level3 in locale. STALLED A 7390.Rds 89% xke internet va lento .  VABBO NE HA FATTI 100 geni, va bene lo stresso sticazzi, tanto bastaa averceli tutti e 10k sul server. ma posso riprendere sftp da dove ho lasciato e skippa i files o li sovrascrive? li sovrascrive
+
+# Current state: server: tsr folder (da ltest tsr.zip), con dentro splitted3
+				local: tsr folder(da latest tsr.zip) con megafileone, con circa 1000 splitted3
+
+qnd sarà fatto avremo una cartella tsr identica in locale e in non locale, l'unica differenza sarè che in locale avremo il megafile (compresso) e in server no
+da fare: fare un git di questa cartella, senza la cartella DATA possibilmente, xke è troppo grande, cosi da avercela sincronizzata fissa. 
+	in locale: fatta git init
+	un .gitignore con dentro log/ e data/
+	e git add .
+	e git commit 
+	e creata la repo
+
+	ora: come fare per unirla a quella su server? basta copiare il .git e il .gitignore?
+	farò cosi: 1) uploado repo su github 2) ASPETTO CHE IL DOWNLOAD DI SPLITTED3 ABBIA FINITO 3) rinomino la tsr su server tsr_temp 4) git clone tsr su server, 5) sposto splitted_3 da tsr_temp a tst 5) elimino tsr temp.
+
+
+# RUN		LINCS_drug_signature_parallelcomputation.R
+
+	test_gene_symbols.csv (solo 2 geni funzionarà?)
+	config.R: default
+	DrugSignatureInputArguments.R : default
+
+	sia su locale che su serverino... 
+	...fuunzioneràà??
+	a metà strada mi sn resoconto hche ho paura di sovrascrivere l output, quindi ho fattto l output folder che si chiama (dentro config output/drug_signature/LINCS to LINCS_old, sperando non me sovrascriva...)
+
+ERRORE di Julia in locale:
+
+Error in checkForRemoteErrors(val) : 
+  16 nodes produced errors; first error: jl_stdout_obj - /home/lorenzo/.julia/juliaup/julia-1.11.1+0.x64.linux.gnu/bin/../lib/libjulia.so.1.11: undefined symbol: jl_stdout_obj
+
+ERRORE di Julia in server:
+
+Error in checkForRemoteErrors(val) :                                                        
+  16 nodes produced errors; first error: jl_stdout_obj - /home/signorini/.julia/juliaup/julia-1.11.1+0.x64.linux.gnu/bin/../lib/libjulia.so.1.11: undefined symbol: jl_stdout_obj
+Calls: clusterApply -> staticClusterApply -> checkForRemoteErrors                           
+Execution halted                                                                            
+Error in unserialize(node$con) : error reading from connection                              
+Calls: <Anonymous> ... doTryCatch -> recvData -> recvData.SOCKnode -> unserialize           
+Execution halted                                                                            
+Error in unserialize(node$con) : error reading from connection                              
+Calls: <Anonymous> ... doTryCatch -> recvData -> recvData.SOCKnodError in unserialize(node$con) : error reading from connection
+
+# RUN		LINCS_drug_signature_parallelcomputation.R #change input file 
+	
+	su server
+	16_gene_symbols.csv (16 geni, per avere almeno un gene per core..funzionerà?)
+	config.R: # change output to output/drug_signature/LINCS_lorenzo)
+	DrugSignatureInputArguments.R : default
+
+
+proviamo a calcolare disease signature..
+
+# RUN 01.als_NYGC_disease_signature.R local  
+	config.R: default
+	config/als_NYGC_cgf.R : change signatre_base_dir : output/disease_signature/als_NYGC_lorenzo/"
+	sta facendo errore no such file or directory, ma è arrivato infondo.
+
+	rilancio alle 16:24, quanto ci metterà? (ho creato  la cartella di outoput _lorenzo a metà strada, magari qst l'ha disassato?)
+	finito bo, ho guardato alle 16:35...sembrerebbe aver fatto:con 3 warnings:
+		Warning messages:
+		1: In filterInputData(counts, formula, data, weights, useWeights = FALSE,  :
+		  Sample names of responses (i.e. columns of exprObj) do not match
+		sample names of metadata (i.e. rows of data).  Recommend consistent
+		names so downstream results are labeled consistently.
+		2: In filterInputData(exprObj, formula, data, useWeights = useWeights) :
+		  Sample names of responses (i.e. columns of exprObj) do not match
+		sample names of metadata (i.e. rows of data).  Recommend consistent
+		names so downstream results are labeled consistently.
+		3: In filterInputData(exprObj, formula, data, useWeights = useWeights) :
+		  Sample names of responses (i.e. columns of exprObj) do not match
+		sample names of metadata (i.e. rows of data).  Recommend consistent
+		names so downstream results are labeled consistently.
+
+		FUNZIONAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+
+# RUN 01.als_NYGC_disease_signature.R local
+	config.R: default
+	config/als_NYGC_cgf.R : change signatre_base_dir : output/disease_signature/als_NYGC_lorenzo/"
+	sta facendo. fatto funziona
+
+# RUN 01.als_NYGC_disease_signature.R server (Rscript als_NYGC/)01.als_NYGC_disease_signature.R
+	config.R: default
+	config/als_NYGC_cgf.R : change signatre_base_dir : output/disease_signature/als_NYGC_lorenzo/"
+
+
+# RUN IPF disease signature su local
+	config.R: defaults
+	ips_cfg: cambiato la cartella output con _lorenzo. 
+
+	funzionato molto veloce, 3 secondi
+
+# RUN IPF disease signature su server (Rscript ipf/01.ipf_blab-lab-al)
+	config.R: defaults
+	ips_cfg: cambiato la cartella output con _lorenzo. 
+
+	funzionato molto veloce, 3 secondi
+	
+
+- changed all config files to have an output folder with _lorenzo (ipf, alsNYGC and config)
+
+# provare a capire xke Julia non va:
+config.R:
+	line 47: drug_small.csv  , una lsita di drugs ridotta.
+	line 58: drug_signature_cfg$gene_symbols_filename <- "data/LINCS-GSE92742/2_gene_symbols.csv" (o 16_gene_symbols per server) una lista di geni ridotta, magari serviva scriverlo anche qui? lo faccio, e lancio il non parlalelo in locale e il paralleo in server
+
+domanda: line 61 in confing drug_signature_cfg$bing_genes_filename <- "data/LINCS-GSE92742/bing_genes.csv" anche lui va cambiato? cosa vuol dire bing file?
+
+
+non parallelo non funziona, va bene cosi lasciamolo stare proprio questo direi.
+
+# rilanciati sia server che locale col config scritto cosi, ma niente.. proviamo a lanciarne uno sul server col config originale...
+non funziona. IN SERVER è su origniale. solito errore. 
+
+potrebbe essere un problema con la version di julia 1.11? https://github.com/Non-Contradiction/JuliaCall/issues/234(che tra l latro non è LTS)
+proviamo a downgradare julia a 1.10 (con juliaup --help) 
+juliaup add 1.10
+juliaup default 1.10
+
+su server non ho installato julia (LOL?), proviamo a mettere direttamente la julia10 scaricandolo dal sito il tarball. e seguendo le istruzioni da https://julialang.org/downloads/platform/#linux_and_freebsd. 
+funny che l'ho fatto ma julia se la apro mi dice che è la 1.111?? hahah vabbe. facciamo juliaup add e default allora.
+
+# RUN LINCS_drug_signature_parallelcomputation.R locale
+	2_gene_symbols.csv (16 geni, per avere almeno un gene per core..funzionerà?)
+	config.R: 
+		line 52: change output to output/drug_signature/LINCS_lorenzo
+		line 47: drug_small.csv  , una lsita di drugs ridotta.
+		line 58: drug_signature_cfg$gene_symbols_filename <- "data/LINCS-GSE92742/2_gene_symbols.csv" 
+		line 71: parallel_computation$max_cores <- 2 #invece che 8. cosi ho 2*2 (uno per time ) 4 cores
+	DrugSignatureInputArguments.R : default
+
+	ERROR: LoadError("/home/lorenzo/R/x86_64-pc-linux-gnu-library/4.4/JuliaCall/julia/setup.jl", 16, ArgumentError("Package Suppressor not found in current path.\n- Run `import Pkg; Pkg.add(\"Suppressor\")` to install the Suppressor package."))  
+	però continua a girare? non capisco. proviamo a installare sto pckg
+	import Pkg; Pkg.add(\"RCall\")
+
+
+# RUN LINCS_drug_signature_parallelcomputation.R server
+	2_gene_symbols.csv (16 geni, per avere almeno un gene per core..funzionerà?)
+	config.R: 
+		line 52: change output to output/drug_signature/LINCS_lorenzo
+	DrugSignatureInputArguments.R : default
+
+	ERROR: IL SOLITO
+
+
+# RUN LINCS_drug_signature_parallelcomputation.R locale
+	2_gene_symbols.csv (16 geni, per avere almeno un gene per core..funzionerà?)
+	config.R: 
+		line 52: change output to output/drug_signature/LINCS_lorenzo
+		line 47: drug_small.csv  , una lsita di drugs ridotta.
+		line 58: drug_signature_cfg$gene_symbols_filename <- "data/LINCS-GSE92742/2_gene_symbols.csv" 
+		line 71: parallel_computation$max_cores <- 8 (PERCHE HO NOTATO CHE NON CAMBIA IL NUM_PROCESS VARIABLE. COME SI CAMBIA QUELLA? NON CAPISCO)
+	DrugSignatureInputArguments.R : default
+
+	ERROR: the application R has closed unexpectedly
+
+proviamo 1.10.2s
+
+x semplificare il compito: provare a lanciare i test
+
+devono partire a distanza xke se no si pianta deonco
+
+
+lo script che fa la cosa in parallelo è configurabile da commandline: quante istanze vuoi e per ogni istanza quanti cores.
+
+esempio:
+
+#                                                                                            6h 24  8,8,8: n processori da usare x ogni processo. e il 4 era il numero di blocchi
+Rscript LINCS_drug_signatures_parallel_computation.R data/LINCS-GSE92742/bing_gene_symbols.csv 6,24 8,8,8,8,8,8,8,8 4
+
+Rscript LINCS_drug_signatures_parallel_computation.R data/LINCS-GSE92742/bing_gene_symbols.csv 6,24 2 1
+
+
+x ogni processo assegno un blocco di geni da computare, tipo hai 40 geni (ognuno a 6 e 24), e quindi sono 4 blocchi da 20 geni ognuno, e ognuno è diviso.
+sarebbe meglio calcolare quanti geni sono. 
+
+# local_confing_templates: questa configurazione cambia in base all'ambiente. ha un file con la configurazione pero in .gitignore.
+
+
+uno puo fare il test
+il test è calcoalto su un esempio che ha calcolato sul suo locale. pero se ce un errore su una 20' cifra decimale (con expect_identical) se no expect_equal che è meglio xke gli errori sopra la 10 cifra decimale non li considera errori
+
+quante risorse ho su deonco? quanti processori ho?
+se lanci senza coso ho lo
+
+local_config:
+quello in cui metit il numero di thresds
+
+BLAST: n cores (threads) di julia
+max cores: n processori senza julia (NON TI INTERESSA). qnd c'è amxcores di mezzo, sto usando il parallelismo di R.
+(julia usa thread, parallelismo usato in modo normale, in vece R ch a la schifezata del fork). cmq il numero di cores è importante  qunado calcol il connectivity score, li ti cambierà molto la velocità del sistema, perché quand os icalcola il connectivity score, si calcola un valore teorico del pvalue con un calcolo molto lento, ke si velocizza col calcolo parallelo.
+
+ora mandando Rscript LINCS_paralle, ho x chunks
+
+
+per cambiare la config.R
+devo cambiare local_confing.R perché è quello che lo affecta, o meglio, che sovrascrivo config.R, quindi cambia quello, non cambiare config.R
+
+local_config.R # 
+
+# piccola info sul calcolo della drug signature in parallelo:
+# dentro drugsignature riga 56 gc() è qll che ti da il parallelismo xke avea un bug con la garbage colleciton che si riempiva la memoria, e ha scoperto questo.
+
+
+se gli servivano 300 geni, se li calcolava sul momento, xke qlli gli servivano. pero se no ci metteva le settimane.
+
+i dati della metanalisi è importante usare il parallelismo di R, quindi usare maxcores alto.
+
+Ma cmq la metanalis e i risultati di LINCS adesso ce li hai dentro il coso output/drug_signatues/LINCS xke ci sono gia, (ma ATTENZIONE! non ci sono tutti in realtà., xke provando a fare connect. score mi dà errore.)
+
+ho provato a creare su SERVER un current_gene_symbols.csv e modificare il .R metadata per  vedere se l'errore che mi da (che è 
+Error in { : task 1 failed - "cannot open the connection"
+Calls: <Anonymous> -> %dopar% -> <Anonymous>
+Execution halted 
+) sia dato dal fatto che magari l .R prende 'all genes' into account, ma mi sembra che li prenda comunque all genes into account.
+
+
+
+# RUN ipf/05.ipf_bin_chen_genes_connectivity_score.R  server
+	cofnig.f  :default (nessuna cartella lorenzo, xke ancora non ho calcolato la metanalysis sul mio)
+	ipf_cfg.R : cartella  lorenzo
+
+	processori a caso...ma cmq vabbe questo ci mette tanto mi sa
+
+	errori: manca la cartella output/connectivity_score/ipf, xke si chiama ipf_old nn so xke. 
+	, creata la cartella ipf e rilanciato
+	FUNZIONA
+
+
+# create cartelle (server e locale ma in locale nn serviranno xke non lo calcolerò penso)
+	output/connectivity_score/ipf_lorenzo
+	output/connectivity_score/als_NYGC_lorenzo
+
+23-10-2024
+
+LOG: da capire dentro ilLOG a quale line di 'RUN blabla ' corrisponde la runa finita sul server (che cmq ho controllato che i file sono dentro LINCS_lorenzo/genes, sono stat finiti il 21 ottobre), quindi dovrebbe essere giusto che ho fatto nella cartella giuta, ma sul config.R vedo la cartella di output is LINCS, not lINCS_lorenzo, ma magari l ho lanciata e poi ricambiata, da trovare.
+
+NON lo trovo, non so che cacchio è successo, ma non lo trovo, cmq l'errore è: 
+INFO  [2024-10-21 00:48:32] end drug by gene signatures computation by pertubation times: 24h, computation time: 3.14981441168046 days   
+INFO  [2024-10-21 00:48:32] end drug signature computation, time: 3.14981444377038 days
+INFO  [2024-10-21 00:48:32] end processing LINCS data
+Error in unserialize(node$con) : error reading from connection
+Calls: <Anonymous> ... doTryCatch -> recvData -> recvData.SOCKnode -> unserialize
+Execution halted
+Julia exit.
+
+quindi errore MA: DOPO CHE HA FATTO LA LINE 'END PROCESSING LINCS DATA' ?
+
+
+Proviamo a veder se fiunge metanalysis? per giuoco?	con i geni ottenuti fin ora:
+
+-creiamo un gene_sybmols con 
+	echo 'gene' > data/LINCS-GSE92742/23_10_gene_symbols.csv
+	ls output/drug_signature/LINCS_lorenzo/genes/* | cut -d/ -f5 | cut -d_ -f1 >> data/LINCS-GSE92742/23_10_gene_symbols.csv
+	agginugiamo la line 'gene '
+
+e lanciamo il metanalysis
+
+# RUN metanalisysis_64_24h.R server
+Rscript metanalisysis_64_24h.R
+	config:
+		 drug_signature_cfg$signature_base_dir <- "output/drug_signature/LINCS_lorenzo/"
+		 58 drug_signature_cfg$gene_symbols_filename <- "data/LINCS-GSE92742/23_10_gene_symbols.csv"   
+	non funge, solito errore relativo a mancanza  di file
+
+
+cd /tsr
+Rscript	LINCS_drug_signature_parallelcomputation.R
+	
+	su server
+	16_gene_symbols.csv (16 geni, per avere almeno un gene per core..funzionerà?)
+	config.R: # change output to output/drug_signature/LINCS_lorenzo)
+	DrugSignatureInputArguments.R : default
+errore solito
+
+cd /tsr
+Rscript	LINCS_drug_signature_parallelcomputation.R LINCS_drug_signatures_parallel_computation.R data/LINCS-GSE92742/16_gene_symbols.csv 6,24 8,8,8,8,8,8,8,8 4
+
+	16_gene_symbols.csv (16 geni, per avere almeno un gene per core..funzionerà?)
+	config.R: # change output to output/drug_signature/LINCS_lorenzo)
+	DrugSignatureInputArguments.R : default
+SOLITO ERRORE MA SEMBRA AVER PRODOTTO TUTTI I FILES IN OUTPUT??
+
+
+cd /tsr
+Rscript	LINCS_drug_signature_parallelcomputation.R LINCS_drug_signatures_parallel_computation.R data/LINCS-GSE92742/16_gene_symbols.csv 6,24 30,30 1
+	
+	su server
+	16_gene_symbols.csv (16 geni, per avere almeno un gene per core..funzionerà?)
+	config.R: # change output to output/drug_signature/LINCS_lorenzo)
+	DrugSignatureInputArguments.R : default
+
+# problem acon metanalysis: scavando e printando, vdo che legge oil 'current_gene_symbols.csv' nn so xke come lista nodi, quindi TEMPORARY WORKAROUND: crea un file 'CURRENT_GENE_SYMBOLS ' CHE  È IN RELTÀ 16 GENE SYMBOLS.   sovrascrivi il file current_gene_symbols.csv su server, e chissenefrega tanto non ti servirà
+e poi: 
+
+# RUN metanalisysis_64_24h.R server
+Rscript metanalisysis_64_24h.R
+	config:
+		 drug_signature_cfg$signature_base_dir <- "output/drug_signature/LINCS_lorenzo/"
+		 58 drug_signature_cfg$gene_symbols_filename <- "data/LINCS-GSE92742/current_gene_symbols.csv"   # MA ATTENZIONE NON PARE AVERE ALCUNA FUNZIONE
+	non funge, solito errore relativo a mancanza  di file ???
+
+
+	Una classe ha metodi privati e pubblici (tipo compute) e privati sn qlli che nn si possono vedere (tipo tsr logger) . private e public sono delle pseudo keywords della libreria R6 (anche in Java sono così)
+
+	# oggi guardiamo mithril
+	java - jar nome_eseguibilie(mitril2)  mitril --help
+
+	Input di mithril: tab sep file con nome gene e logofoldchange.
+	iniziamo con la disease signature che è piu semplice. Ma domanda: il LMM calcola il fold change direttamente dentro se stesso, quindi forse questo passaggio è bo?
+
+	seleziono la lista di dieci geneIDs di als_NYCS con ''more GSE153960_raw_counts_GRCh38.p13_NCBI.tsv | cut -d'  ' -f1 | head -n 10 > als_NYGC_gene_ids.txt'' e  rimuovendo first line (questo file lo tengo in locale),	e poi faccio una lista di false fold changes da aggingerci con python mock_data.py (questo file l'ho fatto in server), e creo il file ALS_NYGC_mock_FC.txt dentro MITHRIL/input. 
+	lanciato dalla home del server:
+
+
+    ## ## ## ##
+java -jar MITHrIL2.jar mithril -o MITHRIL/output/ALS_NYGC_mock_fc_main_output -e MITHRIL/output/ALS_NYGC_mock_FC.PF.Acc.Pval -i MITHRIL/input/ALS_NYGGC_mock_FC.txt  -verbose
+    ## ## ## ##
+
+Runna ma c'è un Bug nel salvare il file. Che ce posso fa io? nnt . ci guarda salvatore.
+Intanto, pensa a come creare l input per moithril dai files veri di tsr: siccome il logfoldchange è calcolato dalla LLM, penso che dovrei usare il risultato della LLM da mettere dentro mithril OPPURE calcolarmi io il FC? però così viene meno l'idea del LLM. qunato è importante? da rivedere e portare su la tesi del carmelone nazional popolare.
+intanto aggiungendo -m funziona e salva il file:
+
+###
+
+java -jar MITHrIL2.jar mithril -o MITHRIL/output/ALS_NYGC_mock_fc_main_output -p MITHRIL/output/ALS_NYGC_mock_FC.PF.Acc.Pval -i MITHRIL/input/ALS_NYGC_mock_FC.txt  -verbose -m          
+###
+
+# 13-11-2024:
+
+Creato config.py dentro  drug_repurposing in cui mettere variabili generali del progetto.
+creato modules/mith_to_tsr.py per aprire l'output di mithril e portarlo in formato che il tsr possa calcolare la connectivity score.
+
+# non ho capito se metanalysis calculator delaputamierda funziona, ma non mi interessa xke ho i files gia'
+
+cmq connectivity score di ipf funziona anche in locale
+
+# Running 05.als_NYGC_blalblaconnectivity locale
+
+cambiando confing/als_NYGC_config.R:
+als_NYGC_cfg$signature_base_dir <- "output/disease_signature/als_NYGC_lorenzo/"
+als_NYGC_cfg$signature_filename <- paste0(als_NYGC_cfg$signature_base_dir, "ALS_NYGC_signature.csv")
+
+NON FUNGE, mancanza di metanalysis data,
+
+# Running 05.als_NYGC_blalblaconnectivity server
+	prima mantenendo als_NYGC_config normale
+	config file:
+		change ouptu/drug_signature/LINCS (senza lorenzo)
+	als_config:
+		als_config:
+			als_NYGC_cfg$signature_base_dir <- "output/disease_signature/als_NYGC_lorenzo/" 
+			als_NYGC_cfg$signature_filename <- paste0(als_NYGC_cfg$signature_base_dir, "ALS_NYGC_mock_FC_mithril_signature.csv")
+
+			als_NYGC_cfg$connectivity_score_base_dir <- "output/connectivity_score/als_NYGC_lorenzo
+
+	FUNZIONA
+
+	poi usando gli als_NYGC_mock_FC:
+		config: same as above
+		als_config:
+			als_NYGC_cfg$signature_base_dir <- "output/disease_signature/als_NYGC_lorenzo/" 
+			als_NYGC_cfg$signature_filename <- paste0(als_NYGC_cfg$signature_base_dir, "ALS_NYGC_mock_FC_mithril_signature.csv")
+
+			als_NYGC_cfg$connectivity_score_base_dir <- "output/connectivity_score/als_NYGC_lorenzo
+
+
+E FUNZIONA anche se ho paura mi abbia sovrascritto l'output? No problema. funziona ma l'output no lo scrive proprio
+
+allora, riscoperto cosa succede (almeno per il 05.als blablacon als_NYGC confing file normale) che funziona MA, salva i files chiamandoli 
+ipf_connectivity_score_bin_chen_gene con IPF!!! percheeeeeee!!! e anche se als_config dice 			als_NYGC_cfg$signature_base_dir <- "output/disease_signature/als_NYGC_lorenzo/" , li salva dentro als_NYGC normale.. BO VABBE.
+
+Rscript als_NYGC/03.als_NYGC_150_MS_genes_connectivity_score.R  
+FATTO, 
+Rscript als_NYGC/04.als_NYGC_150_MS_landmark_genes_connectivity_score.R 
+FATTO
+entrambi con gli stessi dati as above delle configs, e non li chiama ipf come allo 05 nn si sa xke lol...
+da vedere gli altri due,
+06 e 07?
+sto rilanciando anche lo 05 per vedere se bo magari non avevo aggiornato il als_config e adesso si slava dentro als_NYGC_lorenzo? pare di si. OK.ora funzona, era un refuso mio. DA COPIARE DENTRO ACTION POINTSCON CARMELO
+
+
+ok, con IL MOCK FC? Sta finendo gli 06 e 07 che ci metotno tanto (classici) giusto, per , ma ora proviamo il mock fc
+
+
+DA FARE OGGI: UN FC di disease non mock a partire da
+
+
+TODO FICX perche mith_to_tsr in server non riesce a chiamare config se sta dentro la cartella modules, ma in locale si. (lanciando lo scriptdalla directoryin cui sta config)
+TODO: capire se gli output di tsr 03.. sono effettivamente nuovi o se sta sovascrivendo gli stessi. creata la cartella output/connectivity_score/temp_old_als_NYGC_lorenzo  in cui ho messo gli output di 06e 07 che son piu lunghi e ci mettono piu tempo, quindi todo, domani fare  il difff fra sti files e i nuovi output con lo stesso nome per verificare che isno diversi. Lo sono, ma tipo alla sesta cifra decimale di p value, il resto (conn score pert time sono uguali, quindi probabile bug)
+TODO: capre cosa sono i.Rds dentro output/disease_signature e perché servono per 02.significantgenes e also
+TODO: capire (ricordarsi?) cosa fa 02.signficantgenes. Xke ho paura che in realta connectivity score prenda anche l output di 02significantgenes, il quale pero legge il file .rDs e non il csv, e quindi l'output di 02  credo sia sempre lo stesso xke se lancio 02 con l'als_config cambiato per prednere in input il file di mithril, mi dà errorexke il mithril non ha questo .RDs, quindi il passaggio 2 lo skippo proprio.
+
+MITHRIL RUN OUTPUT WRITING BUG:
+
+Caused by: java.io.FileNotFoundException: drug_repuposing/MITHRIL/output/als_NYGC.mo (No such file or directory)
+
+sia con als_NYGC che con LINCS. solo che prima con als_NYGC funzionava. cosa è cambiato? Dal mio lato non dovrebbe essere cambiato nulla. Typo?
+
+input connect scor: modules/connectivity-score/loader/ drug_signature_loader ? ma rimanda al solito config
+
+
+# 18 11 
+
+passare da pvalue a statistica su mithril
+
+Da fare su server> fare in moddo che gli scripts li posso lanicare da modules e mi prendano il conf  file
+
+
+19 11
+
+csv l'ha usato solo per vedere i files, ma usa gli Rds. se gestisci numeri reali sul computer, hai varietecniche x la gestione. (il float vuol dire), xke rds non ha approssimazione
+
+ipf era perche devi cambiare il config.
+
+il connect_score legge gli Rds, 
+
+le LINCS drug(intende dire il calcolo connect score?) va drentro la cartella metanalisi, vengon o presi tutti i geni, uniti i n un unica tabella e poi calcolato il conn. score. 
+probabilmente cambiare dentro config drug_signature_cfg$metanalysis_6h_24_dir <- "metanalysis/"
+
+bin chennel connectivity per la malattia divide in sovra e sotto espressi semplicemente, e per farmaco fa una classifica e usa il tvalue. ma l algoritmo nn lgi piace, xke qnd vedi geni malatti, se hai un gene sovraespresso 10^5 e uno sovraespresso 0.2 x  l'algoritmo è uguale ma vabbe. potrebbe essere raffinato ma vabbe.
+
+lmer quando fa linear model non dà pvalue ma tvalue, per questo uso il tvalue e non pvale. ma se usi julia non ho problemi.
+
+ma va bene le colonne? dice di si
+
+usare il pvalue è piu ideale.
+
+devi fare modifiche.  prendi primi 150 geni con coso piu alto e poi primi i sopra e sottoregolati con logfoldchange. modifica algoritmo
+sui farmaci mi interesa solo la classifica
+
+
+dentro connectivityscorebygeneselection
+riga 39
+      down_regulated_genes <- private$downregulatedGeneFilter$filter(disease_signature)
+ sistemo sto filtro e ho risolto
+
+io ho: DrugignatureMapper come sta genstendo la firma dei drug: 
+crea l oggetto drug_signatures che è una cosa con una sola colonna chiamata estimate, che è il tvalue (e le righe? nn mi ricordo vbb nn ci interessa)
+
+dentro binchen connectivity score calcola, e ranka le cose per inverso tvalue. se prendo il pvalue invece che il tvalue, levo il -1* riga 9 (se il pvalue è veramente l inverso del tvalue)
+drug_signature$rank <- rank(-1 * drug_signature$estimate, ties.method = "random")
+
+per vedere dove prende l input del drug signature è nel file   drugsignaturefiltermapper
+drug_signatures <- drug_signatures[, "t.value", drop = F]  metto p.value in t.value
+
+
+il Mapper è un nome molto standard per dire una conversione di file. In java è una funzione proprio. tutti questi mapper che vedi aprono i files e li scrivono come gli pare a lui
+
+
+# 20_11:
+tra tutte le cose da fare: 1) prova a fare metanalisi con virapamil blablablas. e prova a fare connect score prendendo come cartella di metanalisi quella del verapamil only
+
+##############
+# OLD REAL DATA RUN (DRUGS) MITHRIL/TSR PIPELINE
+######################
+#
+# agginugi -f3 alla riga sotto rispetto al disease data, perchè questo .csv ha anche la line della drug, mentre l'altro ha solo gene name e FC.
+#
+#24h
+#more tsr/output/drug_signature/LINCS/LINCS_drug_signature_24h.csv | cut -d';' -f1,2,3 | sed '1d'> MITHRIL/input/LINCS_drug_signature_24h.mi2
+#python MITHRIL/scripts/change_delim.py LINCS_drug_signature_24h
+#rm MITHRIL/input/*.mi2
+#
+#6h
+#more tsr/output/drug_signature/LINCS/LINCS_drug_signature_6h.csv | cut -d';' -f1,2,3 | sed '1d'> MITHRIL/input/LINCS_drug_signature_6h.mi2
+#python MITHRIL/scripts/change_delim.py LINCS_drug_signature_6h
+#rm MITHRIL/input/*.mi2
+##
+#
+# separa questi due files in tanti files quante sono le drugs (3222 drugs)
+#
+#python MITHRIL/scripts/split_LINCS.py LINCS_drug_signature_24h  
+#python MITHRIL/scripts/split_LINCS.py LINCS_drug_signature_6h                                 
+#
+# lancia MITHRIL2
+#
+#a 24 h:
+#
+#java -jar MITHrIL2.jar mithril -o drug_repurposing/MITHRIL/output/LINCS_drug_signature_24h_verapamil.mo -p drug_repurposing/MITHRIL/output/LINCS_drug_signature_24h_verapamil.PF.Acc.Pval -i drug_repurposing/MITHRIL/input/LINCS_drug_signature_24h_verapamil.mi  -verbose -m
+#
+#a 6 h:
+#
+#java -jar MITHrIL2.jar mithril -o drug_repurposing/MITHRIL/output/LINCS_drug_signature_6h_verapamil.mo -p drug_repurposing/MITHRIL/output/LINCS_drug_signature_6h_verapamil.PF.Acc.Pval -i drug_repurposing/MITHRIL/input/LINCS_drug_signature_6h_verapamil.mi  -verbose -m
+#
+###########################################################################
+
+Reading an RDS. Ogni RDS di metanalysis è fattocosi:
+gene, drug, DE_log2_FC_6h, std.error_6h,t.value_6h,p.value_6h,adj.pvalue_6h,DE_log2_FC_24h, std.error_24h,t.value_24h,p.value_24h,adj.pvalue_24h, DE_log2_FC_6h_24h, std.error_6h_24h,t.value_6h_24h,p.value_6h_24h,adj.pvalue_6h_24h,
+
+# NB la colonna gene è sempre lo stesso gene, le altre variano. quinid il file matanalisis ha tutte le opioni possibili, 6, 24, e 624, quindi primancora di fare la metanalisi con i mithril data, CHE FORSE NON CI POSSA CONVENIRE DI VEDERE COME CALCOLARE CONNECT SCORE SOLO SU 6 O SOO SU 24? E ATTENZIONE, ANCORA MEGLIO, VEDENDO COME SO STI DATI, CHE FORSE NON CI CONVENGA CALCOLARE MITHRIL DA QUESTI FILES, POICHE HANNO I 6 E 24H E POICHE SONO QUELLI SUPPONGO USATI ALLA FINE? E POICHE IMMAGINO ANCHE CHE IL LINCS_DRUG_SIGNATURE NON HA TUTTI I GENI (MA QUI MAGARI MI SBAGLIO EH)? DIREI DI SI DIREI DI SI DIREI PROPRIO DI SI. E POI CALCOLARE LA METANALSI SUI NUOVI FILE FATTI DA MITHRIL, MA PROBABILMENTE GIRANDO IL PACCHETTO SU R. DEVI FARTI UN RSCRIPT È GIUNTO IL MOMENTO. TI CI DEVI SPORCARE LE MANI.
+
+quindi: fase 2, scratch what I did before: ricalcola i mithril dai metanalysis data.
+
+Non posso passare un file con un gene e 3k drugs a mithril, devo dargli una signature, cioe tti i geni insieme, con una drug, per ogni drug. e allora:
+
+
+- 1 ottieni la lista completa di tutte le drugs:
+
+PER OGNI DRUG:
+	
+	inizializza dataframe 6h
+	inizializza dataframe 24h
+	inizializza dataframe 6h_24h
+	inizzializza datafraame drug_wise_metanalysis
+
+	Per ogni file dentro la cartella LINCS/metanalysis/ a forma GENENAME_geneid_metanalysis.rds:
+		-apri l'RDS
+		-seleziona la riga della drug di interesse
+		per ogni colonna del Foldchange e del pvalue,tvalue.. a timepoints, 6,24, e 6_24:
+			appendi la colonna gene, drug, e foldchange_h  al dataframe_h relativo per il file mitril
+			
+			salva file in formato compatibile con mithril (tab separated senza header senza index)
+			dentro la cartella MITHRIL/input/DRUGNAME_h.mi
+	
+			INOLTRE; salva singolo file con tutti e tre i timepoints, per una drug in RDS dentro  LINCS_lorenzo/metanalysis_drug_wise, cosi comunque lo devi fare una volta sola.
+
+	
+	# 2- Poi runna mithril2 (desueto):
+
+	per ogni timestep h  6, 24, 6_24:
+		run mithril col file MITHRIL/input/DRUGNAME_h.mi:
+		# Runna mithril se si può e salva l'ouput cosi,
+	unisci per ogni DRUGNAME_h le tre h, in un unico file, e poi
+		trasformalo in rds, della stessa forma e guisa dei file dentro  LINCS/metanalysis/,
+		e salva il risultato dentro LINCS_lorenzo/mithril_metanalysis_drug_wise
+
+	# Controlla connect_score algo se puoi lanciarlo sulla cartella mithril_metanalysis_drug_wise (o prima ancora se lo lanci su metanalysis_drug_wise dovrebbe darti gli stessi risultati, se carmelo ha detto che cmq R prende tutti i file uno a uno e ci fa un ogetto unico.)
+	# se si può fare, allora:
+	# Poi runna connectivity score cambiando la cartella della metanalisi con LINCS_lorenzo/mithril_metanalysis_drug_wise (E controlla che non servano altre cartellonze se necessario. MAKE SUPER SURE ALL THE LINCS DATA ARE TAKEN FROM THIS FOLDER?)
+
+	BREAK ALLA PRIMA DRUG.
+
+	sto facendo la prima parte di creare un metanalysis_drug wise dentro il file R (!!!) map_metnalaysis_gene_wise_to_drug_wise.
+
+	lanciato map_metanalysis_gene_wise_to_drug_wise.R  h11:26 nov21,
+	che fa la prima parte, parte 1.
+
+	ma lo devo dividere in una trentina di cose diverse così è piu veloce. Parallelizzarlo un pochino. lanciato tipo alle 12:30, sono le 16.48 sta ancora facendo, ma siamo alla t, quasi fatto spero.
+
+	ma intanto creiamo l script (in locale) per lanciare mithril. creato, da testare, è un forloop su range(30), cosi fa mithril per le prime 30 drugs..pperò cosi lo devi fare a mano x100 volte.. no allora non va bene, unisci le due idee di prima, cioè fai 30 loops in cui in ognuno di questi 30 chiami probabilmente altri python scriptsini (deve eessere uno script separato o puo essere una funzione che mandi in parallelo? forse la seconda, o che mandi con Popen), con 100 indici, e questa volta questo seconod script con 100 indici chiama mithril con subprocess.run così itera uno per uno. cosi li fa. ma PRIMA DI CIO DEVI ASSICURARTI DI AVERE LA CARTELLA CON SOLAMENTE L INPUT DI INTERESSE, MA CONTROLLA XKE MITHRIL INPUT HA DENTRO DI SE 14K FILES ORA COME ORA
+
+	# 22 11 2024:
+	ha finito di girare map_metanalysis_gene_wise_to_drug_wise.R. 
+
+	# ULTIMA DRUG: zuclopenthixol_6h_24h.mi
+
+	sddivisa mithril input in drug_signature e disease_signature
+
+	niente, elimina il parallel_wrapper perché adesso hai mithril 3. devi quindi crearti un input per mithril 3 DAI VARI INPUT DI MITHRIL 2.
+
+	si rifà cosi. per lanciare mithril
+
+cambiati i gene  names da names a id prima dilanchiare mithril3.
+
+intanto prova a lanciare mithril tre:
+
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril-batch -verbose -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 30 -i MITHRIL/input/drug_signature/LINCS_metanalysis.mi -o MITHRIL/output/drug_signature
+
+fatto, ma TODO per prosima settimana, mappa i gen names in gene ids dentro LINCS_metnalaysis... 
+
+chissa qnt ci mettera ma secondo me lo scrivera mithril. cmq bel programmino ha fatto il salvatore. 
+
+Ha girato, ma non mi ha detto in quanto,
+
+
+25/11. map gene names to gene ids in mithril,?
+
+dentro mithril/output/drug_signature ci sono 19332 files. 19332/(3timesteps*2mithriloutputfiels) =3222drugs. OK 
+
+# TRANSLATE MITHRIL OUTPUT to TSR output:
+da capire che input prende conncetivity_score calculation. Il metanalysis file? devo quindi riscrivermelo dividendo i files in gene files con tutte le drugs?
+
+il cacolo va dentro laa cartella metanalysis, prende tutti i geni, li unisce in un unica tabella e poi calcola il conn. score. quindi forse possiamo sempicemente fare la abela dai drug files
+
+#fermi tutti
+Che cazzo ho lanciato? che ho output/drug_signature e ouput/drug_signature_gene_names ?? e sono gli stessi 19k files, ma dentro, hanno valori di PF diversi???''
+BO RILANCIATO ESATTAMENTE COSÌ:
+
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril-batch -verbose -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 30 -i MITHRIL/input/drug_signature/LINCS_metanalysis.mi -o MITHRIL/output/drug_signature
+
+PRENDE COME INPUT LINCS_metanalysis.mi che ha i nomi come IDs, e li salva dentro drug_signature. Forse l'avevo già fatto? e x questo mi viene diverso da drug_signature_gene_names? però dovrebbe avere lo stesso seed 1234 xke viene diverso??
+
+
+Gene Id Gene Name       Perturbation    Accumulator     pValue
+        6197    RPS6KA3 -0.03502810866652144    -2.451928271007403E-4   0.367816091954023       0.4799880439843422
+        chebi:456216    ADP(3-) 0.039708519562651534    0.039708519562651534    0.15442278860569716     0.443107855591166
+        6196    RPS6KA2 -0.16282188347033213    -7.202356038771285E-4   0.03948025987006497     0.389749324581089
+        chebi:30616     ATP(4-) -0.0488018656251398     -0.0488018656251398     0.09895052473763119     0.4332405944678668
+        5594    MAPK1   0.028726769806914836    0.019758397972085937    0.33233383308345826     0.47183086911386524
+        5595    MAPK3   0.09942598330474427     0.014864442131229061    0.09745127436281859     0.4332405944678668
+        5598    MAPK7   -0.0025514278944642256  -0.017031603081853627   0.5272363818090955      0.5471195672047328
+        9252    RPS6KA5 -0.0027827385655465565  -0.0015377436863978566  0.5392303848075962      0.5544578797486395
+        6195    RPS6KA1 0.004272897990275218    -2.254480559549816E-4   0.4077961019490255      0.4903480229547373
+
+Gene Id Gene Name       Perturbation    Accumulator     pValue
+        6197    RPS6KA3 0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        chebi:456216    ADP(3-) 0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        6196    RPS6KA2 0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        chebi:30616     ATP(4-) 0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        5594    MAPK1   0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        5595    MAPK3   0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        5598    MAPK7   0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        9252    RPS6KA5 0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+        6195    RPS6KA1 0.0     0.0     4.9975012493753125E-6   4.9975012493753125E-6
+pert scores  sono 0 dentro i gene_names
+Allora facendo for i in *; do more $i | cut -f5 | head; done dentro output/drug_signature_gene_names vedo che i pert scores sono tutti 0. quinid il problema osno quelli. sticazzi ce li scordiamo e li eliminiamo? sah DA ELIMINARE DIREI
+
+Chiedi a Salvo perche in un mithril file lo stesso gene appare piu volte con lo stesso perturb value? riposto nel codice
+
+    metanalysis_like_df=pd.DataFrame(columns=["gene","drug" ,"DE_log2_FC_6h","std.error_6h" ,"t.value_6h",\
+  "p.value_6h" , "adj.p.value_6h" , "DE_log2_FC_24h", "std.error_24h", "t.value_24h",\      
+  "p.value_24h"  , "adj.p.value_24h", "DE_log2_FC_6h_24h", "std.error_6h_24h", "t.value_6h_24h","p.value_6h_24h"])
+
+altro da chiedere a salvo:ci sono 14k geni dentro MITHRIL, ma 12k dentro TSR ? ce ne sono di piu perché? dovremmo metterne di piu? mettiti le risposte a queste domande nel powerpoint. E non ti preoccupare di cancellare cose gia fatte da lì only info aggiornate sul powerpoint, ho il log per il log.
+
+da chiedere a carmelo: xke metanalysis la 6h 24h non ha il adj p value?
+
+ decidi se usare tutti  i geni di mithril o tornare ai tsr only??. per ora li uso tutti
+
+
+ : che sono sti gene names tipo 'chebi' ??? PROBABILMENTE SONO GENI IN PIU CHE METTE MITHRIL CHE A ME NON INTERESSANO? DA SCRIVERE SULLE SLIDES. INTANTO LI CREO.
+
+BUG!!!
+NELL OUPTUT DI MITHRIL3:
+LE COLONNE CON NUMERI SONO 4, MA DOVREBBERO ESSERE 3 PERTURBATION-ACCUMULATOR-PVALUE!! c'è un problema con le colnnne! che cos'è il quarto numero??
+chiesto a Salvatore , è l'adj_pValue.
+aggiungilo manualmente con:
+
+for i in *; do if [[ $i == *perturbations* ]]; then echo $i; sed '1s/$/\tadj_pValue/' $i > tmp.txt; mv tmp.txt $i; fi; done
+STA GIRANDO su server!
+salvato un tar di cartella drug_signatures (ci ha messo tipo 4 ore!) nel caso questo scazzi, ma speriamo di no
+
+ci metterà altre 4 ore a fare questo rinominamento ma vabbe
+
+salvato un file detto EXAMPLEFILES dentro MITHRIL, con i nomi di exampledrugs da usare come esempi.
+
+lanciato
+python map_mith3_to_metanalysis_wrapper.py
+poiche farlo in iterativo ci avrebbe messo decisamente troppo, xke : 
+ci mette 8 secondi a drug, e  ascrivere i geni meno
+8*3222 ci mette 7 ore circa.  Anzi. 8 secondi solo sul pc con meno geni e drugs, sul server sono 10. QUindi parallelizzato con 
+30 cores.
+
+
+da aggiornare le slides  con questi updates. e pensare a cose pratiche di alto livello tipo, analisis dati ? visualizzazione DEscores? capire che cosa sto guardando biologicamente?
+# 9 12:
+Salvatore sostiene che va in saturazione il disco a fare la conversione da mith3 a tsr in parallelo, quindi fallo in sequenziale. Ci metterà 7 ore? sempre meglio dei 3 giorni che stava girando e ne ha fatti solo 336.
+
+Non sono 7 ore xke le 7 ore erano calcolate con solo 10 geni,m a ora li usiamo tuti e 14k...
+
+sono 1575.1 secondi per drugs  *3222 ora. sono 58 giorni. per aprire tutti i files e creare tutta la matrice.
+NON CI SIAMO.
+
+
+allora. iterativo gene singolo per gene singolo (ogni gene riapre i files drug), 7*3222drugs*14847genes = 93k ore. VA BENE. ANCHE NO.
+
+PROVIAMO A USARE l'iterative old, che apre tutte le drugs e fa una lista di tutti i geni insieme, ma adesso la lunghezza dei geni=1,
+infatti, vanno alla stessa velocita. ok è la stessa cosa. pero se faccio un gruppo di 10 geni?
+MA ATTENZIONE, se ci metto 10 geni per drug, NON SALE TANTO! QUINDI FALLA COSi! FAI ALMENO DEI CHUNKS COSI. UNA VOLTA APERTO IL FILE, COPI TUTTI I GENI.
+FALLA ITERATIVA COSI E BASTA. VEDIAMO IL TEMPO CON TUTTI I GENI? (E POI POTREI FARE 30 CHUNKS DI GENI FORSE). dovrebbe venire circa 1500 secondi per drugs perché dovrebbe essere lo stesso calcolo di prima. E infatti è lui. 58 giorni. è lui. probably viene 1575 secondi per drug, come visto prima.
+ se lo divido per 30 fa comunque un numero assurdo di giorni. cioe 1575*3222 1409 ore cioe 58 giorni. (59 anzi) meglio che 93k ore sicuramente quindi intanto terminiamo map_blablalbla_iterative.py NON VA USATO. VA ELIMINATO PROPRIO. LO TENGO X I POSTERI PER MEMORIA ma lo rinomino _DA_ELIMINARE. iterative_old.py è quello ce funge il meglio (58 giorni) al momento. MA il parallel allora quanti giorni ci metterebbe? Tanti xke apre i drug files ogni volta per ogni gene.
+ Bisogna fare chunks di quello iterative_old, e sperare che 30 chunks di quello li ci mettano 58/30=1.9 giorni...
+ sono 59 secondi per 1/30 dei genes che sono 494. 59*3222/3600 sono 52 ore. FATTIBILE COSI. facciamolo cosi. oggi pome lo mando. Ma intanto lascio girare questo che sta girando per un chunk solo 'fatto a mano', da 400 a 400+len(genes)/30, e magari mando un altro paio di chunks fatti a mano che me futt. Beh me futt pikke cmq ognuno di questi ci mette due giorni quindi non mi risolvo nulla di che. Al max Ne posso fare un monogene che ci mette 6 ore? comunque non ne vale la pena. Vabbene lanceremo i chunks. Lanciati 29 chunks con wrapper_2.py lanciati chnks per 29 core (xke uno da 400 a 400+494 sta gia andando)
+
+per farlo con bash:
+example. GENE_NAME='MEF2C'
+perturbation:
+more zuclopenthixol_24h.perturbations.txt  | grep 'GENE_NAME' | cut -f5 | head -n1
+pvalue: 7
+more zuclopenthixol_24h.perturbations.txt  | grep 'GENE_NAME' | cut -f7 | head -n1
+adj_pvalue:8 
+more zuclopenthixol_24h.perturbations.txt  | grep 'GENE_NAME' | cut -f8 | head -n1
+
+
+gene_name=get_gene_name(gene)
+mkdir gene/
+
+
+
+GENE_NAME='RPS6KA5'
+GENE_ID='9252'
+mkdir ../$GENE_ID
+for drug_file in *6h_24h.perturbations.txt;do
+  arrIN=(${drug_file//_/ });
+  drug=$(echo ${arrIN[0]}); 
+  echo $drug;
+  pert_24h=$(more $drug'_24h.perturbations.txt'  | grep $GENE_NAME | cut -f5 | head -n1);
+	pvalue_24h=$(more $drug'_24h.perturbations.txt'  | grep $GENE_NAME | cut -f7 | head -n1);
+	adj_pvalue_24h=$(more $drug'_24h.perturbations.txt'  | grep $GENE_NAME | cut -f8 | head -n1);
+
+	pert_6h=$(more $drug'_6h.perturbations.txt'  | grep $GENE_NAME | cut -f5 | head -n1);
+	pvalue_6h=$(more $drug'_6h.perturbations.txt'  | grep $GENE_NAME | cut -f7 | head -n1);
+	adj_pvalue_6h=$(more $drug'_6h.perturbations.txt'  | grep $GENE_NAME | cut -f8 | head -n1);
+
+	pert_6h_24h=$(more $drug'_6h_24h.perturbations.txt'  | grep $GENE_NAME | cut -f5 | head -n1);
+	pvalue_6h_24h=$(more $drug'_6h_24h.perturbations.txt'  | grep $GENE_NAME | cut -f7 | head -n1);
+
+	#echo '24h '$pert_24h;
+	#echo $pert_24h $pvalue_24h 'ciaone' $adj_pvalue_24h;
+
+	druggenefilename=$GENE_ID'_'$drug'.txt'
+	echo $GENE_ID$'\t'$pert_6h$'\t'NA'$'\t'NA'$pvalue_6h$'\t'$adj_pvalue_6h$'\t'$pert_24h$'\t'NA'$'\t'NA'$pvalue_24h$'\t'$adj_pvalue_24h$'\t'$pert_6h_24h$'\t'NA'$'\t'NA'$pvalue_6h_24h  >> ../$GENE_ID/$druggenefilename
+
+	done
+
+
+esempio:
+genes_list[367]
+Out[90]: '6143'
+
+name_from_id(genes_list[367])
+Out[91]: 'RPL19'
+
+gene_id='6143'
+gene_name='RPL19'
+
+mkdir gene_id
+e salva nella cartella geneid ste cose
+
+more  'zuclopenthixol_24h.perturbations.txt'  | grep $GENE_NAME | cut -f5 | head -n1
+
+niente, fatto bash_script_incredibile, e niente, usando un gruppo di 10 geni, ci mette 9 secondi a drug..LOL. è leggermente più lento bash di python. eh vabbe. Forse c'è un modo piu effiicente di usare more o less e magari usare grep dandogli una lista di input? però poi i pipes dopo come li fai su una lista di input? e dove li salvi? probabilment e non si può. perdita di tempo. ok.
+
+# 13 12
+
+211537.1 sec e 209269.7sec le due iterazioni del old_mith3blablblabla (lanciato con wrapper2.py). errore a scrivere un file:
+
+gl:G13153 (Gal)1 (GalNAc)1 (GlcNAc)1 (Ser/Thr)1 gene 281 of 494 elapsed time 211537.1
+
+Traceback (most recent call last):
+  File "/home/signorini/drug_repurposing/modules/map_mith3_drug_wise_output_to_gene_wise_metanalysis_iterative_old.py", line 135, in <module>
+    df.to_csv(gene_wise_filename, sep='\t')
+  File "/home/signorini/miniforge3/lib/python3.12/site-packages/pandas/util/_decorators.py", line 333, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/signorini/miniforge3/lib/python3.12/site-packages/pandas/core/generic.py", line 3967, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/signorini/miniforge3/lib/python3.12/site-packages/pandas/io/formats/format.py", line 1014, in to_csv
+    csv_formatter.save()
+  File "/home/signorini/miniforge3/lib/python3.12/site-packages/pandas/io/formats/csvs.py", line 251, in save
+    with get_handle(
+         ^^^^^^^^^^^
+  File "/home/signorini/miniforge3/lib/python3.12/site-packages/pandas/io/common.py", line 749, in get_handle
+    check_parent_directory(str(handle))
+  File "/home/signorini/miniforge3/lib/python3.12/site-packages/pandas/io/common.py", line 616, in check_parent_directory
+    raise OSError(rf"Cannot save file into a non-existent directory: '{parent}'")
+OSError: Cannot save file into a non-existent directory: '/home/signorini/drug_repurposing/tsr/output/drug_signature/LINCS_lorenzo/metanalysis_mith3_gene_wise/(Gal)1 (GalNAc)1 (GlcNAc)1 (Ser'
+
+
+fanculo. c'era un 'gene' strano che dev essere un qualche metabolita che si chiama (Gal)1 (GalNAc)1 (GlcNAc)1 (Ser e probabilmente gli spazi gli hanno dato problemi a scriverlo ma che cazzo ne sapevo che c'erano gli spazi nei cazzo di normi dei cazzo di metaboliti porca troia adesso lo devo rimandare tutto.
+
+(Gal)1 (GalNAc)1 (GlcNAc) 1 (Ser
+
+il problema era nel nome completo gl:G13153 (Gal)1 (GalNAc)1 (GlcNAc)1 (Ser/Thr)1 : c'è un /. 
+intanto, lanciamolo SENZA METABOLITI, CHE HANNO / NEL NOME, 
+
+
+LANCIATA NUOVA VERSIONE senza caratteri speciali (50 / e 10 : (il : non dovrebbe dar problemi ma vabbe li ho levati cmq)), e mi da circa 67/70 secondi a drug, quindi stesso tempo piu o meno. lunedi pome/sera dovrebbe aver finito si spera,. aggiunto anche un try except che se fallisce il file writing continua  eprova  ascriver eil prox file senza bloccare l esecuzione dello script.
+
+16-12-2024
+FALLITO per qualche oscuro motivio c'era una cartella vuota dentro i mithril output che ha bloccato il ciclo...rilanciato nuova verisone che checkka che tutti i nomi nella cartella output siano file apribili prima di aprirla..dovrebbe finire giovedi mattina.
+#18-12 sta andando 2.2k/3k la mattina. a due terzi della strada. giusto. 
+
+guarda slides x sapere cosa fare. step 0, rifai diease perturbations con mithril3 perdios.
+
+#15/01/2025: rifare disease perturbations con mith3
+
+prima, agginto scriptino txt_to_Rds, che prende tutti i txt nella cartella tsr/output/drug_signature/LINCS_lorenzo/metanalysis_mith3_gene_wise/ e li trasforma in Rds, cibo per il nostro connectivity score calculation.
+
+RUN txt_to_Rds su server fatto.
+
+
+16/01/2025 ancora rifare disease perturb con mith3..
+
+lanciando 05.als_NYGC si vede che mancano dei gene files perhceé
+
+AAAH no devo rrriconvertire i nomi files da gene_id a gene_name!!
+Allora PRIMA FACCIO QUELLO, POI CONVERTO DA TXT A rDS...
+
+warning, big BUG in map_mut3_drug_wise_output_to_gene_wise_metanalysis_iterative : avrei dovuto mettere gene invece che gene id nella colonna gene,
+e sembra cosi dal codice come è scritto, ma 'gene' nell'iterazione è un gene id, non un gene name. oh well
+gotta create a metanalysis_gene_id_to_name.py..
+fatto, creata cartella gene_id in cui ho messo tutti i metanalysis files col geneid al posto del genename, e poi lanciato metanalysis_gene_id_to_name.py , x creare i .txt corretti dentro metanalysis_mith3_gene_wise/, e poi lanciato Rscript txt_to_Rds.R per trasformare questi nuovi txt in Rds, e 
+poi compressa la cartella metanalysis_mith3_gene_wise/gene_id perché non mi serve piu e la ptrei anceh eliinare.
+
+DA FARE DOPO PRANZO:
+Poi devo eliminare la cartella gene_id/ visto che mi basta l'archivio compresso
+lanciare Rscrpit/als_NYGC/05.bin_chen, e capire errori
+l'errore che da eè
+cannot open compressed file 'output/drug_signature/LINCS_lorenzo/metanalysis_mith3_gene_wise/BRSK2_9024_metanalysis.Rds', probable reason 'No such file or directory'
+
+e andando a greppare anche dentro gli outpu drug wise di mithryil, non c'è ne BRSK2 ne 9024 O: quindi devo filtrare per
+dei nuovi geni di interesse, o make sure che insomma i 150 most significant ci siano tutit
+
+
+# c'è una discrepanza tra l'input di mithril (drugwise metnalaysis con DEG) e l output di mithril, che sebbene sia 14k geni l output e 10k l input, non tutti i geni dentro l input osno nell output, xke nnell output si aggiungono dei metabolitozzi, ma si levano dei geni x qualche motivo, e questom i da un errore xke qnd caloclo i 150 most significant genes, la lista dei geni è presa da una list a vente alcuni geni che nell output di mithril non ci sono,
+quindi odvrei aggioranre questa lista di geni in qualche modoz.
+ma prima: quali geni sono discrepanti?
+fatto con i seguenti comandi:
+
+more zuclopenthixol_24h.perturbations.txt | cut -f4 | sort | uniq  > ../mith_out_genes_list.txt 
+more MITHRIL/input/drug_signature/zuclopenthixol_24h.mi | cut -f1 > other_data/mith_in_genes_list.txt
+poi manualmente levati all'inizio e alla fine di mith_out_genes_list i metaboliti e i miRNA, e fatto
+diff mith_in_genes_list.txt mith_out_genes_list_gene_only.txt  -y > diff.txt
+e c'è una certa differenza! hmmmmmmm
+vabbene teniamocela
+e lo script che crea i most_significant genes è 02als_most significant, e vedo che chiama modules/MostSignificantGenes e vedo che uest ultimo prende Lincs genes da bing_genes_list, quindi dobbiaom dargli come lincs genes list, la lista other_data/mith_out, quindi prendo quella lista, aggiungo delle colonne di landmark e bing genes,ti da ; e la porto dentro tsr/data, e poi cambio dentro config.R la line:
+
+drug_signature_cfg$bing_genes_filename <- "data/LINCS-GSE92742/bing_genes.csv"
+in:
+drug_signature_cfg$bing_genes_filename <- "data/LINCS-GSE92742/mith_out_genes_list.csv"  #attenzione ricorda che qui dentro non ci sono solo geni ma c 'è di tutto, anche metaboliti e miRNA
+e con create_bing_genes_list_with_mith_drug_out.py creo la mia lista, lancio 02.als.. e mi crea  tre files! (anche se da uno warning alla fine)
+daje! something is likely off..in effetti i 150 geni sono diversi tra DEG e mith
+
+03 dà errore cmq.. e non va..  manca TPTEP2-CSNK1E_NA_metanalysis.Rds come 06, sono entrambi 150_MS_genes
+04 va! 5 minuti !!!! APPLAUSI!! è il 150_landmark genes!! chissà che succede! vediamo domani dai. e magari guardiamo pure un outputtino di questo?
+05 non va:   In gzfile(file, "rb") : cannot open compressed file 'output/drug_signature/LINCS_lorenzo/metanalysis_mith3_gene_wise/SHANK3_NA_metanalysis.Rds', probable reason 'No such file or directory'
+06 non va blabla ..file TPTEP2-CSNK1E_NA_metanalysis.Rds', probable reason 'No such file or directory'
+vedo che c'è un _NA_ nel nome di sti files... ?
+07 non va stesso di 05 (sono entrambi bin chen, ma diverso algoritm) /SHANK3_NA_metanalysis.Rds'
+
+prima di rifare 03 04 05 , 06 e 07, altra modifica al calcolo del connectivity score, se prende il tvalue invece che il pvalue, deve anche prendere una colonna del fc per vedere se è + o- xke il tvalue ha anche l'info di + o - dentro di se mentre il pvalue no...
+
+sto rifacento quindi un mio calcolatore di conn. score
+e lo rpovo prima con i DEG data di lincs e di disease, e cioé devo vere i metadata di LINCS, che non avevo in formato csv xke li ho solo rds, quindi ho creato un Rds_to_csv.R per cambiarli x leggerli col mio conn score calculator in python..
+
+è nu burdell, xke in realta 02blabla, stava prendendo gli als_NYGC_150_most_significant, ma in realtà, questi als_NYGC_150_most_significant,
+sono fatti a partire da als_NYGC_signature, che NON È MITHRIL BASED, QUINDI SE GLI DO ALS_NYGC_MITH MI FDA ERRORE,
+QUINDI DA RIFARE ANCHE SIGNIFICANCE FILTERING DATABASE, QUINDI ANCHE SE FILTRARE PER I 150 MOST SIGNIFICANT SUL LINCS NON MI DA PIU ERRORE XKE IO NON FILTRO TECNICAMENTE SU LINCS MA SU DISEASE, SU LINCS FACCIO SOLO L INTERSEZIONE FRA I FILTRATI SU DISEASE E I LINCS IN SE, SUI DATI DI DISEASE MI DA ERRORE XKE NON HO LE COLONNE UGUALI, E QUINDI NIENTE, DEVO RISCRIVERMI TUTTO CON LE COLONNE CHE VOGLIO IO
+
+STEP:
+-fare disease con mith3 FATTO
+-FARE UNA CARTELLA als_NYGC_mith (als_NYGC_lorenzo la lasciamo come normale ma semplicemente rilancait da me) NON FATTO, lo metto dentro als_NYGC, ma ci scrivo che è mith signature.
+-FARE UN filtering di als_NYGC_mith sui geni di interesse, facendo un nuovo script in python, 'parallelo al 02 blabla '
+-FARE il connectivity score da me.
+
+perché se no è troppo incasinato.
+
+quindi a questo punti, il file mith_out_genes_list è superfluo, xke non lo usiamo piu dentro ocnfig drug_signature_cfg$bing_genes_filename <- "data/LINCS-GSE92742/ xke ora i 150 signature con gli script di R li teniamo solo con i FC/DEG data. e quindi diventa desueto.
+
+#20 01 2025 
+rilancia mith3 disease, FATTO!  ma attenzione servono geneIDs non names! quindi cambialo in geneIDs, e SALVATI UN DIZIONARIO LOCALE UNIVOCO DI GENE NAMES TO GENE IDS!
+
+# poi ovviamente studiati il supp material.
+
+mith3 name to id map sto aggiungendo la parte per cambiare l'ID in name map, e mi snon salvato un dizionario da usare dopo cun un map di gene id to symbol UNIVOCO.
+attenzione in mith 3 name to id map, abbimao visto come non solo ci sono 198 geni che non sn presenti nel mi o diionario (che sono 11k se usiamo il dizionario di alaimo), ma addirittura, ci sono 480 cosi che una votla convertiti sono duplicati, e di questi la maggior parte (478) hanno FC diversi, quindi li ho eliminati sia i 198 che i 480.. E occhei. e ho creato un nuovo als_NYGC_gene_signature_gene_id.mi, e questo passaggio andrà fatto ogni volta (magari qnd lo faccio su IPF, lo streamlinno)  definirò questi duplicati che nono sembrano dupolicati finche non si trasformano come duplicati id
+
+runnato mithril3 con qst diesase e ha funzionao. ripulita la cartella server mith/output/disease con solo als buono.
+:)
+
+aggiunto data exploration nel notebook
+
+# domani: aggingi data exploration di mith3 drug, ma riguarda qui nel log se il 150 mos  significant era fatto bene o da riare/ rifai 150 most significant per il disease nuovo chen on lo ha / non farlo e fallo come possibile subset nel tuo nuovo connectivity algorithm...
+
+E SE FACCIO PEARSON CORRELATION ANCHE invece che connectivity map? E VEDO COSA FA?
+
+todo: poracciata: grid search di parametri di geni che massimizzano (minimizzano) il connectivity score (LOL!) no è una poracciata non ha senso
+
+
+#
+DOMANDE
+
+We construct a reference drug expression
+set by taking the difference between the gene expression values of the samples treated with a
+compound of interest and untreated samples. 
+
+
+# se prendi tutti i geni di drug signature, ma solo gli x most significant di disease, questo non ti fa si che al variare di x ti vari il cs?
+
+DOMANDA IMPORTANTE
+#s=len(disease_disregulated_genes) # num_tags_up(down) in Catalano, there it is the length of the disease genes+the drug vector genes. ma xke? cioe  xke sono comuni, sono i rank dei genes in drug deve essere:
+  up_tags_rank <- merge(drug_signature, sig_up, by.x = "ids", by.y = 1)  COSA FA? 
+
+
+DOMANDA:
+perche rank on tvalue e non on (pvalue) ma soprattutto on fold change?
+
+
+il vecchio algoritmo binchen mostsignificant 
+prende i geni firma farmaco, poi prende intanto intersezione con LINCS, e fa solo geni comuni, e vabbe ok.
+
+Dopodiche prende i 150significativ (dopo intersez), ordina x tvalue (assoluto) del disease 150 significativi del disease, e quindi ho 150 di disease e drug, ma nella nuova versioe, ne usi 150 della malattia e invece del farmaco li usi tutto, si fa il rank e elimina i geni che non sono trovati nella malattia
+input del suo  c score come disease sono i 150 piu significativi de9 geni (ovviamente previa che siano intersezione fra geni e drug) e come dug tutti i drug (nitersezionat) (mentre in quello vecchio suo era solo i primi 150 piu significativi)
+
+quindi ranko su tvalue per drug, e poi prendo i geni in comune con la malattia (NUOVO ALGORITMO), e calcolo il c score con quei numeri. 
+perchè si ranka su tvalue e non su foldchange? a noi interessano sovra e sottoespressi, quindi devo sapere il segno, qnd il fc è negativo lo è anche il tvalue e viceversa, però per la drug ordino per t value, e di fatto, cioè ordino per la signifcatività statistica dle fold change e non per il fold change.
+
+c'è una cosa da dire lmer NON TI DA IL PVALUE, E QUINDI NO POSSO FARE il pvalue, xke non so i gradi di libertà. 
+per la malattia mi serve il segno. per il farmaco non mi interessa.
+
+
+# classi utili del nuovo TSR system. :
+
+DGEMergeByGeneSync:
+	iNPUT:
+		output dru signature/LINCS/ suoi6h.RDS 10k geni
+		output: stessa cosa fatta a farmaco.
+DGEMergeByGeneParallel
+
+
+Questo fa l'algo, e ti serve x calcolare il connectivity score x lui va per drug. stai chiacchierando con lui ma non ti serve piu xe te lo fai da te. qua non serve xke è piu veloce che ti fai da te. Cmq pero vabbe è utile xke ti prende il LINCS  drug signature e te lo mette drug wise invece che gene wise, il che è COMODO. perché è qll che ti serve x mithril anche. il resto non ti serve.
+
+genesymbolconverter  è una classe x convertire.
+
+# capire che cos e metanalysis drug wise sono mith o deg?
+
+RIVEDITI TUTTI I MAPPING DI TUTTO, E IL TSR PIPELINE, E NUMERALI, E GUARDA QUALE È QUALE !
+pero prima ancora usa la classe di catalano PER CAMBIARE GENE NAMES TO GENE IDS A TUTT COS PRIMA DI SUBITO!
+
+
+
+
+2.1) Only take significant genes: #TODO DA eliminare o DA CAMBIARE. I 150 MOST SIGNIFICANT GENES DEVE ESSERE UNA LISTA FATTA SUI GENI DI DISEASE CHE SONO PRESENTI ANCHE DENTRO DRUGS, E PERO DEVE ESSERE TENUTA SOLO PER DIESASE, QUESTO LO FARA IL MIO CNNNECTIVITY SCORE CALCULATION ALGORITHM
+	scripts: FUZIONANO per DEG data, previa creazione di sottocartella most_significant_genes
+		02.als_NYGC_most_significant_genes
+
+
+# per MITH Data:
+python/drug_reporposig/modules/filter_most_significant.py # che è sta roba? probabilmente non lo uso piu? checcka tutto sto cucuzzaro
+QUESTI QUA SOPRA NON LI DEVO USARE PIU PROBABILMENTE
+
+27 01 a che pt o er
+
+fai funzione che loadda 150 landmark genes (come gene id)
+fai funzione che calcola 150MS genes comuni sia a drug che a disease dentro il connectivity score
+scaricati 10 drugs 6 24 e 624 del drug based mith3, e vedi se hai un drug based DEG!! si ce l'ho, ma sono file Rds, quindi, scrivere un coso che li trasforma in cdv o ppure leggere unfucking rds in python (la seconda, guarda nel data analysis che c'è)
+-aggiungi gene id a DEG data.
+
+#################
+# rinominate le cartelle disease in disease_original e le cartelle disease_lorenzo in disease, e le cartelle lincs in LINCS_original e LINCS_lorenzo in LINCS. 
+ 
+Aggiunta funzione a	modules/2_mith3_name_to_id_map  To translate gene to gene_id dentro als_NYGC_signatures ((ignore the fact that it's called mith3 the script) e creare als_NYGC_signatures_gene_id.csv con un po' meno geni (1500k e tutti univoci)
+
+fatt data exploration of mith and deg disease (als_NYGC) data. c'è anche un paragone tra il DEG originale cono solo symbols e il DEG filtrato per gene id unici.
+
+TODO remove load signatures  dal conf xke tanto è un pd.read
+
+A qsueto punto metanalysis_mith3_gene_wise è desueto e map_mith3_to_metanalysis_wrapper2 e map_mith_3_blalba_iterative.py sono DESUETI	
+creato ultimato map_mith3_drug_output_to_metanalysis_drug_wise, che prende ogni output di mithril.perturbation, che è un file con 250k o 270 nn ricordo rows, una per  patwhay per gene, e lo traforma in un metanalysis di tsr pronto per essere preso in input dal connectivity score, concatenando i 3 timestep perturbations, e levando le pathway e tenendo una row per gene (geni uguali in pathway diverse hanno la stessa perturbation value ,quindi il mith3 output è i nrealta pieno di doppioni), e agginugendo una t-value like statistic (chè non è proprio uguale al tvalue xke il tvalue ha anche il segno, è solo un oppostodi un pvalue), ma il nostro codice di connectivity dovrà poter funzionare anche solo sul pvalue.
+
+lanciato 5_map_mith3_to_metanalysis_wrapper su server
+da vedere le cose desuete domani e fare pulizia dell'output dentro LINCS!
+e concluso di fare. tutti i files salvati su LINCS/metanalysis_mith3_drug_wise/DRUGNAME_metanalysis.csv, controlal domani che ce ne siano 3222 su server.
+BENISSIMO. E DOMANI POI DOPO LE PULIZIE PORTALI TUTTI SU SUL IPYDB. E DOMANI POME C'È C. CATALANO
+
+#29 01
+
+prima di fare il di cui sopra: aggiungere a 3_mith_to_tsr_disease il fatto di prendere solo le righe uniche di coso.
+. modificato 3_mith_to_tsr_disease e trovato BUG in MITHRIL in cui mancava il nome dell'ultima colonna, adj_pValue, sembra un problema di mith3 mithril, e non di mith3 mithril-batch, perché drug non ha questo problema. L'ho scritto dentro MITHRIL come funge
+
+fatto load_drug_signature dentro loader. per loaddare le drug signatures
+PROBLEMA: DEG DRUGS ANCORA NON HA i gene ids: forse l avevo scritto prima: riguardati le cose degli ultimi giorni e fatti il translation di gene ids di drug deg signatures. Disease Deg e Mith sono fatti. Magari scaricati copilot e fai far tutto a copylot? chissà.
+
+# 30/01
+load drug signature.
+DEG               														DATA Genename GeneId   P value   adj Pvalue Tstat  separateperts
+	single drug
+	/LINCS/metanalysis_drug_wise/drug_meta       SI    SI    NO        SI         SI         SI     NO 	
+	all drug
+	CYCLE.OVER.SINGLE.DRUG                       SI    SI    NO        SI         SI         SI     NO 
+	MITH/input/LINCS_metanalys                   SI    NO    SI(quasi) NO         NO         NO     NO
+
+MITH
+	signle drug
+		tsr/output/drug_signature\
+		lINCS/metanalysis_mith3_drug_wise/\
+		DRUGNAME_metanalysis.csv                  SI    SI    SI         SI        SI          SI     NO
+
+	all drug
+		CYCLE.OVER.SINGLE.DRUG                    SI    SI    SI         SI        SI          SI     NO
+
+
+trovato bug!
+nello scrivere i nomi dei files di drug mith, le cose () sono diventate - . DOVE? su mith output drugs ci sono. mith input drugs NON CI SONO, IL BUG È DENTRO MITHRIL!!!
+
+IL BUG È DENTRO MITHRIL. DA FARE UN NUOVO FILE O MEGLIO O MEGLIO AGGIURNARE ANCORA UNA VOLTA 6_ PERCHEÈ OLTRE AL RESTO, RICONVERTA I NOMI CON LE PARENTESI IN NOMI SENZA LE PARENTESI, ED ANZI, PRIMA ANCORA, CONTROLLA CHE TUTTI I NOMI DI MITHRIL DRUG INPUT E MITHRIL DRUG OUTPUT SIANO UGUALI. RENDILA UNA COSA A SE STANTE CHE SPERABILMENTE RIPARI SALVATORE.
+
+facciamolo anzidentro bash
+
+1) check diff etween mith input filnemaes and mith output filenames
+ : X_bugfix: sono
+ {'r(-)-propylnorapomorphine', 'LINCS', 'tropanyl-3,5-dimethylbenzoate', '1,2-dichlorobenzene', 'terreic-acid-(-)', 'RHO-kinase-inhibitor-III[rockout]', 'hydrastine-(1r,-9s)', 'ephedrine-(racemic)', 'androsta-1,4-dien-3,17-dione', 'N-(3-acetamidophenyl)-3-chlorobenzamide', "3,3'-diindolylmethane", 'BAY-K-8644-(S)-(-)', 'epigallocatechin-gallate-(-)', '4,5,6,7-tetrabromobenzotriazole', '10H-phenothiazin-10-yl)(p-tolyl)methanone', 'parthenolide-(alternate-stereo)', 'cyclo-[Arg-Gly-Asp-D-Phe-Val]', 'methyl-2,5-dihydroxycinnamate', 'quinpirol-(-)', "7,4'-dihydroxyflavone", "5'-guanidinonaltrindole", '3,6-dimethoxyflavone', 'ibuprofen-(S)', '2-(biphenyl-4-ylsulfonamido)pentanedioic-acid', '7,8-dihydro-L-biopterin', "2',5'-dideoxyadenosine", 'hydroxytacrine-maleate-(r,s)', 'epicatechin-gallate-(-)', '9-methyl-5H-6-thia-4,5-diaza-chrysene-6,6-dioxide', '1,2,3,4,5,6-hexabromocyclohexane', '4-carboxy-3-hydroxyphenylglycine-(RS)', '16,16-dimethylprostaglandin-e2'}
+ #NB, il file LINCS_metanalysis.mi ha gli header di tutte le drugs, e sono corrette con le parentesi, quindi è sicuramente un errore di mithril.
+ # Sono abbastanza poche da poter essere corrette. sono quelle con la parentesi e la virgola, in cui sia la parentesi che la virgola vengono tradotte 
+in "-". Anche comprensibilmente, ma tant'è-
+# spono talmente pochi e con nomi talmente eterogenei tra , (, [ e avolte insieme, che li rinomino a mano e faccio prima, e poi rilancio il coso
+
+r(-)-propylnorapomorphine', 'LINCS', 'tropanyl-3,5-dimethylbenzoate', '1,2-dichlorobenzene', 'terreic-acid-(-)', 'RHO-kinase-inhibitor-III[rockout]', 'hydrastine-(1r,-9s)', 'ephedrine-(racemic)', 'androsta-1,4-dien-3,17-dione', 'N-(3-acetamidophenyl)-3-chlorobenzamide', "3,3'-diindolylmethane", 'BAY-K-8644-(S)-(-)', 'epigallocatechin-gallate-(-)', '4,5,6,7-tetrabromobenzotriazole', '10H-phenothiazin-10-yl)(p-tolyl)methanone', 'parthenolide-(alternate-stereo)', 'cyclo-[Arg-Gly-Asp-D-Phe-Val]', 'methyl-2,5-dihydroxycinnamate', 'quinpirol-(-)', "7,4'-dihydroxyflavone", "5'-guanidinonaltrindole", '3,6-dimethoxyflavone', 'ibuprofen-(S)', '2-(biphenyl-4-ylsulfonamido)pentanedioic-acid', '7,8-dihydro-L-biopterin', "2',5'-dideoxyadenosine", 'hydroxytacrine-maleate-(r,s)', 'epicatechin-gallate-(-)', '9-methyl-5H-6-thia-4,5-diaza-chrysene-6,6-dioxide', '1,2,3,4,5,6-hexabromocyclohexane', '4-carboxy-3-hydroxyphenylglycine-(RS)', '16,16-dimethylprostaglandin-e2'}
+
+fatto algoritmo in locale che fixa il bug, che salvatore ha detto non è un bug ma è una cosa voluta in cui l'algoritmo cambia il nome file se contiene qualunque carattere che non è alfanumerico - o _ , per motivi di sicurezza. che ci sta ma oh non lo sapevo.
+lanciato e
+ should only print LINCS files:
+LINCS_metanalysis_genename
+LINCS_metanalysis
+5'-guanidinonaltrindole_6h_24h
+5'-guanidinonaltrindole_24h
+che per qualche bizzarra ragione non ha cambiato?? wtf pero 5'-guanidinonaltrindole_5h ha funzionato. non importa li abbbiamo cambiati a mano
+
+cancellata cartella drug_signatures
+pulito un po MITH/output da cazzate
+ rinominata drug_signatures_correct_names in drug_signatures
+
+RILANCIATO 6_ e riscritti i file di mith3_drug_wise_metanalysis con i nomi iniziali corretti pre-mith3
+aggiungeerre nuova funzione in cui FILTRIAMO NOI UNA VOLTA E le drdrugs e SALVIAMO I DATI FILTRATI in metnalayssis blabla filtered.....
+ METANALYSIS BLABLA MANCO CE LI TENIAMO QUELLINON FILTRATI li comprimiamo, TANTO ABBIAMO MITH OUTPUT DA CUI ANDARE A RIPESCARE NEL CASO....
+
+1) FILTRARE TUTTI I DATI DI MITH3 METANALYSIS DRUG WISE E salvarli FATTO
+2) PROFIT, CAMBIARE IL IPYDB PERCHE NON USI IL FILTRAGGIO LI MA PERCHE LOADDI DIRETTAMENTE I FILTRATI FATTP
+
+poi, per le analisi,
+guarda i commenti sotto i grafici (e rifatti igrafici ben  metti a posto ipydb) fatto
+
+# create dentro preprocess_utils un ciclo che mi popola la cartella OUtuput/drugbalbal/LINCS/metanalysis_drug_wise_filtered e prenderò da quelli FATTP
+TODO GIRARLO SU SERVER QUANDO AVRAI INTERNET
+E COMPRIMERE LA CARTELLA OUtuput/drugbalbal/links/metanalysis_drug_wise xke non ci serve piu a sto punto. FATTO
+compressa anche la cartella metanalisis mith3 gene wise che non ci serve piu TODO DA COMPRIEMERE ANCHE SU SRVR
+
+CREATI CORRELATION PLOTS TRA PEARSON E SPEARMAN DI PVALUES E DI MAGNITUDES PER LE RUG CHE HO. POCA CORRELATION.FATTO
+DA FARE SU SERVER PER TUTTE LE DRUGS FACENDO con 7_filter_blabla.py 
+
+VEDERE le correlazioni tra DEG e mith data per tutte le drugs: plot_drugs_signatures_correlations.py su server: IN ATTO
+
+E VEERE SE C'È QAULCOSA CHE CORRELA O NO. 
+SPOILER NON DEVE CORRELARE COMUNQUE (sulle drugs prova no correla nulla)
+
+E poi portare gli output di plot_drugs_signatures_correlations su locale xke tanto sono pochi
+
+problema su plot_drug_signautres_correlations
+BRD-K24598397 non ha geni ? era impazzito lìper qualche motivo non aveva girato su questo gene.. ok
+
+c'era un bug nella comparazione dei pvalues!!!     # TODO BUG SU QUESTO COMPARE_DEG_AND_BLABLA E GLI INDIC
+    # QUANDO PRENDO GLI INDICI, VORREI CHE SIANO ORDINATI PER GENE,ÙPERCHE SI I GENI SONO COMUNI,
+    # MA NON SONO ORDINATI QUNI QND FACCIO CORRELAZIONI, LE FA A CASO!
+   e ora le correlazioni vengono meglio!!!!!!!!!!!!!!!!!
+   risolto, sortando values per gene id
+e caricare singola drug per volta dentro il drug foir cyccle, invece che loaddare all drugs e poi subsamplare con df[df[drug=='druginquestion']] è molto piu veloce! il pandas indexing è piu lento che loaddare il pickle! interessante.
+
+ATTENZIONE: 
+MODIFICA HEADER DI DISEASE_MITH_SIGNATURE.CSV E DI TUTTE LE DRUG_MITH_SIGNATURES.CSV E .PKL ECC, : IN MODO CHE ABBIANO OIL COLUMN NAME 'Gene Id' trasformato
+in 'gene_id'
+
+# per disease:
+modificato 3_mith_to_tsr_disease.py fatto semplice
+# per drug:
+modificato map_mith3_drug_output_to_metanalysis_drug_wise.py : aggiunto columns={'Gene Id':'gene_id' dove necessario, ri runnato
+TODO DA RIRUNNARE SU SERVER, RINOMINANDO PRIMA LA CARTELLA  mv metnalysys_mith3_drug_wise  metnalysys_mith3_drug_wise_original, poi creando una nuova cartella vuota  metnalysys_mith3_drug_wise in cui rirunnare map_mith3_drug_output_to_metanalysis_drug_wise tramite il wrapper 6_blabla che ci mette circa 20 min
+run 8_pickled_drug_data_wrapper also
+check that files inside metnalysys_mith3_drug_wise_original are the same as inside metnalysys_mith3_drug_wise except for the first row
+remove folder metnalysys_mith3_drug_wise_original
+
+FATTO IN LOCALE, SEMBRA AVER FUNGIUTO...
+da fare domani: implementare bin chen!
+e poi runnare connectivity con lo zuzzurellone nuovo di catalano anche..	
+
+BIN CHEN CONNECTIVITY IMPLEMENTATION:
+rank_genes sembra funzionare ma TODO l horancata su signature value e non su pvalue xke sul paper smbra ramki su signature value, mentre invece abbiamo sempre detto che ranca su pvalue. ,a vabbe. a parte questo sembra OCHEI. MA RILEGGITELO BENE E FAI RANK GENE SUNA VOTLA PER TUTTE DECIDI SU COSA RANKA
+MAGARI BINCHEN DIVENTA UNA CLASSE ADDIRITURE? BU
+un connect score ritorna..da controllare se è vero e paragonarlo insomma..
+implement MC
+ah no ma rank genes è sbaglaito xke V[j] ti ritorna il numero del gene id, non il numero della posizione che invece è l'index. V dovrebbe essere un bel dizionario
+
+V è iun dizionario dentro il random coso. che però va lentino? magari senza dizionario ci mette meno?
+
+lancio 9_calculate_bla 0 15
+9_calculate_bla 1 15
+e poi 9_1 mith=1 e 9_1 mith=0
+
+scaricati le droghe che hanno molto effetto:
+MOLTO negativo cscore, e pvalue=1
+axitinib_metanalysis.pkl
+axitinib_metanalysis.csv
+crizotinib 
+
+molto positivvo (2) cscore, e pvlaue =0
+meclocycline_metanalysis.csv
+NBI-27914
+
+probably c'è un errore nel modo in cui calcolo il pvalue del c_score? domani da vedere e da settare meeting col prof x caprie
+prima cosa domattina settare meeting direi? se internet funge. MA ho come il presentimento che non funga
+da opiare su ubuntu: log, modules, e gli connectrivity_scores output
+
+E da vedere mpo' che fa sto c score calculation e soprattotto sto pvale, magari solo per axitiniv e mecoloccucyclcine
+
+14-02
+talk soddisfacente con salvatore e alfredo. soprattutto con alfredo. rivediti punti chiave sul tup bel powerpoint
+
+18 / 02  .sto facendo studio di funzione su connect. score. inutile ma OK. XKE DOVREBBE VENI -2 2 MA CON COSE MOLTO SKEWED VIENE ANCHE -7...
+
+Vettorizando le operazioni per rendere tt piu veloce ho capito che il mio rank è 0 based mentre dovrebbe essere 1 based e qst porta a un bug in
+comput_KS perche
+
+    a=max([j/s-V[j]/r for j in range(s)])
+    b=max([V[j]/r-(j-1)/s for j in range(s)])
+    
+j-1 in b per j=0 è -1, e invece dovrebbe partire da zero, quindi in realtà quello va riscritto come
+
+    a=max([(j+1)/s-V[j]/r for j in range(s)]) 
+    b=max([V[j]/r-j/s for j in range(s)])
+    
+    return a, b, s, r
+
+which is equal to: 
+def vectorized_compute_KS(disease_disregulated_genes, V, drug_genes):
+    '''From Lamb et al., 2006 supplementary'''
+    
+    # number of disregulated genes:
+    s=len(disease_disregulated_genes) # TODO called num_tags_up(down) in Catalano,
+                                      # there it is the length of the disease 
+                                      # genes+the drug vector genes.
+    
+    # total number of genes in reference drug expression data:
+    r=len(drug_genes) #num_genes in catalano
+
+    
+    V_over_r = V / r
+    
+    # Calculate a and b using vectorized operations
+    a = np.max(np.arange(1,s+1) / s - V_over_r)
+    b = np.max(V_over_r - (np.arange(s) / s))
+
+    
+    return a, b, s, r
+(i checked)
+
+ora: da rifare indexing di V?
+
+#
+da leggere:
+Billy Zeng, Benjamin S. Glicksberg, Patrick Newbury, Evgenii Chekalin, Jing Xing, Ke Liu, Anita Wen, Caven Chow, Bin Chen, OCTAD: an open workplace for virtually screening compounds targeting precise cancer patient groups using gene expression features, Nature Protocols, in press
+
+saveRunner
+
+https://pubmed.ncbi.nlm.nih.gov/38314348/  thapsigargin funge!!
+va bene che la metanalisi ecc ecc siano le cose migliori ecc ecc.
+
+paprt
+
+
+BUG : DEG_cs_data ha lunghezza diversa da DEG_cs_data_mg.sort_values, la seconda è piu corta di 25 righe, ma ancora piu spaventosamente e snon entrambi ben maggiori di 9666, cioe 10.2k quindi ci sono centinaia di righe che non so cosa siano.
+stessa cosa per mith_cs_data vs mith_cs_data_mg, con gli stess inumeri. quindi ci dev'essere un qualcosa quando seleziono per quelle cose? c'è una duplicazione? bo. Risolto, c'erano alcune rows duplicate, probabilmente anzi sicuramente la mia iterazione parallela ricicla qualche row in più..
+
+# network based approahc:
+save runner: caso di studio specifico. prende drug di interesse, e le estende alle proteine target. dru targets
+list of disease genes. e mettono in un interactome, e calcolano prossimita fra loro con due misure, p e QC. p è avgSP tra drug e disease module. qst misura viene enhanced con un clustering QC. e vbb se i due moduli sono nello stesso cluster, e sono ancora piiu simili.
+E ottengono un valore dis imilarita  unica. e poi usano una sigmoide per restringere i valori.
+risultato: grafo bipartito in cui abbbiamo drug e disease odve un link nella rete è proporzionale al peso calcolato. Fanno validation di qst con connectivity score lol. 
++ Paragrafo random bonus: se spazio disease noto vicinanza  fra due disease d1 e d2 s e conosco d1 e r1, inferisco che r1 è anche di d2.
+
+OCTAD: input a un framework che integra tt il possibile. trascrittoma proteoma tt il possibile, è una lista di funzioni che uno puo richiamare per creare la sua pipeline. Il metodo di reporposing è sempre cscore?
+usa un encore
+
+# facciamo il conn scre con IPF
+sto creando un 2_gene_id_to_map a partire dalle cosefinali di 2_mith3-nameto-id to map, che dopo leverò e cambierò e anzi diventera ridondante percje lancera mithril diretto coi gene ids perfietos. (disease wise (drug wise no o so))
+
+da implementare 3 per il notebook. xke il mith output è trabllonzo. ma lo scriviamo comen connectivityu input dentro un connectivity cartellina che dicici?
+
+
+da finire l'abstract per BIT.
+
+
+big refactoring of step3 mith to out. creata la cartella connectivty score, con input e output. refactored output col names
+# Added bug fix from mithril output
+girato con ipf, adesso l input di CS di mithril si salva dentro connectivity_score/input, ed è tab separated invece che ; separated e i decimali sono col . invece che con la virgola quindi tutto bene. Tsr per ora lo teniamo cosi perche dal loader lo loaddiamo direttamente da tsr folder (che dovremo rinominare tipo LMM, e fare tipo una bella classona per dire se facciamo LMM o semplice linear model tutto riscritto in python assurdamente bello ma non penso...) e cmq l input principale nostro di CS è il perturbation score, quindi va bene cosi. 
+RILANCIATO ALS cs input creation, partendo da ALS mithril output.
+
+FATTO: cambiare i vari TSR_OUT_DISEASE (TSR_IN_DISEASE pure se esiste)+DISEASE  in TSR_OUT_DISEASE e BASTA
+
+domanda: perche ipf ha 15k di cose? sono di piu rispoetto a mithril drug. e rispetto a als nygc? penso pure. RISPOSTA: XKe era ipf col hsa nuovo. rifatto ipfs col hsa vecchio, e soo 14.8
+
+da fare: il parallel entro il notebook . da cui poi leveremo il 9.1. la funzione run_connectivity_score_drugs_batch  dovrebbe essere uguale  al if name== main di girare le drugs prendendo gli ndici da sys.argv, ma cambiando tutte le cose di sys.argv IN INPUT DELLA FUNZIONE. DA VEDERE. MA ADESSO DEVI FARTI ALS_NYGC PER VEDERE COM E E QUANTI GENI IN MENO HA DI IPF, E POI LA DRUGS PIPELINE. E ALLAFINE AVERE SOLO DELLE COSE CHE SI CHIAMANO STEP
+Fatto, era che ipf era stato riunnato col nuovo mithril quindi aveva piu geni. rirunnato als col nuovo mithril, e ipf col vecchio.
+
+creato generate_ipytohn_table_of_contents.py me lo metto in SCERRET-ITN/projects/utility_scripts
+DA FAREANHCE: dividi il data exploration notebook in drug/disease direi. E aggiungi summary anche a questi direi massì.
+
+drugs pipeline: fatta
+da fare: aggiungere step intermedio (scritto su ipynb) per trasformare tsr output drug into cs input volendo.
+DA fare: lanciare als con hsa nuovo, LANCIARE DRUGS con hsa nuovo!
+
+MAIN UPDATES:
+rewired le cartelle per avere
+tsr input/output
+mithril input/output
+cs input/output
+cs input comes from mithril, with option to take tsr output as input
+
+riscritti i passaggi e levati alcuni script
+creata cartella con notebooks
+creato pipeline notebook
+aggiornato data analysis notebook
+aggiornato connectivity_score, levando il batch run, e mettendolo sul nuovo file:
+creato cs_batch, che prende in input il numero di cores e runna cs in parallelo x tutte le drugs. output: un file finale
+aggiornato CS_OUT che adesso fa anche la cartella col nome del disease, per non cambiarlo
+DA FARE: creare due nuovi diseases: ipf_2025 e als_NYGC_2025, coi nuovi aggiornati mithril. fatto l output di ipf 2025 in mithril e basta
+aggiornato step7 ciclo di parlalelo
+DA FARE: cambiare anche il ciclo primo parlallelo cosi
+LANCIATO cs_batch per ipf (con mithril del 2024 quindi) con 32 cores
+DA FARE: scrivere lunedi mattina l'abstract per BITS
+
+############################
+MITHrIL hsa2025 run fr drugs 04 11 2025
+############################
+su server
+- modificato conf.py 
+		MITH_OUT_DRUG e CS_IN_DRUG in drug_signature_2025
+		CS_OUT=CS_DIR+'output'+os.sep+DISEASE+'_2025'+os.sep
+
+
+- avendo visto che LINCS_metanalysis.mi aveva il nome della colonna dell'indice, ho lanciato lanciato step5, cambiando
+	il nome dell'ouptut in LINCS_metanalysis2.mi
+- rinominato LINCS_metanalysis.mi in LINCS_metanalysis_old.mi, e rinominato LINCS_metanalysis2.mi in LINCS_metanalysis.mi
+- dovrebbero essere uguali ma per qualche motivo non sono sortati nello stesso ordine, quindi è difficile da dire. probabilmente
+xke ho usato aluas2geneid? pero hanno la stessa dimensione i due lincs_metanalysis
+LANCIO di MITHRIL:
+- usato LINCS_metanalysis_test per lanciare MITHriL col 2025a fare:
+	step6. funge, printato e lancaito a mano. organism='hsa'
+- stepX CREDO CHE FUNGA.	
+- step7. cambiato il loading del dataframe usando lo stesso di step3, in modo da non dover fare piu il 'for i in *; do if [[ $i == *perturbations* ]]; then echo $i; sed '1s/$/\tadj_pValue/' $i > tmp.txt; mv tmp.txt $i; fi; done`' poer aggiungere manualmente il col name adj_pvalue
+- cs_batch piccole modifiche estetiche. funziona.
+DA FARE: fare step 6, x e 7 e cs_batch con LINCS_Metanalysis nuvov (hsa 2025), e i dafare sopra
+DA FARE: data synthesis: april data_analysis_ALS e fai ciò che dice la prima riga, e magarai rimettere a posto le slides anche, in modo che sia chiaro di cosa parlano (connectivity_score2 eliminarla, connectivity_score dire che parla di ALS drug ranking)
+
+12 05, creato mini scriptino get_top_drugs.py, con la funzione per filtrarmi le top drugs. roba picciridda ma vabbe, forse da mettere nei data analysis semplicemente ma vabbe cmq alla fine questo serve
+
+ALS drug repurposing (mith3 old!!) <-1.95, 0.01
+CGP-53353                         -1.996415       0.000
+BRD-K07530279                     -1.995724       0.003
+betamethasone-acetate             -1.995402       0.001
+BRD-K28789065                     -1.995349       0.002
+antimycin-a                       -1.995281       0.005
+SNS-314                           -1.995214       0.004
+olvanil                           -1.995146       0.002
+niguldipine                       -1.994997       0.007
+BRD-K28774715                     -1.994923       0.005
+hexylcaine                        -1.994895       0.004
+BRD-K84571636                     -1.994543       0.003
+methyllycaconitine                -1.994535       0.004
+AT1-SHH-09                        -1.994471       0.005
+thapsigargin                      -1.994404       0.006
+desoxycortone                     -1.994093       0.003
+BRD-A73847809                     -1.994069       0.007
+phenothiazine                     -1.994052       0.005
+gelsemine                         -1.993841       0.007
+BRD-K72462751                     -1.993763       0.003
+devazepide                        -1.993621       0.002s
+biotin                            -1.993516       0.008
+orphenadrine                      -1.993469       0.009
+BRD-K13794505                     -1.993459       0.008
+K784-3391                         -1.993437       0.005
+rhodomyrtoxin-b                   -1.993250       0.008s
+salsolinol                        -1.993205       0.006
+BRD-K15640888                     -1.993189       0.006
+BRD-K33305493                     -1.993178       0.009
+epicatechin-gallate-(-)           -1.993021       0.007
+bisbenzimide                      -1.992513       0.006
+BRD-K74534237                     -1.992135       0.009
+
+als_nygc_2025: 
+1-monopalmitin           -1.993315       0.009
+solo una!!!!!!!!
+
+ipf 2025:
+fenoldopam               -1.998240       0.000
+BML-190                  -1.997664       0.000
+linoleic-acid            -1.996767       0.001
+BRD-K45114207            -1.996255       0.001
+articaine                -1.995871       0.004
+CS-1657                  -1.995871       0.000
+GYKI-52466               -1.995871       0.002
+BRD-K03176945            -1.995499       0.001
+triamterene              -1.995166       0.002
+piperacetazine           -1.995166       0.004
+BRD-A47714657            -1.995166       0.003
+carbinoxamine            -1.994919       0.004
+DCEBIO                   -1.994334       0.004
+BRD-K22006123            -1.993858       0.002
+MW-STK33-3A              -1.993345       0.008
+mebeverine               -1.993245       0.007
+dienestrol               -1.993176       0.007
+BRD-K63181962            -1.993099       0.009
+pindolol                 -1.992897       0.009
+BRD-K66224104            -1.992870       0.009
+BRD-K41303952            -1.992861       0.009
+BRD-A74134989            -1.992833       0.009
+BRD-K91691979            -1.992526       0.008
+trimipramine             -1.991831       0.009
+letrozole                -1.991772       0.009
+
+ipf vecio:
+carbinoxamine             -1.997242       0.000
+fenoldopam                -1.997212       0.001
+BML-190                   -1.996739       0.000
+BRD-K03176945             -1.995554       0.000
+linoleic-acid             -1.995524       0.001
+dienestrol                -1.995398       0.002
+BRD-K66224104             -1.995352       0.003
+epitestosterone           -1.995284       0.000
+BRD-K45114207             -1.995254       0.002
+CS-1657                   -1.994849       0.000
+BRD-K22006123             -1.994772       0.002
+articaine                 -1.994511       0.003
+GYKI-52466                -1.994511       0.004
+lansoprazole              -1.994204       0.004
+triamterene               -1.994174       0.005
+piperacetazine            -1.994106       0.009
+trimipramine              -1.994048       0.007
+BRD-A47714657             -1.994039       0.003
+MW-STK33-3A               -1.993962       0.006
+pindolol                  -1.993827       0.004
+DCEBIO                    -1.993094       0.009
+RS-67506                  -1.992786       0.007
+
+
+GUARDA SAVE RUNNER! e guarda i tools che ci sono scritti nella revisione. 
+
+fai crossover pazzesco? Usa i tuoi dati di FC di kidney o di quello che ti trovi per vedere cosa fanno quelli?
+
+# 10/06/2025
+Improve RGES_study:
+invece che fare solo la distribuzione di un random ranking, fai 10k (anzi, 1000, xke ci mette troppo) distribuzioni di 10k random rankings.
+L'idea e' di creare una distribuzione di drug rankings, dove un drug ranking e' un connectivity score spectrum di 10k drugs.
+e poi di fare un boxplot di correlazioni tra un drug ranking (+distrib connect score) NetCos e un drug ranking FC.
+
+creando file cs_batch_random_disease per fare una distribuizione di correlations tra miei dati e random rankings tenendo ,le drugs fisse e facendo diseases casuali.
+
+Updataeato preproc_utils con get_drugs_list(mith)
+updateato loader.py (da mettere su g hub)
+aggiunta funzione x random calc con random disease a connectivity_score.py
+
+lamciando cs_batch_random_disease, temporaneamente solo con metanalisis, se i risultati venissero male, potrei provare anche gli altri pert timres
+
+# WARNING:  trovato errore a line 250 di conn. score: 
+# Create random index dictionary:
+        random_V_up=random_up_and_down_indexes[:s_up]
+        random_V_down=random_up_and_down_indexes[-s_down:]
+        
+        # Compute random KS stats:
+        random_a_up, random_b_up, _, _ = compute_KS(random_up_and_down_indexes[:s_up], random_V_up, drug_genes)
+        random_a_down , random_b_down, _, _ = compute_KS(random_up_and_down_indexes[-s_down:], random_V_down, drug_genes)
+cioe random_up_and_down_indexes[-s_down:] e  random_V_down sono la stessa cosa....
+
+# TO RUN CS PIPELINE WITH hsa2023:
+# change the 2025 2025 MITHRIL network in these lines:
+
+MITH_OUT_DISEASE=MITH_DIR+'output'+os.sep+'disease_signature_2025'+os.sep
+MITH_OUT_DRUG=MITH_DIR+'output'+os.sep+'drug_signature_2025'+os.sep
+
+
+CS_IN_DRUG=CS_DIR+'input'+os.sep+'drug_signature'+os.sep
+CS_IN_DISEASE=CS_DIR+'input'+os.sep+'disease_signature'+os.sep+DISEASE+os.sep
+CS_OUT=CS_DIR+'output'+os.sep+DISEASE+'_2025'+os.sep
+
+
+10 06 2025!!
+# BUG BIN CHEN CONNECTIVITY!! ATTENZIONE LINE 349 350 BUG BUG BUG
+    V_up = rank_genes(drug_signature, disease_signature_up  , ranking_col_name, disease_p_val_col_name)
+MA DISEASE_P_VAL_COL_NAME E' SBAGLIATO XKE DEVO RANCARE SUL MAGNITUDE (O COMPUNTEQ DEVO RANKARE CONSISTENTEMENTE XKE DISOLITO IL DRUG LO RANCO SUL MAGNITUDE.. TUTTO SBAGLIATO...)
+
+aggiustato dentro connectivity_score: eliminare il cs 1 se siamo sicuro che questo venga bene. , mentre la versione col bug la chiamo connectcvity_score_BUGGED_disease_ranking
+
+SEMBRA CHE I RISULTATI SIANO UGALI ANCHE AVENDO CAMBIATO IL BUG
+
+
+STO GIRANDO CON IPF e als_NYGC,ora salva dei files di CS con la data anche, cosi bellapettuti
+TODO, leva la dicitura 2025, e' brutta brutta. ah ma attenzione! LI STO GIRANDO COL 2025!! 
+
+
+
+# RUNS CON NUOVO CODICE
+# 11 06 2025
+lanciati DEG di als_NYGC_2025 e mith di ipf_2025
+
+     			       DEG   MITH 
+ipf              12_06  11_06
+als_NYGC 					#     running to check it s the same
+ipf_2025					#     10/06
+als_NYGC_2025     10/06
+
+Mith 11_06 ha un cs distribuito skewed to the right
+random sampling is unaffected
+DEG based ?
+quali sono le drugs affeceted
+
+
+fai foto a prime 5 di 24h 2025, di cui umbrelliferone e CCP sembrano affectare , e ele alter due so poco studiate
+
+vedi se le drugs senza mithril sono correlate a ipf o no? pare di no prendendo le prime
+
+is NetCos CS distribution is not correlated to fold change based CS distribution (spearman cc = -0.0059) ???
+
+
+eosc larialuisa.lavitrano@unimib.it
+@eosc.eu
+italu]y@bbmri.ir
+
+# 27/06/2025:
+CheMBL validation
+http://binchenlab.org/research.html
+
+Hi I am developing a tool for drug repurposing, whose outline is exemplified in the file netcos.pdf, and whose code is available in the github knowmics-lab/netcos. I would now like to validate the model using Chembl data, like  they did in BinChen2017, in the 'RGES correlates with  drug efficacy in cancer cell lines' section: i quote: "We next evaluated whether the RGES of a compound correlates with its efficacy in the same cell line. We chose cell lines that include the most number of compounds with both efficacy data in ChEMBL and gene expression profiles in LINCS for each cancer. As a result, we selected the cell lines MCF7 (100 compounds), HepG2 (24 compounds) and HT29 (58 compounds) for BRCA, LIHC and COAD, respectively." In order to have a similar validation for my model I must:
+1) gather releveant RNA-seq data of tumor and healthy tissue from TCGA (as they did) , for the 3 tumours listed, and apply my pipeline on the disease side, to get disease PF data
+2) Only take the relevant drugs and tissues from my LINCS data. This will be more convoluted, since I use pre-processed LINCS data, where all cell lines data are mixed together using a linear mixed model. So I have to go back to that part of the pipeline (which I have not sahred with you because it was implemented by someone else), and re run the  drug Fc calculation, by calculating 3 different batches of fold changes, one for cell type
+3) gather the corresponding Chembl data about IC50 of the corresponding drugs for the given cell types.
+which means that actually maybe I first need to do this part 3 before part 2, so I can intersect the drugs in Chembl to the drugs in Lincs to get my subset of drugs. Part 1 instead can be done separatly. Can you help me? Please, Do not create the full pipeline all at once, but break it down into steps, and wait for my feedback before going to the next step. This will reduce the cost of your computations by only writing what s relevant, since I may have questions about every step.
+
+
+NOn me l ha girato claude ai, ma ho chiesto a chatgpt di scaricarmi i dati da chembl di activity di IC50  e sembra l abbia fatto. Ora vanno solo un po filtrati
+
+# FAI REST API TUTORIAL
+https://www.restapitutorial.com/ seguito un po nn c ho capito molto
+
+fatto un modo x mappare cell names a cell_chembl_id, forse usa questo (o mparalo col mapping che dice binchen2017) per requestare questa cosa dal database
+
+CHEMBL data, scaricato in due traches e copiaincollato malamente in un file.
+da controllare magari che non ci sia un qualche assay mancante / duplicato
+
+
+03/07/2024
+
+mediane di bin chen c e qlcs che non va, oppure usiamo i valori che dicono loro come mediana x fare un primo esperimento e poi ci calcoliamo i nostri.  
+Comunque bo guarda bene TCGA come se li sono giocati, oppure no, credici e scaricati i dadti dei tre cancri di TCGA, e calcolati le tue mediane di IC50 per i tuoi dati di chembl e poi
+ - Rifai NetCos x3 volte usando solo le cell lines di lincs specifiche (niente metanalisi) e r le 3 TCGA cancers e ottieni drug rankings netcos
+ - Ma rifai anche netcos classico (ssenza mithril) con gli stessi dati,  e ottien i drug rankings classici
+
+ - fai spearman tra IC50 e netcos drug rankings e tra IC50 e drug rankings classici
+ se ho un improvement, bella.
+
+ strapazza i dati di imput fino ad avere un improvement... SCHERZO
+cmq oggi hai fatto explore_chembl sia .py che ipydb , guarda piu ipuydb
+e hai fatto chembl_loader, in cui metterai files da loaddare,
+creati degli ic_50 mediani temporanei, MA PRIMA, FILTRA CON LINCS... FILTRA CON LINCS!!!
+
+#TODO MOVE DATA FROM ROOT/TSR/DATA TO ROOT/DATA:
+QUANDO RI GIRERAI TSR, FAI IN MODO CHE TUTTI I DATI CHE PRENDI SIANO COSI
+	- LINCS MOVED
+#MOSSO tsr/modules con dentro ../ cosi ora la working directory e' drug_repurposing invece che tsr, . non l ho messo dentro /src xke cosi non devo cambiare gli import dentro i vari scripts in R, e rimangono dentro modules.
+
+
+
+lmer dentro lmerLMM.r
+
+implementata cosi
+
+LMM_output <- lmer(gene_expressions ~ pert_iname + (1 | cell_id) + (1 | rna_plate), data = experiments_env$experiments_meta_data, control = lmerControl(calc.derivs = FALSE))
+
+ma come fa lmer a sapere quale factor di pert_iname (categorical variables con le drug names) e' il baseline? chatgpt dice che e' in ordine alfabetico
+
+ma experiments_env$experiments_meta_data se lo guardo ( da LINCS_export.R) non ha DMSO in ordine alfabetico, ma e' solo il primo in ordine di indicizzazione 
+per come e' fatto il dato, ma viene messo al primo posto dentro dentro LICSExpermientsMetadataSetuper.R, quindi l ordine alfabetico non conta
+
+Se faccio io, come faccio il filtraggio da 12k a 10k? sotto QUALE SOGLIA sono rimossi gli inferred genes
+
+######################################################################
+# PROVATO A AGGIUNGERE FILTRAGGIO PER CELL LINE:
+SU CONFIG.R AGGIUNTO
+:
+drug_signature_cfg$cell_name <- 'MCF7'
+drug_signature_cfg$signature_base_dir <- paste0("tsr/output/drug_signature/LINCS", drug_signature_cfg$cell_name) #invece che solo "tsr/output/drug_signature/LINCS", ma ancora non so se funzioni
+
+DA CAMBIARE OGNI VOLTAZ.
+#  sarebbe bello se mettendo drug_signature_cfg$cell_name <- '' , il coso calcolasse per tutte le cell lines. forse lo fa
+
+drug_signature/DrugSignatureByPerturbationTime.R
+line 4: source("modules/config.R") # aggiungi
+line 25:       experiments_env <- private$experimentMetaDataEnvList$get(perturbation_times, drugs_filter, drug_signature_cfg$cell_name)  # aggiunto cell name
+
+drug_signature/ExperimentMetaDataEnvList.R
+line 15:        experiments_env_list[[perturbation_time]] <- private$experimentMetaDataSetuper$setup(perturbation_time, drugs_filter,cell_name) #aggiunto gcell name
+
+
+drug_signature/setuper/LINCSExperimentMetaDataSetuper.R
+lines 26-28: aggiunta condizione se esiste cell_name si subsetta anche per cell name
+      if (!obj_is_na(cell_name)) {
+        experiments_meta_data <- subset(experiments_meta_data, cell_id == cell_name)
+      }
+
+e aggiunto cella_name nella sua classe astratta:
+drug_signature/setuper/abstract_class/ExperimentMetaDataSetuper.R
+line 6:    setup = function(perturbation_time, drugs_filter = NA, cell_name = NA) {
+
+LmerLMM 
+: levato + (1 | cell_id) ! Insomma ora ogni volta per rirunnarlo con tutte le cell_ids, dovresti ricambiare tutte qeuste cose back.. 
+
+ExperimentMetaDataEnvList.R
+chiamata da
+DrugSignatureByPerturbationTime
+chiamata da
+DrugSignature
+chiamata da
+DrugSignatureOverall BOOOO
+
+chiamati da
+
+LINCSDrugsignatureparallelcomputation . il main c
+
+##################################
+# 10/07/2025 RUN ON SERVER OF CELL LINE MCF7
+#################################
+seee file relativo in questa cartella
+
+
+allora, niente sto riscrivendo tutto su python, sto facendo il filtraggio di LINCS.
+aggiunto filtraggio per pert time, cell lineS, dosaggio,
+vedo che ho 3.7k drugs per 'HEPG2' filtrate per pert time e dosaggio, se uso tte e tre le cell lines sono 5.8k drugs, pero carmelo prende l interseione di pert times, ma prendendo l intersezione di pert times,  vengono molte meno  drugs: con solo HEPG2 ne vengono 122, con tte e 3 ne vengono invece 5.7k che sono di piu di 3.2k?? strano Bo vabbe. Quindi il filtraggio va fatto bello flessibile, anche perche'
+alla fine devi vedere quali droghe usa chembl...
+quindi devi filtrare per il dato di chembl
+In previsione di fare una pipeline che potrai riusare poi per il tsr in python, dovresti fare le funzioni di filtraggio del dataset in uno script
+generale, che poi a seconda di come le chiami puoi fare il filtraggio come fa carmelo all inizio,
+oppure fitlrare per chembl. o cmq fare un filtraggio bello flessibile. EVVVIA.
+
+Creato file step_data_preprocessing dove sto salvando un po di test di filtri che sto facendo. In teoria non sono riuscito a trovare il filtro che mi da 3.2k drugs ancora
+Creata cartella tsr_python in cui ho messo un file LINCS_preprocessing con le funzioni di filtraggio di LINCS. Da aggiungerci il filtraggio gene wise,
+che per ora e' solo nel chembl...blabla..load_LINCS..blalba , che sara' uno scriptino piu piccolo dopo
+Aggiunto filtering di drugs per drugs presenti in almeno 5 cell lines (da probabilmente ignorare epr chembl?), quindi ora di default filtra anche per quello, bo xke alla fine per chembl prendo le 
+drugs che dice lui...
+pero anche co sto nuovo filtro, cmq ho 4849 drugs invece che 3222...
+stiamo lavorando sul filtraggio su step_data_preprocessing blabla.
+mentre la funz di filtraggio dei geni (che e' da mettere iun funzione ma  e' fatta) e' dentro chembl...blabla..load_LINCS..blalba ,
+ma forse epr ora giveuppiamo a provare a rifiltrare esattamente 3.222 drugs, e proviamo a prendere chembl...blabla..load_LINCS..blalba , e filtrare/matchare con chembl.
+
+
+da fare 28/07
+- scrivi una cosa per prof. vancheri, anche lui si occupa di IPF, ma collega di Alfredo , e era interessato al drug repurposing algorithm
+- Siamo rimasti con ALfredo di fare un follow up con guccioni
+-per il contratto si sta muovendo. Si riuscira a partire per meta settembre massimo primi ottobre. (Siamo al 28 ottobre ancora niente, datti da fare per cercare altro)
+
+
+23/10/2025
+ripreso in mano data exploraiton IPF, non so quale sia piu aggiornato tra IPF e ALS_NYGC, ma sicuramente ora IPF e' piu aggiornato, da aggiornare anche ALS_NYGC con top_ranking drug come funzione, e sistematizzare il print dei ranking con quella funzione, nello stesso modo di IPF, cosi sono uguali ed e' tutto piu chiaro.
+Aggiornata la presentazione IPF_Drug_ranking con le versioni aggiornate di mithril hsa2025 e hsa2023 lanciate DOPO il bug fix. Era tutto gia stato fatto, ho solo doubleckeccato e aggiornato lap resentazione. Andrebbe aggiornata anche quella di ALS probabilmente.
+vai su versioncontrolo per vedere a che punto sono
+fai du * nella /home/signorini per vedere quanto spazo sto occupando, xke facendo df-h sembra che ho usao 55T (che mi sebran tanti) su 91T che ho disponibili, e magari e' qst il motivo x cui va piano..
+
+03/11/2025
+Creato un filtering parallelo su step_data_preprocessing_LINCS_databaase_filtering.py , addizionale, fatto con chatgpt, che pero' non e' giunto anulla di concreto. 
+Probabilmente inutile. MA HO CHIESTO a Carmelo di runnare lui il codice direttamente, e ha detto che me lo fa tra oggi e domani. devo imparare a chiedere.
+
+
+04/11/2025
+Dati TCGA (per la chembl validation): scaricati i suppl di bin chen messi su data/BinChen2017/41467_2017_BFncomms16022_MOESM249_ESM.xlsx  (SD2): i dati per i 3 cell lines, gia calcolati di FC. (sono pochi pero': magari guarda in futuro se ne puoi usare di piu).
+
+05/11/2025
+creat src/valdiaitons/chembl/final_step_correlations_IC50_CS.py da fare quando avro i CS nuovi (e gli IC50 dei quali sono soddisfatto, faccio la correlations, dopo sara semplciemente una cella di un notebook) che calcola speraman fra drug ranking e IC50 (e logIC50). I dati IC50 per ora sono presi da SD8 di BinChen, Il cs nuovo ancora non c'e', l ho provato a girare un un ipf_2025. DA 1) ovviamente fare cs, per cui serve 1.1) LINCS drug signature per le cell liens (stanno girando grazie a Carmelo)  1.2) Disease signature (da prendere da TCGa logFC data di BinCHen e girarci mith sopra) 
+
+Rifatti i passaggi di chembl valdi x capire cossa stavi cercando di fare, e  perche' e' diverso dai dati di ic50 di SD8, e cos e' ED50 vs IC50 , perche' si prendono le mediane di quello.
+
+6/11/ obiettivo: catalogare / esplorare i DEGS di Carmelo, e creare Mith.
+x far questo, sarebbe stato bello collegare spdyer al server. mattina sprecata nel fallire in questo con chatgpyx	. BENISSIMO
+ (drug repurposing / code syncroiznation setup su chatgpt. nulla di fatto)
+
+ 17/11
+ scaricati altri files in locale. da mettere su server,
+ e aggiornata pipeline notebooks/chembl_validation_pipeline tipo. da aggiungerci gli altri chembl notebooks probabilmente.
+ e fare la trasposizione matricie su server e lanciare step6 su server. (aggiungere input di step6 in if name == main, che se non ha input, lo lancia normalmente, se ha input).
+ addare i due nuovi .zip su servercito.
+ e step6 occhio alla mith oupt dir, anche quella, metti opzione di aggiungerla manualmente! xke la versione 'default' te le mette tutte dentro drug_signature_2025..
+ (E CAMBIALO SUL SERVER XKE l hai runnato con la directory abse, che e' drug_signature_2025, e l hai rinominata manualmente drug_signature_2025_HEPG2_24h.
+ Questa fatta. 
+ ORA.
+
+prendere da TCGa logFC data di BinCHen e girarci mith sopra.
+Fatto l input di mithril per disease (tramite la pipeline sul notebook), caricato su server e erunato step2 sul server (in cui ho messo DISEASE='blabla') xle disease e' meno complesso quindi basta cambiare il disease name e te lo fa..
+ma si, chiaramente non va bene, DISEASE va cambiato sul conf... quindi ci dovremmo fare un conf per la pipeline di validazione????? forse forse forse si eh... un conf file per ogni cosa?? bo. non sono sicuro... forse solo uno snapshot del conf per ogni run sarebbe bene avere. si una cosa del genere...
+18/11
+TODO: cambia la directory di mithout drug per essere drug_205 blabla / cell line_ pert_time, e mettila come mithdrug out, in modo da non dover  cambiare il drug output nel chembk validation e non dovere avere funxzioni custom.
+la verita' e' che ho paura di cambiare il conf file...
+fiel cambiato... ma salvato un conf con la data di oggi  18/11 che ha dentro lo snapshot del conf di oggi, usato per fare main pipeline con hsa2025
+26/11/2025
+il mitrhil che penso di aver lanciato il 17 11? per HEPG24 con 154 drugs sta ancora girando..
+ma anzi, ha ripreso a girare adesso! bizzarro, ha ripreso a girare con un output folder diverso ??? cioe optuput/drug_signature_2025, mentre prima era output/drug_signature_2025/HEPG2/ , e li dentro ce ne sono 136, fatte il 18 novembre, e ora ne sta rifacendo altre (credo tutte??) fuori da quelalc artella. wrtf... non capisco. comportamento strambissimo... dice salvatore di usare screen invece che tmux ma dovrebbero fare la stessa cosa.
+forse che ho fatto un update con le versioni, che ho visto che il 17 ho cambiato il parametro default da has_2023 a hsa. anche se sto cambiamento e' stato fatto il 17 (quindi prima dil anciarlo la prima volta, che e stata il 18) magari l ho pullato solo DOPO aver lanciato, e unisci a questo il comportamento BIZZARRO delle directory, forse vuol dire che quando ho riaperto tmux ora, ha rilanciato per qualche bizzarro motivo la versione nuova. Bo. forse ho premuto io invio ora? non capisco sinceramente...
+
+
+28/11
+presi tutti gli zip di catalano, messi dentro tsr/output/drug_signatures/LINCS/ e unzippati come celll_line_pert_time_drug_wise (noem cartella)
+e creato lo script src/validations/chembl/tsr_out_to_mith_in.py che fa lo step di tsr_out_to_mith_in dentro la chembl pipeline
+
+ma siccome sono .Rds, pyreadr stavolta mi ha dato un errore:
+Traceback (most recent call last):
+  File "/home/signorini/netcos/src/validations/chembl/tsr_out_to_mith_in.py", line 20, in <module>
+    result = pyreadr.read_r(DRUG_DIR+drug_file)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/signorini/miniforge3/lib/python3.12/site-packages/pyreadr/pyreadr.py", line 66, in read_r
+    parser.parse(filename_bytes)
+  File "pyreadr/librdata.pyx", line 149, in pyreadr.librdata.Parser.parse
+  File "pyreadr/librdata.pyx", line 178, in pyreadr.librdata.Parser.parse
+, aggiunto un try per eliminare le drug che per chissa che motivo non legge, TODO: magari studiare st errore e vedere perche. te lo dico: perche cerca di leggere un .DS_Store, che quindin on e' un ifle chedeve leggere. quindi tutto perfetto! :)
+
+comands:
+####
+python src/validations/chembl/tsr_out_to_mith_in.py                                                                                        │
+translating tsr output to mithril input for : MCF7 24h  
+MITHrIL drug input saved in /home/signorini/netcos/MITHrIL/input/drug_signature/ filename: LINCS_MCF7_24h.mi 
+[3 rows x 3265 columns] 
+
+#### 
+python src/validations/chembl/tsr_out_to_mith_in.py                                                                                   │
+translating tsr output to mithril input for : MCF7 6h  
+[3 rows x 4829 columns]
+MITHrIL drug input saved in /home/signorini/netcos/MITHrIL/input/drug_signature/ filename: LINCS_MCF7_6h.mi 
+
+####                                                                                       │
+translating tsr output to mithril input for : HEPG2 6h  
+[3 rows x 3507 columns] 
+MITHrIL drug input saved in /home/signorini/netcos/MITHrIL/input/drug_signature/ filename: LINCS_HEPG2_6h.mi 
+
+####                                                                                       │
+translating tsr output to mithril input for : HT29 6h 
+[3 rows x 973 columns]  
+MITHrIL drug input saved in /home/signorini/netcos/MITHrIL/input/drug_signature/ filename: LINCS_HT29_6h.mi 
+
+####                                                                                       │
+translating tsr output to mithril input for : HT29 24h  
+[3 rows x 4765 columns]
+MITHrIL drug input saved in /home/signorini/netcos/MITHrIL/input/drug_signature/ filename: LINCS_HT29_24h.mi 
+
+interessante che HT29 6h ha 973 drugs, mentre 24h ha 4765h
+
+recuperati TODO HEPG2 24h (quello che hai) e
+Lanciati tutti su tmux 0:
+sono 5, ho 30 cores 30/5 = 6 cores a testa.
+
+Bizzarro, alcuni han dato errore:
+HEPG2_6h, ha iniziato e poi e' stato aborted core dumped, forse problema di memoria:
+[main] INFO com.alaimos.MITHrIL.app.Algorithms.Metapathway.MetapathwayBuilderFromOptions - Repository ready
+[main] INFO com.alaimos.MITHrIL.app.Algorithms.Metapathway.MatrixBuilderFromMetapathway - Looking for cached matrix representation of the metapathway
+[thread 5478 also had an error][thread 7139 also had an error]
+
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGBUS (0x7) at pc=0x00007f945147f95f, pid=5477, tid=7142
+#
+# JRE version: OpenJDK Runtime Environment (21.0.4+7) (build 21.0.4+7-Ubuntu-1ubuntu224.04)
+# Java VM: OpenJDK 64-Bit Server VM (21.0.4+7-Ubuntu-1ubuntu224.04, mixed mode, sharing, tiered, compressed oops, compressed class ptrs, g1 gc, linux-amd64)
+# Problematic frame:
+# C  [libtorch_cpu.so+0x6fc095f]  void c10::function_ref<void (char**, long const*, long, long)>::callback_fn<at::native::AVX2::VectorizedLoop2d<at::native::(anonymous namespace)::
+fill_kernel(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#6}::operator()() const::{lambda()#1}, at::native::(anonymous namespace)::fill_kern
+el(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#6}::operator()() const::{lambda()#2}> >(long, char**, long const*, long, long)+0xcf
+#
+# Core dump will be written. Default location: /home/signorini/netcos/core.5477
+#
+# An error report file with more information is saved as:
+# /home/signorini/netcos/hs_err_pid5477.log
+#
+# If you would like to submit a bug report, please visit:
+#   https://bugs.launchpad.net/ubuntu/+source/openjdk-21
+#
+Aborted (core dumped)
+
+HT24_24h e' stato killed non so da chi, forse da me, gli altri tre, due sono bloccati e stanno per dumpare il core anche loro, MCF7_24h sta andando invece per ora.
+
+02/12/2025
+mancano di girare solo  HEPG2_6h e HT24_24h
+modificato step7 per avere un if name == main che gira correttamente per il chembl, (posto di modificare il conf per il nome cell line e perturbation time)
+e lo sto girando solo su tutti tranne  HEPG2_6h e HT24_24h che mi sembra lungo...ci vuole un po', spero che non vada fuori di RAM, ma siamo sui 34G/500...
+Bisognerebbe cambiare mithril per non outputtare l output duplicato per le pathways, renderebbe tutto piu veloce.
+3/12/2025
+finite  HEPG2_6h e HT24_24h per mithril, e tutte le altre per la traduzione a CS input. mando  HEPG2_6h e HT24_24h per cs input
+9/12/2025
+MANCA LA METANALISI.
+creato get_drugs_list_from_path dentro preproc_utisl che ottiene la drugs list dal path che gli dai te. E BASTA.
+il problema e' che cs_score funzionia con 6,.24 e metanalisi. e ion on l ho fatta
+e anche il modo in cui sono fatte le cartelle, tiene 6 e 24h dentro lo stesso file. e quindi non divide per pert. times. e qeusto deriva dalla forma bizzarra del metanalysis file che non ho fatto accidenti.
+CHE CAZZO E' L INPUT DI CS_IN/DRUG_SIGNATURE?? e' loutput di step7 'classico', che ho chiamatp _metanalysis per continuita storica con tsr.
+
+# sto girando Cs calc per entrambi gl iHEPG2 su server
+entrambi gli HT29
+MCF7 24h no prob: rifaccio step7 di traduzione che forse c estato un problema li?  LO sto rifacendo, ci vuole un'oretta xke non e' parallelo
+MCF7 6h : no rpob
+
+e in disease: fatto mithril per COAD e BRCA
+12:43 lancaito per coad con 30 cores:  ci ha messo pochi minuti di preparazione, e poi il calcolo secondi
+per BRCA uguale.
+poi lanciato step3 per entrambi per convertirli da mith out a cs in. pochi secondi. e' il drug che ci mette tanto
+
+creato nuovo notebook in data_exploration/data_exploration_chembl_cs.py
+
+10/12/2025
+
+16/12
+mi scuddai la metanalisi. fatto script modules/drug_signature/chembl*.R per fare la metanalisi, basandomi sulla metanalisi di catalano
+pero con uno script esterno (fatto da gpt) per  ciclare sui nuovi dati.
+si lancia con:  Rscript modules/drug_signature/chembl_valid_metanalysis6h24h_batch.R tsr/output/drug_signature/LINCS/ HEPG2 .
+
+Warning message:
+[HEPG2] Files only in 6h folder (skipped): 1,2,3,4,5,6-hexabromocyclohexane.Rds, 1,2-dichlorobenzene.Rds, 1-benzylimidazole.Rds, 1-monopalmitin.Rds, 1-phenylbiguanide.Rds, 10-hydroxycamptothecin.Rds, 15-delta-prostaglandin-j2.Rds, 16,16-dimethylprostaglandin-e2.Rds, 17-hydroxyprogesterone-caproate.Rds, 2',5'-dideoxyadenosine.Rds, 2-(4-methoxybenzylthio)-6-methylpyrimidin-4-ol.Rds, 2-aminopurine.Rds, 3,3'-diindolylmethane.Rds, 3,6-dimethoxyflavone.Rds, 3-matida.Rds, 3-methyl-GABA.Rds, 4,5,6,7-tetrabromobenzotriazole.Rds, 4-(2-amino-ethyl)-benzenesulfonamide.Rds, 4-carboxy-3-hydroxyphenylglycine-(RS).Rds, 4-hydroxy-2-nonenal.Rds
+Warning message:
+[HEPG2] Files only in 24h folder (skipped): AT-9283.Rds, AVA.Rds, BL003-049-HDAC3.Rds, BRD-A08658758.Rds, BRD-K01621458.Rds, BRD-K01737880.Rds, BRD-K10436544.Rds, BRD-K11533227.Rds, BRD-K16410418.Rds, BRD-K16956545.Rds, BRD-K19826688.Rds, BRD-K19876534.Rds, BRD-K21001652.Rds, BRD-K22321414.Rds, BRD-K22587354.Rds, BRD-K26510616.Rds, BRD-K35832492.Rds, BRD-K35860134.Rds, BRD-K52160314.Rds, BRD-K54343811.Rds
+
+Warning message:
+[MCF7] Files only in 6h folder (skipped): 1-benzylimidazole.Rds, 1-phenylbiguanide.Rds, 17-beta-estradiol.Rds, 17-hydroxyprogesterone-caproate.Rds, 2-(4-methoxybenzylthio)-6-methylpyrimidin-4-ol.Rds, 4-(2-amino-ethyl)-benzenesulfonamide.Rds, 5-FP.Rds, 5-aminolevulinic-acid.Rds, 5-nonyloxytryptamine.Rds, 7-nitroindazole.Rds, AF-DX-116.Rds, ARG-A1-2.Rds, ARG-A1-22.Rds, ARG-CSC-18.Rds, ARG-CSC-22.Rds, ARG-CSC-26.Rds, ARG-CSC-81.Rds, ARG-CSC2-40.Rds, AT-CSC-07.Rds, AT-CSC-18.Rds
+Warning message:
+[MCF7] Files only in 24h folder (skipped): AT-9283.Rds, AVA.Rds, BRD-A08658758.Rds, BRD-K01608965.Rds, BRD-K01621458.Rds, BRD-K01737880.Rds, BRD-K07516181.Rds, BRD-K09068728.Rds, BRD-K10436544.Rds, BRD-K11533227.Rds, BRD-K16410418.Rds, BRD-K16956545.Rds, BRD-K19826688.Rds, BRD-K19876534.Rds, BRD-K21001652.Rds, BRD-K22321414.Rds, BRD-K22587354.Rds, BRD-K23985857.Rds, BRD-K25436320.Rds, BRD-K26510616.Rds
+[MCF7] Processing 1,2,3,4,5,6-hexabromocyclohexane
+
+
+Warning message:
+[HT29] Files only in 6h folder (skipped): 1,2,3,4,5,6-hexabromocyclohexane.Rds, 1,2-dichlorobenzene.Rds, 1-benzylimidazole.Rds, 1-monopalmitin.Rds, 1-phenylbiguanide.Rds, 10-hydroxycamptothecin.Rds, 17-beta-estradiol.Rds, 17-hydroxyprogesterone-caproate.Rds, 2-(4-methoxybenzylthio)-6-methylpyrimidin-4-ol.Rds, 2-aminopurine.Rds, 3,3'-diindolylmethane.Rds, 3,6-dimethoxyflavone.Rds, 3-matida.Rds, 3-methyl-GABA.Rds, 4,5,6,7-tetrabromobenzotriazole.Rds, 4-(2-amino-ethyl)-benzenesulfonamide.Rds, 4-carboxy-3-hydroxyphenylglycine-(RS).Rds, 4-hydroxy-2-nonenal.Rds, 4-hydroxyretinoic-acid.Rds, 5-FP.Rds
+Warning message:
+[HT29] Files only in 24h folder (skipped): AT-9283.Rds, AVA.Rds, BL003-049-HDAC3.Rds, BRD-A08658758.Rds, BRD-K01608965.Rds, BRD-K01621458.Rds, BRD-K01737880.Rds, BRD-K07516181.Rds, BRD-K09068728.Rds, BRD-K10436544.Rds, BRD-K11533227.Rds, BRD-K16410418.Rds, BRD-K16956545.Rds, BRD-K19826688.Rds, BRD-K19876534.Rds, BRD-K21001652.Rds, BRD-K22321414.Rds, BRD-K22587354.Rds, BRD-K23985857.Rds, BRD-K25436320.Rds
+[HT29] Processing 10H-phenothiazin-10-yl)(p-tolyl)methanone
+
+
+sta andando su tmux lentamente. daje
+17/12/20205: 8.33 fatti due, ma MCF7 sta ancora andando! e l ho lanciato ieri alle 4/5 pmx
+
+17/12/2025
+
+da rivedere se l'analisi delle signatures per i cancri e' stata fatta con tutti  geni o solo landmark. Se tutti i geni (come credo al 99%), da rifare coi landmark
+
+Da rivedere bene come fanno la foldchange di LINCS in binchen 2017 e binchen2015. E da 1) rifaremithril partendo dai loro dati di binchen 2) forse rifare lmm per ottenere le stesse drugs di bin chen? loro non dividono per pert times, e anzi prendono tutti i pert. times, quindi ottengono piu drugs di sicuro. E le drugs in piu che ho io da dove vengono? 
+A me sembra che non usino una LMM, ma dice solo 'calcolo fold change'
+[[NetCos]]
+
+
+ 05 02 
+ madre mia stiamo rilegendo BinChen 2017, e stiamo vedendo nei results cosa ci dice che sono  i vari supplementary data. ora il SD2 che contiene  loggfoldchange dei tumori di TCGA dei tipi di tumori, dopo essere stati incrociati con i landmark gene data, quindi dopo esssre stati incrociati coi landmark gene data, hanno pochi genei (es 73 x LIHC), ev edo l excel ed effettivamente e' cosi, ma quando lo carico sul notebook...sono 1192?? DA CAPIRE  WTF
+ ASSURDO . CAPITO. PERCHE SU EXCEL SONO VISUALIZZATI FILTRATI. ASSSURDO.....!!! QUINDI LI CARICO TUTTI MA DEVO VEDERE SE LI FILTRO O NO
+ quindi vabbe, dei geni del "disease", posso farmi una cosa di landmark only, e usare i landmark only, e va bene cosi.
+ Cacchio devo farmi snakemake comunque. O galaxy.
+
+11 02 2026
+snakemake non funziona su windows. 
+Ci vuole WSL, ma allora li dentro mi ci devo reinstallare tutto. mi ci devo reinstallare conda, python ecc. e spyder nopn funziona. chatgpt mi dice di usare VScode con WSl che e' la proper way ma mi dovrei imparre anche VScode che e' un casino.
+
+
+17/03/2026
+INIZIO PIPELINE: chembl validation with landmark genes
+
+sto estraendo tutti i dati anche di lincs dalla matrice di BinChen2017 (sono landmark genes (978) e perturbagens is_gold=1 (66511, che sono da 13020 different compounds, according to binchen2015 quindi anche altri aprameteri sono taken into acount come la concentrazione))
+
+cell line  LINCSsignature   disease   landmark genes     total genes  in TCGA for disease      
+            for cell line               in TCGA data    
+HEPG2 (978, 2418)  					 LIHC  		73                   1192
+MCF7  (978, 8857)  					 BRCA     83                   1710
+HT29   (978, 3504) 					 COAD     65                   2054
+
+
+files creati:
+drugs mithril input:
+	LINCS_LM_MCF7.mi
+	LINCS_LM_HEPG2.mi
+	LINCS_LM_HT29.mi
+disease mithril input:
+	LIHC_LM_signature_gene_id.mi
+	BRCA_LM_signature_gene_id.mi
+	COAD_LM_signature_gene_id.mi
+
+
+lanciato circa alle 13 mitrhil step6 au tmux su deonco per drugs per tutte e tre le drugs con: 
+    mith_input_file = 'LINCS_LM_'+cell_line+'.mi'
+    run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, n_thread=mith_threads, organism=mith_organism)
+
+esempio per HT29 del comando di lancio di mithril:
+    java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril-batch -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 10 -organism hsa -i /home/signorini/netcos/MITHrIL/input/drug_signature/LINCS_LM_HT29.mi -o /home/signorini/netcos/MITHrIL/output/drug_signature_2025/HT29 -p -verbose
+
+HEPG2_LM : killed 
+
+h 09:30 del gg dopo ancora gira MCF7, ma HT29 ha finito
+h 11:00 del giorno dopo MCF7 killato per memoria, ma puoi rilanciarlo levando le drugs gia fatte.
+h 15 di due giorni dopo: HEPG2_LM rilanciato
+
+CAMBIATO il modo di scrivere le drug putout folder. quanto HEPG2 finisce di girare, cambia il suo output folder da HEPG2 a HEPG2_LM
+
+da runnare MCF7_to_finish:
+
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril-batch -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 10 -organism hsa -i /home/signorini/netcos/MITHrIL/input/drug_signature/LINCS_LM_MCF7to_finish.mi -o /home/signorini/netcos/MITHrIL/output/drug_signature_2025/MCF7_LM -p -verbose
+
+riguarda cosa sono I dati che abbiamo noi in piu: potrebbero essere anche semplicemente additions to lincs? serve un coso univoco per downloaddare LINCS da API.
+
+# 19/03/2026: 
+provare a fare CHEMBL con COAD HT29
+
+lanciato MITHRIL con MCF7_LM_tofinish alle 16:00
+
+lanciato e finito: MITHRIL Disease LIHC_LM
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 10 -i /home/signorini/netcos/MITHrIL/input/disease_signature/LIHC_LM_signature_gene_id.mi -organism hsa -o /home/signorini/netcos/MITHrIL/output/disease_signature_2025/LIHC_LM_mith3.output.txt -p /home/signorini/netcos/MITHrIL/output/disease_signature_2025/LIHC_LM_mith3.perturbations.txt -verbose
+
+lanciato e finito: MITHRIL disease per BRCA_LM:
+python step2_disease_run_MITHrIL.py BRCA_LM
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 10 -i /home/signorini/netcos/MITHrIL/input/disease_signature/BRCA_LM_signature_gene_id.mi -organism hsa -o /home/signorini/netcos/MITHrIL/output/disease_signature_2025/BRCA_LM_mith3.output.txt -p /home/signorini/netcos/MITHrIL/output/disease_signature_2025/BRCA_LM_mith3.perturbations.txt -verbose
+
+
+creato nuovo step7_drug_mith_out_to_cs_in_signature_id, agnostico e che crea un cs input dove le colonne non hanno il flag del perturbation time
+e DA CAPIRE perche abbiam fatto cosi e come calcolo CS rispetto ai pertt  times, e come lo fa binchen?? cioe usa i due eprt times come due drugs diverse??? Hmm....
+da fare domani: back compatibility con previous pipelines
+
+DONE: step7 for HT29 e HEPG2
+
+20/03
+DONE running step7 for MCF7  for bin chen, the drug data is now a collection of perturbation profiles at the signature level, not just 'drugs', so they are associated to a metadata file.
+
+23/03/2026
+	
+
+	TODO: nel cs_batch, cambiare il LINCS_id into un altro id, cioe il mithril lincs id, che tiene in considerazione anche il fatto che c'e' stato un passaggio in piu direi (cioe di mithril, ma ci potrebbe anche esssere stato un passaggio di metanalisi sulle ore..nel qual caso il lincs id non va piu bene. overwhelmed.
+	cmq intanto calcola sti CS cosi, poi rinominateli in giro forse direi.. bo. overwhelmed. guardati cosa ti sei detto cn l amico chat. 
+	meno overwhelmede: creato un log dentro cs_runs.tsv che logga i risultati di cs_batch.py. Da fare aanche per gli altri steps. Probabilmente per tutti.
+	probabilmente richianare cs_batch come step8. da fare: gitpullare e runnare sto csbatch su tutta la sbobba del server.
+
+cs_batch.tsv dice quanti geni ci sono nelle runs (attenzione che  i 'common genes' non sono l input di bin chen ma solo delle altre correaltion measures), quanto tempo ci impiegano e quanti cores usa. non male devo dicere. Cio detto. ok. da runnare con tutto. e da riguardare il fatto fino ad adesso prima di runnare con tutto.
+Mi sembra di aver fatto tantissime cose e nulla allo stesso tempo.
+da fare un log file per il 'ennesimo file blablabla ' forse pure, e per tutti i vari step (anche finto) magari anch gli step 3 e step7 di conversione? buuuoo. beh per step7 me lo so scritto/salvato a mano effettivamente. per lo step6 di mithril batch sono un poco una capretta una pecorella ma va bene cosi.
+
+
+24/03
+creata cartella "data" nella home del server, in cui ho messo i landmark genes di lincs di binchen2017
+
+
+
+25 03
+talking points:
+
+drug --> perturbagen id (same drug != pert time  = different perturbagen (Bin Chen 2017))
+No metnalysis on pert times. 
+LINCS level 4 (not level 3)
+LM genes only --> MITH genes --> LM genes again
+
+Refactoring of scripts:
+LM_genes mode on cs_batch.py
+CS batch log

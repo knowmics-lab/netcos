@@ -55,6 +55,7 @@ else:
     DATA_DIR=BASE_DIR / 'data'
     
 DICT_DIR=DATA_DIR / 'dictionaries'
+LOGS_DIR = BASE_DIR / 'logs' 
 
 ################
 # MITHrIL
@@ -83,7 +84,6 @@ TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 CS_DIR=BASE_DIR / 'connectivity_score'
 CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line_run_name #Path(cell_line+'_'+pert_time)
 CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / disease_run_name
-CS_OUT_log= CS_DIR / 'output' 
 CS_OUT=CS_DIR / 'output' / disease_run_name #Path(DISEASE+'_2025_'+pert_time)
 
 

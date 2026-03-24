@@ -20,7 +20,7 @@ from loader import load_disease_signature, load_single_signature_cs_input,\
 from preprocessing_utils import get_signature_ids_list_from_cs_input
 from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
     disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
-        cs_mith, CS_OUT_log
+        cs_mith, LOGS_DIR
 from preprocessing_utils import get_chunk_indexes
 from joblib import Parallel, delayed
 
@@ -183,7 +183,7 @@ if __name__=="__main__":
     lm_flag = cs_on_LM
     
     # set n of cores for parallel execution
-    n_jobs= 1#cs_batch_threads # int(sys.argv[1]) #16
+    n_jobs= cs_batch_threads # int(sys.argv[1]) #16
     if n_jobs>len(drugs_list):
         raise ValueError('n_jobs:',n_jobs,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
     
@@ -233,7 +233,7 @@ if __name__=="__main__":
     cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
     
     #%% write run log
-    metadata_file = Path(CS_OUT_log) / 'cs_runs.tsv'
+    metadata_file = Path(LOGS_DIR) / 'cs_runs.tsv'
 
     cs_run_id = Path(connectivity_dataset_filename).stem
     
@@ -252,12 +252,12 @@ if __name__=="__main__":
         "disease_pval_col": "adj.p.value",
         "n_signatures_total": len(drugs_list),
         "n_results_rows": len(cs_df),
-        "n_disease_before_common": first_stats["n_disease_before_common"],
-        "n_drug_before_common": first_stats["n_drug_before_common"],
-        "n_disease_after_second_lm": first_stats["n_disease_after_second_lm"],
-        "n_drug_after_second_lm": first_stats["n_drug_after_second_lm"],
-        "n_disease_after_common": first_stats["n_disease_after_common"],
-        "n_drug_after_common": first_stats["n_drug_after_common"],
+        "n_disease_genes_before_common": first_stats["n_disease_before_common"],
+        "n_drug_genes_before_common": first_stats["n_drug_before_common"],
+        "n_disease_genes_after_second_lm": first_stats["n_disease_after_second_lm"],
+        "n_drug_genes_after_second_lm": first_stats["n_drug_after_second_lm"],
+        "n_disease_genes_after_common": first_stats["n_disease_after_common"],
+        "n_drug_genes_after_common": first_stats["n_drug_after_common"],
         "n_jobs": n_jobs,
         "elapsed_sec_total": total_elapsed,
         "cs_input_dir": str(CS_IN_DRUG),

@@ -1,0 +1,34 @@
+Dunque, questo l'avevo lanciato semplicemente con
+
+Rscript	LINCS_drug_signature_parallelcomputation.R
+
+senza input aggiuntivi (perché stava girando da prima che parlassimo la settimana scorsa)
+
+ho solo cambiata la seguente directory nel file config.R:
+drug_signature_cfg$signature_base_dir <- "output/drug_signature/LINCS_lorenzo/"
+
+
+#                                                                                            6h 24  8,8,8: n processori da usare x ogni processo. e il 4 era il numero di blocchi
+Rscript LINCS_drug_signatures_parallel_computation.R data/LINCS-GSE92742/bing_gene_symbols.csv 6,24 8,8,8,8,8,8,8,8 4
+
+Rscript LINCS_drug_signatures_parallel_computation.R data/LINCS-GSE92742/bing_gene_symbols.csv 6,24 2 1
+																								6,24 30,30 1
+
+
+x ogni processo assegno un blocco di geni da computare, tipo hai 40 geni (ognuno a 6 e 24), e quindi sono 4 blocchi da 20 geni ognuno, e ognuno è diviso.
+sarebbe meglio calcolare quanti geni sono. 
+
+# local_confing_templates: questa configurazione cambia in base all'ambiente. ha un file con la configurazione pero in .gitignore.
+
+
+Log lanci.
+Rscript LINCS_drug_signatures_parallel_computation.R data/LINCS-GSE92742/16_gene_symbols.csv 6,24 8,8,8,8,8,8,8,8 4   
+
+Di default, se già c'è un gene calcolato, non lo ricalcola, ma puoi cambiare il parametro e dirgli di sovrascriverlo (se ti serve chiedi a CC)          
+
+
+# Metanalysis
+
+DA CAPIRE COME MAI PRENDE 'CURRENT_GENE_SYMBOLS.CSV' COME LISTA DI GENI
+ su server c'è tutta la metanalysis per tutti e 10k i geni (3.2 GB)
+

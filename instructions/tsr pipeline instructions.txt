@@ -1,0 +1,175 @@
+# Connectivity score calculation pipeline
+
+run R scripts from
+#######################################
+cd drug_repurposing/tsr
+
+run most python scripts from:
+cd drug_repurposing/modules
+######################################
+
+
+0) esporta LINCS file in singoli file per gene binari di R piu veloci da leggere per R . dentro lincs export
+	gia fatto per alcuni file con alcuni cutoffs precisi:
+	circa 10k geni, non ricordo i cutoffs ma vabbene cosi sono scritti da qualche parte
+
+#########################
+1) DEG farmaci: calculate fc with mixed linear models for drugs data
+#########################
+	inputs: L1000 platform, microarray, RNA counts
+		export di 100 geni su deonco, piu veloce file .rds (cartella LINCS export)
+
+	Model:
+		LMM with variabili casuali: RNA_plate, cell_id
+	Script:
+		-LINCS drug signature computation
+		
+
+		############
+		LINCS_drug_signature_parallelcomputation.R:  funge su server
+		############
+
+		implementation: Julia/BLAS (parallel)
+		(puoi usare anche lmer )
+
+		6/24h meta-analysis:
+
+		> BOTTLENECK of calculation <
+
+	output:
+		drug_signatures.csv
+
+1.1) Meta analysis over three perturbation times:
+	Rscript metanalysis_64_24h.R.
+	FUNZIONA su server
+
+1.2) run 7_filterbalbla, to translate gene Ids and remove duplicates..
+
+
+#################################################
+2) DEG diseases:
+#################################################
+	input: ALS1, ALS2 IPF, transcriptomics reads (RNA counts)
+
+	Model: 
+		LMM with variabili casuali: tissue for ALS_NYGC data 
+		linear regression model for IPF, other ALS data
+
+	Scripts:
+		implementation: Voom+DREAM (LMM), lmFit (linear model)
+		dentro le cartelle delle relative malattie
+		DiseaseSignature.r VS OverallDiseaseSignature.r ???
+
+		als_NYGC/01.als_NYGC_disease_signature.R  FUNZIONA
+		ipf/01.ipf_disease_signature.R FUNZIONA
+
+	output:
+		for 1_als_NYGC:
+		RESULS IN output/als_NYGC_lorenzo/als_NYGC_signature.csv and als_NYGC_signature.Rds 
+
+	To translate gene to gene_id, run the last cells of
+	modules/2_mith3_name_to_id_map (ignore the fact that it's called mith3)
+
+		output:
+			other_data/'+DISEASE+'_gene_id_to_symbol.pkl'  # dictionary of univocous gene id to gene name map
+			output/disese_signature/als_NYGC/'+DISEASE+'_signature_gene_id.csv' # ; separated with , decimal signature data with gene name s and gene id, univocous
+
+
+
+		02.ipf_most_significant_genes # NON andrà usato più penso
+	output:
+		output/disese_signature/als_NYGC_lorenzo/most_significant_genes/
+
+
+####################################################
+# 3) CALCULATE MITHRIL3 Perturbation scores from drug and disease FC data.
+#############################################################
+
+
+1.5.2) meta analysis Mihirl data.
+	see MITHrIL come funge.txt
+
+
+FC DISEASE: see mithril come funge.
+	
+
+
+# CONVERT DRUG DATA TO PICKLED
+8_blabla and test_blabla
+
+
+###############################################
+4) Connectivity score calculation:
+###############################################
+
+	inputs:
+		disease_signatures:
+			disease_signature.csv: ; separated con colonne:  "gene";"DE_log2_FC";"std.error";"t.value";"p.value";"adj.p.value"
+			disease_signature.Rds ?
+
+		drug_signature:
+			TODO ?
+	Scripts:
+		overall connectivity score?
+		
+
+		als_NYGC/03...07 :tutti connectivity scores tra geni diversi. Prima di lanciarli, configurare i files:
+
+			config file:
+				drug_signature_cfg$signature_base_dir <- "output/drug_signature/LINCS_lorenzo/"
+			als_config:
+				als_NYGC_cfg$signature_base_dir <- "output/disease_signature/als_NYGC_lorenzo/" 
+				als_NYGC_cfg$signature_filename <- paste0(als_NYGC_cfg$signature_base_dir, "als_NYGC_signature.csv")  # DA CAMBIARE QUESTA LINE PER CAMBIARE L'INPUT FILE COI FOLD CHANGES DEL DISEASE UTILI
+				als_NYGC_cfg$connectivity_score_base_dir <- "output/connectivity_score/als_NYGC_lorenzo
+
+		Tutti gli ouputs salvati in:
+			output/connectivity_scores/als_NYGC_lorenzo
+
+		esempio con 05 (e attenzione):
+		Rscript 05.als_NYGC_bin_chen_genes_connectivity_score.R
+			als_config:
+				als_NYGC_cfg$signature_filename <- paste0(als_NYGC_cfg$signature_base_dir, "als_NYGC_signature.csv")  #input file name
+ 				
+ 				als_NYGC_cfg$connectivity_score_bin_chen_genes_filename <- paste0(als_NYGC_cfg$connectivity_score_base_dir, "als_NYGC_connectivity_score_bin_chen_genes.csv")       # output file name (TODO: make it automatic ? but I ma fraid it will mess up something.)
+				
+				als_NYGC_cfg$connectivity_score_PGx_bin_chen_genes_filename <- paste0(als_NYGC_cfg$connectivity_score_base_dir, als_NYGC_connectivity_score_PGx_150_MS_genes.csv")
+
+			Output:
+				output/connectivity_scores/als_NYGC_lorenzo/ipf_connectivity_score_bin_chen_genes.Rds # ATTENZIONE! quindi si sovrascriveranno sempre le nuove run anche con onmi files di input di disease diverse, per via di uqesto bug!! per qst bug
+															ipf_connectivity_score_bin_chen_genes.csv #???? ask Carmelo about this BUG
+
+		ATTENZIONE,06 e 07 sono SIGNIFICATIVAMENTE piu lunghi (ore vs minuti). 07 fatto dopo 1.3875157332420 ore 
+		07 anche si salva col nome ipf
+
+		ipf/04
+		ipf/05.. : FUNZIONA
+		prvando il num 7 , il num 5 ipf funziona: ERROR:
+
+3) connectivity score calculation CON MITHRIL-
+	-trasforma output di mithril con ../modules/mith_to_tsr.py mithrilouptufilenamesenzaestensione
+
+	als_config:
+		als_NYGC_cfg$signature_filename <- paste0(als_NYGC_cfg$signature_base_dir, "als_NYGC_mithril_signature.csv")
+	Rscript i vari mithrilouptufilenamesenzaestensione
+
+	ATTENZIONE! BUG! i nomi rimangono gli stessi presettati quindi si sovrascrivono. 
+
+
+
+
+--------------------------------------
+COME CAMBIARE IL NUMERO DI CORES? DA CONFING NON FUNZIONA!
+
+
+
+15/01/2025
+conn. score
+# run txt_to_Rds to transform .txt mithril metanalysis into .Rds (ultimo step per avere input drug signature mith3 based)
+
+# ma ho un vago ricordo che non servisse cambiarequeste lines ma proviamo...
+config:
+drug_signature_cfg$signature_base_dir <- "output/drug_signature/LINCS_lorenzo/"
+drug_signature_cfg$metanalysis_6h_24_dir <- "metanalysis_mith3_gene_wise/" 
+
+
+
