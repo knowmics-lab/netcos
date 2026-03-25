@@ -58,11 +58,62 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,\
-    cell_line, diseases_of, LINCS_BC_DATA, LOGS_DIR,\
-        cs_filename, disease_run_name
+    cell_line, diseases_of, LOGS_DIR,\
+        cs_filename, disease_run_name, cell_line_run_name,\
+    cs_on_LM, cs_mith, selected_cs_run_id, \
+    cs_log_filename, lincs_metadata_path
     
 from datetime import datetime
-from pathlib import Path
+
+
+def resolve_cs_run_id(
+    cs_runs_tsv,
+    disease_run_id,
+    drug_run_id,
+    cs_on_LM,
+    mith,
+    selected_cs_run_id=None,
+):
+    """
+    Retrieve the cs_run_id from cs log file,
+    or return selected_cs_run_id, if provided
+    """
+
+    runs = pd.read_csv(cs_runs_tsv, sep="\t")
+
+    # normalize booleans stored as 0/1 or True/False
+    runs["mith"] = runs["mith"].astype(int)
+    runs["cs_on_LM"] = runs["cs_on_LM"].astype(int)
+
+    if selected_cs_run_id is not None:
+        hit = runs[runs["cs_run_id"] == selected_cs_run_id]
+        if len(hit) == 0:
+            raise ValueError(
+                f"selected_cs_run_id '{selected_cs_run_id}' not found in {cs_runs_tsv}"
+            )
+        return selected_cs_run_id
+
+    hit = runs[
+        (runs["disease_run_id"] == disease_run_id) &
+        (runs["drug_run_id"] == drug_run_id) &
+        (runs["cs_on_LM"] == int(cs_on_LM)) &
+        (runs["mith"] == int(mith))
+    ].copy()
+
+    if len(hit) == 0:
+        raise ValueError(
+            "No matching CS run found in cs_runs.tsv for:\n"
+            f"disease_run_id={disease_run_id}, "
+            f"drug_run_id={drug_run_id}, "
+            f"cs_on_LM={int(cs_on_LM)}, "
+            f"mith={int(mith)}"
+        )
+
+    if len(hit) > 1:
+        hit["timestamp"] = pd.to_datetime(hit["timestamp"])
+        hit = hit.sort_values("timestamp", ascending=False)
+
+    return hit.iloc[0]["cs_run_id"]
 
 def add_pert_id_to_cs( lincs_metadata_path,cs_df,
                       cs_id_col='LINCS_id',
@@ -148,9 +199,17 @@ if __name__=="__main__":
     
     print('running correlations between chembl IC50 and drug rankings for disease:', DISEASE)
     print(DISEASE, CS_OUT,  cell_line)
-    cs_drug_file= 'mith_connectivity_score.tsv' #cs_filename
-    lincs_metadata_path = LINCS_BC_DATA / 'lincs_sig_info_new.csv'
+    cs_drug_file= cs_filename
 
+    cs_run_id = resolve_cs_run_id(cs_runs_tsv=cs_log_filename, disease_run_id=disease_run_name,\
+    drug_run_id=cell_line_run_name, cs_on_LM=cs_on_LM,   mith=cs_mith,\
+        selected_cs_run_id=selected_cs_run_id)
+
+        
+    print("Resolved cs_run_id:", cs_run_id)
+    cs_drug_file = f"{cs_run_id}.tsv"
+    print("Using CS file:", CS_OUT / cs_drug_file)
+    
     dr=load_drug_rankings(CS_OUT, filename = cs_drug_file , lincs_metadata_path=lincs_metadata_path)
     print(dr.shape, 'drugs ')
     #%%
@@ -207,6 +266,7 @@ if __name__=="__main__":
         ic50_file,
         lincs_metadata_file,
         disease_run_name,
+        drug_run_name,
         cs_df,
         ic50_df,
         merged_df,
@@ -234,6 +294,7 @@ if __name__=="__main__":
             "ic50_file": str(ic50_file),
             "lincs_metadata_file": str(lincs_metadata_file),
             "disease run name": disease_run_name,
+            "drug_run_name" : drug_run_name,
     
             # parameters
             "cs_drug_colname": cs_drug_colname,
@@ -280,6 +341,7 @@ if __name__=="__main__":
     ic50_file=ic50_file,
     lincs_metadata_file=lincs_metadata_path,
     disease_run_name = disease_run_name,
+    drug_run_name = cell_line_run_name,
     cs_df=dr,
     ic50_df=ic50,
     merged_df=merged,

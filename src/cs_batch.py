@@ -20,7 +20,7 @@ from loader import load_disease_signature, load_single_signature_cs_input,\
 from preprocessing_utils import get_signature_ids_list_from_cs_input
 from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
     disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
-        cs_mith, LOGS_DIR, cell_line_run_name
+        cs_mith, LOGS_DIR, cell_line_run_name, cs_id, cs_log_filename
 from preprocessing_utils import get_chunk_indexes
 from joblib import Parallel, delayed
 
@@ -224,21 +224,19 @@ if __name__=="__main__":
                 os.mkdir(CS_OUT)
     #%% write file
     
-    now =  datetime.now()
-    datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-    cs_filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
-    connectivity_dataset_filename=CS_OUT/cs_filename
+    # now =  datetime.now()
+    # datetime_string = now.strftime("%d_%m_%Y_%H_%M")
+    # cs_filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
+    # connectivity_dataset_filename=CS_OUT/cs_filename
 
     
     cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
     
     #%% write run log
-    metadata_file = Path(LOGS_DIR) / 'cs_runs.tsv'
-
-    cs_run_id = Path(connectivity_dataset_filename).stem
+    
     
     metadata_row = {
-        "cs_run_id": cs_run_id,
+        "cs_run_id": cs_id,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "hostname": socket.gethostname(),
         "disease_run_id": disease_run_name,
@@ -265,4 +263,4 @@ if __name__=="__main__":
         "output_file": str(connectivity_dataset_filename),
     }
     
-    append_cs_run_log(metadata_file, metadata_row)
+    append_cs_run_log(cs_log_filename, metadata_row)

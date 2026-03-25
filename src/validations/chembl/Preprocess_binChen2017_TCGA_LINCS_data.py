@@ -10,7 +10,7 @@ chembl valdiation using NetCos
 from pathlib import Path
 
 # this works with conf file related to BinChen2017 chembl validation
-from conf import BASE_DIR, TSR_OUT_DRUG, cell_line, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id, MITH_APP, MITH_OUT_DRUG, MITH_OUT_DISEASE,\
+from conf import cell_line, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id,\
 CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl, diseases_of, DATA_DIR, CS_DIR,\
     landmark, BC_DATA, LINCS_BC_DATA, disease_run_name, cell_line_run_name, LOGS_DIR
 

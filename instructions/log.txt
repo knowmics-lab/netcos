@@ -1906,3 +1906,23 @@ LM genes only --> MITH genes --> LM genes again
 Refactoring of scripts:
 LM_genes mode on cs_batch.py
 CS batch log
+
+
+da fare dopo: print overlapped drugs che so pochine e printa quante sono le overlapped drugs.
+
+
+
+# aggiornare netcos obsidian con:
+fare giro di mithril SENZA lm filter prima
+
+da fare: parlare con salvatore di mithril e prendere un pezzo solo
+
+da fare: SD5 non e' quello a cui dobbiamo compararci per la pipeline cell line based, ma whatever SD sia di figure 3. per quanto riguarda quella parte.
+
+Per quanto riguarda sRGES: da implementarla, ricalcolarla PER loro sui loro dati
+										forse ricalcolarla PER NOI SUI NOSTRI DATI ?
+										fare correlazione con IC50 su loro sRGES ricalcolata (e compararla con SD5)
+										fare correlazione con IC50 su  sRGES su mperturbed data nostri?
+										fare correlazione con IC50 su RGES con netcos.
+
+w a  al;fredo non gli ho chiesto nulla delle cose che gli volevo chiedere

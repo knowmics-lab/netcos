@@ -28,7 +28,10 @@ if landmark:
 # pert_time = '6h'
 cell_line = 'HEPG2'
 cell_line_run_name = cell_line+LM_flag
-mith_input_file = 'LINCS' +LM_flag+'_'+cell_line+'.mi'
+mith_input_file = 'LINCS' +cell_line+LM_flag+'_'+'.mi'
+
+
+
 ####################
 # Disease data parameters
 ####################
@@ -123,6 +126,8 @@ if hasattr(local, "LINCS_BC_DATA"):
 else:
     LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
 
+lincs_metadata_path = LINCS_BC_DATA / "lincs_sig_info_new.csv"
+
 ###############################################################################
 # MITHrIL hyperparameters
 ###############################################################################
@@ -139,11 +144,21 @@ cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 1 # default 0: 0: calculate cs on all genes list 1: calculate on only landmark genes list
 
 
-now =  datetime.now()
-datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-cs_filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
-connectivity_dataset_filename=CS_OUT/cs_filename
 
+cs_filename = None #'mith_connectivity_score.tsv'
+
+if cs_filename is None:
+    now = datetime.now()
+    datetime_string = now.strftime("%d_%m_%Y_%H_%M")
+    cs_filename = datetime_string + (
+        '_DEG_connectivity_score.tsv' if not cs_mith else '_mith_connectivity_score.tsv'
+    )
+
+connectivity_dataset_filename=CS_OUT/cs_filename
+cs_id = Path(cs_filename).stem
+
+# log filename
+cs_log_filename = Path(LOGS_DIR) / 'cs_runs.tsv'
 
 
 
@@ -154,8 +169,14 @@ connectivity_dataset_filename=CS_OUT/cs_filename
 VAL_DIR = BASE_DIR / 'validations' 
 # Chembl directory
 CHEMBL_BASE_DIR = VAL_DIR / 'chembl'
-CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR / 'chembl_input'
-cell_lines_chembl = ["MCF7", "HepG2", "HT29"]
+# CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR / 'chembl_input'
+# cell_lines_chembl = ["MCF7", "HepG2", "HT29"]
+
+# ------------------------------------------------------------------
+# Optional: manual selection of an existing CS run for downstream steps
+# Leave both as None for automatic resolution from cs_runs.tsv
+# ------------------------------------------------------------------
+selected_cs_run_id = None
 
 ####################
 # Utility functions
