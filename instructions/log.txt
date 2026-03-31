@@ -1926,3 +1926,13 @@ Per quanto riguarda sRGES: da implementarla, ricalcolarla PER loro sui loro dati
 										fare correlazione con IC50 su RGES con netcos.
 
 w a  al;fredo non gli ho chiesto nulla delle cose che gli volevo chiedere
+
+riguardare differenza output mithril drug vs disease: perche'?
+
+measure precision and recall instead of correlation
+threshold IC50 values at active drugs (mM<10)
+
+
+31/03/2026
+creato conf_Chembl_validations_lm_filter_pre_ost.py in cui ho salvato il conf con i dati per l'ultima validazione fatta,
+ora modifico il conf per avere i dati nuovi

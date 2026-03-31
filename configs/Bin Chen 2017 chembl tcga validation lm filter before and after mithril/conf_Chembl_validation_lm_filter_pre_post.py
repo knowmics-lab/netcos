@@ -19,7 +19,7 @@ from datetime import datetime
 # LINCS data parameters
 #######################
 
-landmark = False  # only select landmark genes from signature data
+landmark = True  # only select landmark genes 
 LM_flag = ''
 if landmark:
     LM_flag = '_LM'
