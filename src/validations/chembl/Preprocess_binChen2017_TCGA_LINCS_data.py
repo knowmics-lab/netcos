@@ -11,8 +11,8 @@ from pathlib import Path
 
 # this works with conf file related to BinChen2017 chembl validation
 from conf import cell_line, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id,\
-CS_IN_DRUG, CS_IN_DISEASE, cell_lines_chembl, diseases_of, DATA_DIR, CS_DIR,\
-    landmark, BC_DATA, LINCS_BC_DATA, disease_run_name, cell_line_run_name, LOGS_DIR
+diseases_of, DATA_DIR, landmark_disease, landmark_drug, LM_flag_disease,\
+    LM_flag_drug, BC_DATA, LINCS_BC_DATA, disease_run_name, cell_line_run_name, LOGS_DIR
 
 import pandas as pd
 import pyreadr
@@ -55,37 +55,40 @@ n_LINCS_genes = LINCS_FC_bc.shape[0]
 
 #%%
 
-LM_flag = ''
-if landmark:
-    LM_flag = '_LM'
     
 for current_cell_line, current_disease in diseases_of.items():
     
-    print(current_cell_line, current_disease, 'landmark?', landmark)
+    print(current_cell_line, current_disease, 'landmark disease?', landmark_disease,  'landmark drug?', landmark_drug)
     
     print('load disease data')
     tcga = pd.read_excel(BC_DATA / 'SD2.xlsx', sheet_name = current_disease+'_sig.csv')
     n_tcga_total = len(tcga)
     print(tcga.shape, 'all genes')
     
-    lm_tcga_fc = tcga[tcga.landmark == landmark].copy()
-    n_lm_tcga_fc = len(lm_tcga_fc)
-    print(n_lm_tcga_fc, "genes with LINCS landmark =", landmark)
+    # Filter disease signature
+    # by landmark genes
     
-    lm_tcga_fc = lm_tcga_fc[["id", "log2FoldChange"]].copy()
-    lm_tcga_fc["id"] = lm_tcga_fc["id"].apply(lambda x: x.split("|")[1])
+    if landmark_disease:
+        filtered_tcga = tcga[tcga.landmark == landmark_disease].copy()
+    else:
+        filtered_tcga = tcga.copy()
+    n_lm_tcga_fc = len(filtered_tcga)
+    print(n_lm_tcga_fc, "genes with LINCS landmark =", landmark_disease)
     
-    n_tcga_selected_unique_gene_ids = lm_tcga_fc["id"].nunique()
+    filtered_tcga = filtered_tcga[["id", "log2FoldChange"]].copy()
+    filtered_tcga["id"] = filtered_tcga["id"].apply(lambda x: x.split("|")[1])
+    
+    n_tcga_selected_unique_gene_ids = filtered_tcga["id"].nunique()
     print(n_tcga_selected_unique_gene_ids, 'unique gene ids')
 
     
     print('convert disease data to MITHrIL input')
 
-    current_disease_run_name = current_disease + LM_flag
+    current_disease_run_name = current_disease + LM_flag_disease
 
     mith_disease_in_filename = current_disease_run_name+'_signature_gene_id.mi'
     disease_mith_input_path = MITH_IN_DISEASE/mith_disease_in_filename
-    lm_tcga_fc.to_csv(disease_mith_input_path, sep = '\t', index=False, header=False)
+    filtered_tcga.to_csv(disease_mith_input_path, sep = '\t', index=False, header=False)
 # # These three cancer types have
 # # 5 (BRCA), 2 (LIHC) and 12 (COAD) cancer cell lines with
 # # the same cell lineage (Fig. 1c and Supplementary Data 1) in LINCS data
@@ -126,10 +129,10 @@ for current_cell_line, current_disease in diseases_of.items():
 
     print('convert LINCS data to MITHrIL input. Remember to manually remove first tab from header!')
 
-    current_cell_line_run_name = current_cell_line+LM_flag
+    current_cell_line_run_name = current_cell_line+LM_flag_drug
     mith_in_lincs_filename = 'LINCS_'+current_cell_line_run_name+'.mi'
     drug_mith_input_path = MITH_IN_DRUG / mith_in_lincs_filename
-    # LINCS_FC_bc_filtered.to_csv(drug_mith_input_path, header = True , sep = '\t', index = True)
+    LINCS_FC_bc_filtered.to_csv(drug_mith_input_path, header = True , sep = '\t', index = True)
     
     # save run info
     timestamp=datetime.now().strftime("%d_%m_%Y_%H_%M") 
@@ -139,7 +142,8 @@ for current_cell_line, current_disease in diseases_of.items():
         "preprocessing_run_id": preprocessing_run_id,
         "timestamp": timestamp,
         "hostname": socket.gethostname(),
-        "landmark_pre_mith": int(bool(landmark)),
+        "filter_disease_signature_by_landmark_genes_pre_mith": int(bool(landmark_disease)),
+        "filter_drug_signature_by_landmark_genes_pre_mith": int(bool(landmark_drug)),
         "cell_line": current_cell_line,
         "disease": current_disease,
         "cell_line_run_name": current_cell_line_run_name,

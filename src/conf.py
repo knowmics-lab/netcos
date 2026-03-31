@@ -19,16 +19,20 @@ from datetime import datetime
 # LINCS data parameters
 #######################
 
-landmark = False  # only select landmark genes from signature data
-LM_flag = ''
-if landmark:
-    LM_flag = '_LM'
+landmark_disease = False  # only select landmark genes from signature data
+LM_flag_disease = ''
+if landmark_disease:
+    LM_flag_disease = '_LM'
 
 # is_gold = 1 # only select high-quality perturbagens. Default:1 for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
 # pert_time = '6h'
+landmark_drug = True  # only select landmark genes from signature data
+LM_flag_drug = ''
+if landmark_drug:
+    LM_flag_drug = '_LM'
 cell_line = 'HEPG2'
-cell_line_run_name = cell_line+LM_flag
-mith_input_file = 'LINCS' +cell_line+LM_flag+'.mi'
+cell_line_run_name = cell_line+LM_flag_drug
+mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
 
 
@@ -45,7 +49,7 @@ diseases_of = {'HEPG2':'LIHC',
 
 DISEASE = diseases_of[cell_line] 
 
-disease_run_name = DISEASE + LM_flag
+disease_run_name = DISEASE + LM_flag_disease
 
 ################
 # DIRECTORIES and files

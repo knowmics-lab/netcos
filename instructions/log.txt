@@ -1936,3 +1936,6 @@ threshold IC50 values at active drugs (mM<10)
 31/03/2026
 creato conf_Chembl_validations_lm_filter_pre_ost.py in cui ho salvato il conf con i dati per l'ultima validazione fatta,
 ora modifico il conf per avere i dati nuovi
+
+
+IDEA: USE LANDMARK ONLY SU LINCS, e ALL GENES su TCGA. SEMPLICE E VELOCESS, which, btw is what is already being done with lincs input data from binchen.
