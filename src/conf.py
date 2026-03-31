@@ -135,8 +135,9 @@ lincs_metadata_path = LINCS_BC_DATA / "lincs_sig_info_new.csv"
 ###############################################################################
 # MITHrIL hyperparameters
 ###############################################################################
-mith_threads = 10
+mith_batch_threads = 10
 mith_organism = 'hsa'
+mith_threads = 10
 
 ###############################################################################
 #  CS calculation hyperparameters and parameters

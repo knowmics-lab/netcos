@@ -6,7 +6,7 @@ Created on Fri Mar 21 10:41:29 2025
 """
 
 import subprocess
-from conf import DISEASE, MITH_APP, MITH_OUT_DISEASE, MITH_IN_DISEASE
+from conf import DISEASE, MITH_APP, MITH_OUT_DISEASE, MITH_IN_DISEASE, mith_threads
 
 def run_mithril(DISEASE, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
                 organism='hsa', n_thread="30", verbose=True, printc=True): 
@@ -62,4 +62,4 @@ if __name__=="__main__":
     # python step2_disease_run_MITHrIL.py DISEASE
     if len(argv)>1:
         disease_run_name = argv[1]
-    run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE)
+    run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE, n_thread=mith_threads)
