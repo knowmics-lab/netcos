@@ -1939,3 +1939,10 @@ ora modifico il conf per avere i dati nuovi
 
 
 IDEA: USE LANDMARK ONLY SU LINCS, e ALL GENES su TCGA. SEMPLICE E VELOCESS, which, btw is what is already being done with lincs input data from binchen.
+
+Disease run:
+python step2_disease_run_MITHrIL.py LIHC 1
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 30 -i /home/signorini/netcos/MITHrIL/input/disease_signature/LIHC_signature_gene_id.mi -organism hsa -o /home/signorini/netcos/MITHrIL/output/disease_signature_2025/LIHC_mith3.output.txt -p /home/signorini/netcos/MITHrIL/output/disease_signature_2025/LIHC_mith3.perturbations.txt -verbose
+
+python step2_disease_run_MITHrIL.py /BRCA 1
+java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 10 -i /home/signorini/netcos/MITHrIL/input/disease_signature/BRCA_signature_gene_id.mi -organism hsa -o /home/signorini/netcos/MITHrIL/output/disease_signature_2025/BRCA_mith3.output.txt -p /home/signorini/netcos/MITHrIL/output/disease_signature_2025/BRCA_mith3.perturbations.txt -verbose
