@@ -20,7 +20,8 @@ from loader import load_disease_signature, load_single_signature_cs_input,\
 from preprocessing_utils import get_signature_ids_list_from_cs_input
 from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
     disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
-        cs_mith, LOGS_DIR, cell_line_run_name, cs_id, cs_log_filename
+        cs_mith, LOGS_DIR, cell_line_run_name, cs_id, cs_log_filename,\
+            lincs_metadata_path
 from preprocessing_utils import get_chunk_indexes
 from logger import append_run_metadata
 from joblib import Parallel, delayed
@@ -49,6 +50,45 @@ import socket
 ###############################################################################
 #             CALCULATE CONNECTIVITY FOR DEG/MITH DATA
 ###############################################################################
+
+def add_pert_id_to_cs( lincs_metadata_path,cs_df,
+                      cs_id_col='LINCS_id',
+                      metadata_id_col='id',
+                      metadata_pert_col='pert_id'):
+    """
+    Adds a 'pert_id' column to a CS dataframe by mapping LINCS_id via LINCS metadata.
+    
+    Parameters
+    ----------
+    cs_df : pd.DataFrame
+        Connectivity score dataframe containing LINCS_id column
+    lincs_metadata_path : str
+        Path to lincs_sig_info_new.csv
+    cs_id_col : str
+        Column in cs_df (default 'LINCS_id')
+    metadata_id_col : str
+        Column in metadata corresponding to LINCS_id (default 'id')
+    metadata_pert_col : str
+        Column in metadata for pert_id (default 'pert_id')
+    """
+
+    if not metadata_pert_col in cs_df.columns:
+        # load only what we need
+        meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
+    
+        # build mapping dict
+        id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
+    
+        # map
+        cs_df[metadata_id_col] = cs_df[cs_id_col].map(id_to_pert)
+    
+        # optional sanity check
+        n_missing = cs_df['pert_id'].isna().sum()
+        if n_missing > 0:
+            print(f"Warning: {n_missing} LINCS_id values could not be mapped to pert_id")
+
+    return cs_df
+
 def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, \
                                        rank_on='magnitude', save_file=False, cs_on_LM=False):
     '''
@@ -218,6 +258,11 @@ if __name__=="__main__":
     
     # take stats from first batch as representative of filtering sizes
     first_stats = results[0][1]
+    
+    #To test:
+    cs_df = add_pert_id_to_cs(lincs_metadata_path, cs_df) 
+    
+    #
     total_elapsed = time.time() - start_total
     
     # write results

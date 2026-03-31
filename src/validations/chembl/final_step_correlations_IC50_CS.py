@@ -136,20 +136,20 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
         Column in metadata for pert_id (default 'pert_id')
     """
 
-
-    # load only what we need
-    meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
-
-    # build mapping dict
-    id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
-
-    # map
-    cs_df['pert_id'] = cs_df[cs_id_col].map(id_to_pert)
-
-    # optional sanity check
-    n_missing = cs_df['pert_id'].isna().sum()
-    if n_missing > 0:
-        print(f"Warning: {n_missing} LINCS_id values could not be mapped to pert_id")
+    if not metadata_pert_col in cs_df.columns:
+        # load only what we need
+        meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
+    
+        # build mapping dict
+        id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
+    
+        # map
+        cs_df[metadata_id_col] = cs_df[cs_id_col].map(id_to_pert)
+    
+        # optional sanity check
+        n_missing = cs_df['pert_id'].isna().sum()
+        if n_missing > 0:
+            print(f"Warning: {n_missing} LINCS_id values could not be mapped to pert_id")
 
     return cs_df
 # select 
@@ -199,8 +199,9 @@ if __name__=="__main__":
     
     print('running correlations between chembl IC50 and drug rankings for disease:', DISEASE)
     print(DISEASE, CS_OUT,  cell_line)
+    
+    # get CS filename for current run
     cs_drug_file= cs_filename
-
     cs_run_id = resolve_cs_run_id(cs_runs_tsv=cs_log_filename, disease_run_id=disease_run_name,\
     drug_run_id=cell_line_run_name, cs_on_LM=cs_on_LM,   mith=cs_mith,\
         selected_cs_run_id=selected_cs_run_id)

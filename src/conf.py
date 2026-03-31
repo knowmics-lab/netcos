@@ -145,7 +145,6 @@ mith_threads = 10
 
 cs_batch_threads = 5
 cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
-
 cs_on_LM = 1 # default 0: 0: calculate cs on all genes list 1: calculate on only landmark genes list
 
 
