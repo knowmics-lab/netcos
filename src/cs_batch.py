@@ -22,28 +22,29 @@ from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
     disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
         cs_mith, LOGS_DIR, cell_line_run_name, cs_id, cs_log_filename
 from preprocessing_utils import get_chunk_indexes
+from logger import append_run_metadata
 from joblib import Parallel, delayed
 
 from pathlib import Path
 from datetime import datetime
 import socket
 
-def append_cs_run_log(metadata_path,row_dict):
-    """
-    Append one run row to cs_runs.tsv, creating the file if it does not exist.
-    """
-    metadata_path = Path(metadata_path)
-    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+# def append_cs_run_log(metadata_path,row_dict):
+#     """
+#     Append one run row to cs_runs.tsv, creating the file if it does not exist.
+#     """
+#     metadata_path = Path(metadata_path)
+#     metadata_path.parent.mkdir(parents=True, exist_ok=True)
 
-    row_df = pd.DataFrame([row_dict])
+#     row_df = pd.DataFrame([row_dict])
 
-    if metadata_path.exists():
-        old_df = pd.read_csv(metadata_path, sep='\t')
-        out_df = pd.concat([old_df, row_df], ignore_index=True)
-    else:
-        out_df = row_df
+#     if metadata_path.exists():
+#         old_df = pd.read_csv(metadata_path, sep='\t')
+#         out_df = pd.concat([old_df, row_df], ignore_index=True)
+#     else:
+#         out_df = row_df
 
-    out_df.to_csv(metadata_path, sep='\t', index=False)
+#     out_df.to_csv(metadata_path, sep='\t', index=False)
 
 ###############################################################################
 #             CALCULATE CONNECTIVITY FOR DEG/MITH DATA
@@ -263,4 +264,4 @@ if __name__=="__main__":
         "output_file": str(connectivity_dataset_filename),
     }
     
-    append_cs_run_log(cs_log_filename, metadata_row)
+    append_run_metadata(cs_log_filename, metadata_row)

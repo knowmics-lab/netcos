@@ -13,29 +13,13 @@ from pathlib import Path
 from conf import cell_line, DISEASE, MITH_IN_DISEASE, MITH_IN_DRUG, map_name_to_id,\
 diseases_of, DATA_DIR, landmark_disease, landmark_drug, LM_flag_disease,\
     LM_flag_drug, BC_DATA, LINCS_BC_DATA, disease_run_name, cell_line_run_name, LOGS_DIR
-
+from logger import append_run_metadata
 import pandas as pd
 import pyreadr
 
 from datetime import datetime
 import socket
 
-def append_preprocessing_run_metadata(metadata_path, row_dict):
-    """
-    Append one row to preprocessing_runs.tsv, creating the file if needed.
-    """
-    metadata_path = Path(metadata_path)
-    metadata_path.parent.mkdir(parents=True, exist_ok=True)
-
-    row_df = pd.DataFrame([row_dict])
-
-    if metadata_path.exists():
-        old_df = pd.read_csv(metadata_path, sep="\t")
-        out_df = pd.concat([old_df, row_df], ignore_index=True)
-    else:
-        out_df = row_df
-
-    out_df.to_csv(metadata_path, sep="\t", index=False)
 
 #%%
 print(' Load LINCS signatures')
@@ -89,6 +73,7 @@ for current_cell_line, current_disease in diseases_of.items():
     mith_disease_in_filename = current_disease_run_name+'_signature_gene_id.mi'
     disease_mith_input_path = MITH_IN_DISEASE/mith_disease_in_filename
     filtered_tcga.to_csv(disease_mith_input_path, sep = '\t', index=False, header=False)
+    
 # # These three cancer types have
 # # 5 (BRCA), 2 (LIHC) and 12 (COAD) cancer cell lines with
 # # the same cell lineage (Fig. 1c and Supplementary Data 1) in LINCS data
@@ -172,4 +157,4 @@ for current_cell_line, current_disease in diseases_of.items():
         "notes": "Pre-MITHrIL preprocessing from BinChen2017 TCGA/LINCS data; one row per disease/cell-line pair.",
     }
     
-    append_preprocessing_run_metadata(  LOGS_DIR / "BinChen2017_chembl_validation_preprocessing_runs.tsv", metadata_row)
+    append_run_metadata(  LOGS_DIR / "BinChen2017_chembl_validation_preprocessing_runs.tsv", metadata_row)

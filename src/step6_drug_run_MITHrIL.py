@@ -6,7 +6,7 @@ Created on Fri Mar 21 10:41:29 2025
 """
 
 import subprocess
-from conf import cell_line, MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG, mith_threads, mith_organism
+from conf import cell_line, MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG, mith_batch_threads, mith_organism
 
 def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa_2025',
                  n_thread="30", verbose=True, printc=True):
@@ -62,4 +62,4 @@ if __name__ == "__main__":
     from conf import mith_input_file 
     if len(argv)>1:
         mith_input_file = argv[1]
-    run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, n_thread=mith_threads, organism=mith_organism)
+    run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, n_thread=mith_batch_threads, organism=mith_organism)
