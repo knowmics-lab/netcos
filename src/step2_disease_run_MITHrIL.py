@@ -64,7 +64,6 @@ def run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
     process.wait()
     elapsed_sec = time.time() - start
     
-    return_code = process.returncode
     
     main_exists = output_main_file.exists()
     pert_exists = output_pert_file.exists()
@@ -110,5 +109,4 @@ if __name__=="__main__":
     # python step2_disease_run_MITHrIL.py disease_run_name
     if len(argv)>1:
         disease_run_name = argv[1]
-        printc = argv[2] # 1 for printing, not running, 0 for running
     run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE, n_thread=mith_threads,  printc=True)
