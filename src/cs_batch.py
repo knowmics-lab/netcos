@@ -249,7 +249,7 @@ if __name__=="__main__":
         "drug_pval_col": "adj.p.value",
         "disease_value_col": "Perturbation" if mith else "DE_log2_FC",
         "disease_pval_col": "adj.p.value",
-        "n_signatures_total": len(drugs_list),
+        "n_drugs_total": len(drugs_list),
         "n_results_rows": len(cs_df),
         "n_disease_genes_before_common": first_stats["n_disease_before_common"],
         "n_drug_genes_before_common": first_stats["n_drug_before_common"],

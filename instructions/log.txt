@@ -1953,4 +1953,7 @@ java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -reactome -p -
 No need to re-run mithril for drugs cos they are the same yay (:
 so mith logger not created for drugs nay :( but still ok overall..
 
+added logging for step2 step6
+no need to re-do step7 since im not really running step6 since im suing the lm filtered lincs data (= all LINCS data for binchen lincs raw)
+
 afternoon : make correlations with IC50.. and update log to discern mithril flag lm filtering pre and post for drugs and for diseases
