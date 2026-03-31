@@ -80,10 +80,10 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
         id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
     
         # map
-        cs_df[metadata_id_col] = cs_df[cs_id_col].map(id_to_pert)
+        cs_df[metadata_pert_col] = cs_df[cs_id_col].map(id_to_pert)
     
         # optional sanity check
-        n_missing = cs_df['pert_id'].isna().sum()
+        n_missing = cs_df[metadata_pert_col].isna().sum()
         if n_missing > 0:
             print(f"Warning: {n_missing} LINCS_id values could not be mapped to pert_id")
 
