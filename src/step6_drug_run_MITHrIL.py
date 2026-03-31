@@ -10,11 +10,11 @@ import time
 import socket
 from pathlib import Path
 from datetime import datetime
-from conf import cell_line, MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG, mith_input_file\
+from conf import cell_line, MITH_APP, MITH_OUT_DRUG, MITH_IN_DRUG, mith_input_file, \
     mith_batch_threads, mith_organism, LOGS_DIR, cell_line_run_name, landmark_drug
 from logger import append_run_metadata
 
-def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa_2025',
+def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, organism='hsa',
                  n_thread="30", verbose=True, printc=True):
     '''
     MITHrIL batch parameters:

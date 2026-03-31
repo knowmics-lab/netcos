@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 import socket
 from conf import disease_run_name, MITH_APP, MITH_OUT_DISEASE, MITH_IN_DISEASE,\
-    mith_threads, LOGS_DIR, landmark_disease
+    mith_threads, LOGS_DIR, landmark_disease, DISEASE
 from logger import append_run_metadata
 
 def run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
@@ -81,7 +81,7 @@ def run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
         "step_name": "step2_disease_run_MITHrIL",
         "run_scope": "disease",
         "disease_run_id": disease_run_name,
-        "disease_symbol": disease_run_name,
+        "disease_symbol": DISEASE,
         "filter_disease_signature_by_landmark_genes_pre_mith": int(bool(landmark_disease)),
         "mith_input_file": str(input_file),
         "mith_output_main_file": str(output_main_file),

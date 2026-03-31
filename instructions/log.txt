@@ -1949,3 +1949,8 @@ java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -reactome -p -
 
 (base) signorini@d930f4636199:~/netcos/src$ python step2_disease_run_MITHrIL.py COAD 
 java -jar /home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar mithril -reactome -p -customize-pathway-matrix -seed 1234 -inversion-factory fast-cpu -multiplication-factory fast-cpu -t 30 -i /home/signorini/netcos/MITHrIL/input/disease_signature/COAD_signature_gene_id.mi -organism hsa -o /home/signorini/netcos/MITHrIL/output/disease_signature_2025/COAD_mith3.output.txt -p /home/signorini/netcos/MITHrIL/output/disease_signature_2025/COAD_mith3.perturbations.txt -verbose
+
+No need to re-run mithril for drugs cos they are the same yay (:
+so mith logger not created for drugs nay :( but still ok overall..
+
+afternoon : make correlations with IC50.. and update log to discern mithril flag lm filtering pre and post for drugs and for diseases
