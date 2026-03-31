@@ -30,7 +30,7 @@ landmark_drug = True  # only select landmark genes from signature data
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'HEPG2'
+cell_line = 'HT29'
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
@@ -176,11 +176,19 @@ CHEMBL_BASE_DIR = VAL_DIR / 'chembl'
 # CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR / 'chembl_input'
 # cell_lines_chembl = ["MCF7", "HepG2", "HT29"]
 
+chembl_val_log_filename = LOGS_DIR / "BinChen2017_chembl_validation_IC50_correlation_runs.tsv"
+
+
+
 # ------------------------------------------------------------------
 # Optional: manual selection of an existing CS run for downstream steps
 # Leave both as None for automatic resolution from cs_runs.tsv
 # ------------------------------------------------------------------
 selected_cs_run_id = None
+
+
+
+
 
 ####################
 # Utility functions

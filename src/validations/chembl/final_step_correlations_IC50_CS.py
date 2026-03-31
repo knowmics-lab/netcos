@@ -54,6 +54,7 @@ REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # go up 3 lev
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
 from pathlib import Path
+from datetime import datetime
 import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
@@ -61,9 +62,8 @@ from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,\
     cell_line, diseases_of, LOGS_DIR,\
         cs_filename, disease_run_name, cell_line_run_name,\
     cs_on_LM, cs_mith, selected_cs_run_id, \
-    cs_log_filename, lincs_metadata_path
-    
-from datetime import datetime
+    cs_log_filename, lincs_metadata_path, chembl_val_log_filename
+from logger import append_run_metadata
 
 
 def resolve_cs_run_id(
@@ -144,7 +144,7 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
         id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
     
         # map
-        cs_df[metadata_id_col] = cs_df[cs_id_col].map(id_to_pert)
+        cs_df[metadata_pert_col] = cs_df[cs_id_col].map(id_to_pert)
     
         # optional sanity check
         n_missing = cs_df['pert_id'].isna().sum()
@@ -158,7 +158,7 @@ def load_drug_rankings(path, filename=None, pert_time='all',mith='mith', lincs_m
     
     if not filename:
         filename=mith+'_connectivity_score.tsv'
-    df= pd.read_csv(path/filename, sep='\t', header=0, usecols=[0,1,2,3], dtype='str')
+    df= pd.read_csv(path/filename, sep='\t', header=0, dtype='str')
     
     if not pert_time == 'all':
         return dr[dr.perturbation_time==pert_time]
@@ -211,7 +211,7 @@ if __name__=="__main__":
     cs_drug_file = f"{cs_run_id}.tsv"
     print("Using CS file:", CS_OUT / cs_drug_file)
     
-    dr=load_drug_rankings(CS_OUT, filename = cs_drug_file , lincs_metadata_path=lincs_metadata_path)
+    dr=load_drug_rankings(CS_OUT, filename = cs_drug_file)
     print(dr.shape, 'drugs ')
     #%%
     
@@ -261,163 +261,106 @@ if __name__=="__main__":
     
 
 
-    def log_correlation_run(
-        log_path,
-        cs_file,
-        ic50_file,
-        lincs_metadata_file,
-        disease_run_name,
-        drug_run_name,
-        cs_df,
-        ic50_df,
-        merged_df,
-        spearman_corr,
-        spearman_p ,
-        spearman_corr_log,
-        spearman_p_log,
-        spearman_corr_SD5_data,
-        spearman_p_SD5_data ,
-        spearman_corr_log_SD5_data,
-        spearman_p_log_SD5_data,
-        # cs_value_col,
-        # ic50_value_col,
-        cs_drug_colname,
-        ic50_drug_colname,
-        output_plot_file
-    ):
-        run_data = {
-            # identity
-            "correlation_run_id": datetime.now().strftime("%d_%m_%Y_%H_%M_%S"),
-            "datetime": datetime.now().isoformat(),
     
-            # inputs
-            "cs_file": str(cs_file),
-            "ic50_file": str(ic50_file),
-            "lincs_metadata_file": str(lincs_metadata_file),
-            "disease run name": disease_run_name,
-            "drug_run_name" : drug_run_name,
-    
-            # parameters
-            "cs_drug_colname": cs_drug_colname,
-            "ic50_drug_colname": ic50_drug_colname,
-            # "cs_value_col": cs_value_col,
-            # "ic50_value_col": ic50_value_col,
-    
-            # sizes
-            "n_cs_rows": len(cs_df),
-            "n_ic50_rows": len(ic50_df),
-            "n_merged_rows": len(merged_df),
-            "n_unique_drugs": merged_df[cs_drug_colname].nunique(),
-    
-            # results
-            "spearman_r": np.round(spearman_corr,2),
-            "spearman_pval": np.round(spearman_p,2),
-            "spearman_r_log": np.round(spearman_corr_log,2),
-            "spearman_pval_log": np.round(spearman_p_log,2),
-            
-            # optional: correlations with BC data
-            "spearman_r_SD5": np.round(spearman_corr_SD5_data,2),
-            "spearman_pval_SD5": np.round(spearman_p_SD5_data,2),
-            "spearman_r_log_SD5": np.round(spearman_corr_log_SD5_data,2),
-            "spearman_pval_log_SD5": np.round(spearman_p_log_SD5_data,2),
-    
-            # output
-            "output_plot_file": str(output_plot_file)
-        }
-    
-        run_df = pd.DataFrame([run_data])
-    
-        log_path = Path(log_path)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-    
-        if log_path.exists():
-            run_df.to_csv(log_path, sep='\t', mode='a', header=False, index=False)
-        else:
-            run_df.to_csv(log_path, sep='\t', index=False)
+    run_metadata_data = {
+        # identity
+        "correlation_run_id": datetime.now().strftime("%d_%m_%Y_%H_%M_%S"),
+        "datetime": datetime.now().isoformat(),
+
+        # inputs
+        "cs_file": str(CS_OUT / cs_drug_file),
+        "ic50_file": str(ic50_file),
+        "lincs_metadata_file": str(lincs_metadata_path),
+        "disease_run_id": disease_run_name,
+        "drug_run_id" : cell_line_run_name,
+
+        # parameters
+        "cs_drug_colname": cs_drug_colname,
+        "ic50_drug_colname": ic50_drug_colname,
+        # "cs_value_col": cs_value_col,
+        # "ic50_value_col": ic50_value_col,
+
+        # sizes
+        "n_cs_rows": len(dr),
+        "n_ic50_rows": len(ic50),
+        "n_merged_rows": len(merged),
+        "n_unique_drugs": merged[cs_drug_colname].nunique(),
+
+        # results
+        "spearman_r": np.round(rho_linear,2),
+        "spearman_pval": np.round(p_linear,2),
+        "spearman_r_log": np.round(rho_log,2),
+        "spearman_pval_log": np.round(p_log,2),
         
-        
-    log_correlation_run(
-    log_path = LOGS_DIR / "BinChen2017_chembl_validation_IC50_correlation_runs.tsv",
-    cs_file=CS_OUT / cs_drug_file,
-    ic50_file=ic50_file,
-    lincs_metadata_file=lincs_metadata_path,
-    disease_run_name = disease_run_name,
-    drug_run_name = cell_line_run_name,
-    cs_df=dr,
-    ic50_df=ic50,
-    merged_df=merged,
-    spearman_corr=rho_linear,
-    spearman_p =  p_linear,
-    spearman_corr_log=rho_log,
-    spearman_p_log =  p_log,
-    spearman_corr_SD5_data=rho_linear_bc,
-    spearman_p_SD5_data =  p_linear_bc,
-    spearman_corr_log_SD5_data=rho_log_bc,
-    spearman_p_log_SD5_data =  p_log_bc,
-    # cs_value_col=cs_value_col,
-    # ic50_value_col=ic50_value_col,
-    cs_drug_colname=cs_drug_colname,
-    ic50_drug_colname=ic50_drug_colname,
-    output_plot_file="correlation_plot.png"
-)
+        # optional: correlations with BC data
+        "spearman_r_SD5": np.round(rho_linear_bc,2),
+        "spearman_pval_SD5": np.round(p_linear_bc,2),
+        "spearman_r_log_SD5": np.round(rho_log_bc,2),
+        "spearman_pval_log_SD5": np.round(p_log_bc,2),
+
+        # output
+        # "output_plot_file": str(output_plot_file)
+    }
+    
+
+    append_run_metadata(chembl_val_log_filename, run_metadata_data)
     
     
+    # #%%
+    # # todo: raccogliere i calcoli di sopra in un dizionario che
+    # # abbia tutte le voci, e riempirlo per tutte le disease e eprt time
+    # # renderlo poi un dizionario, e traslare tutto su ntobeook (lo stesso di cehmbl validation)
+    # # per printare il dataframe per bene. 
     
-    #%%
-    # todo: raccogliere i calcoli di sopra in un dizionario che
-    # abbia tutte le voci, e riempirlo per tutte le disease e eprt time
-    # renderlo poi un dizionario, e traslare tutto su ntobeook (lo stesso di cehmbl validation)
-    # per printare il dataframe per bene. 
+    # # salvare eventualmente in un dizionario a parte,
+    # # i valori di IC50_drugs, common_drugs, overlap Drugs
+    # data_of = {}
+    # for cell_line in ['MCF7','HEPG2','HT29']:
+    #     print('-----------------------',cell_line)
+    #     disease = diseases_of[cell_line]
+    #     ic50 = load_IC50(disease, cell_line)
+    #     BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
+    #                                  sheet_name=disease)
+    #     print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
     
-    # salvare eventualmente in un dizionario a parte,
-    # i valori di IC50_drugs, common_drugs, overlap Drugs
-    data_of = {}
-    for cell_line in ['MCF7','HEPG2','HT29']:
-        print('-----------------------',cell_line)
-        disease = diseases_of[cell_line]
-        ic50 = load_IC50(disease, cell_line)
-        BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
-                                     sheet_name=disease)
-        print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
+    #     for pert_time in ['6h', '24h']:
+    #         cs_out=CS_DIR/'output'/disease+'_2025_'+pert_time
+    #         print(cell_line, 'pert time',pert_time)
+    #         dr=load_drug_rankings(cs_out)
     
-        for pert_time in ['6h', '24h']:
-            cs_out=CS_DIR/'output'/disease+'_2025_'+pert_time
-            print(cell_line, 'pert time',pert_time)
-            dr=load_drug_rankings(cs_out)
-    
-            merged = pd.merge(dr, ic50, on="drug", how="inner", suffixes=("_dr","_ic50"))
-            merged = merged.dropna(subset=["connectivity_score","standard_value_median"]).copy()
-            print('merged data on common drugs:', merged.shape)
+    #         merged = pd.merge(dr, ic50, on="drug", how="inner", suffixes=("_dr","_ic50"))
+    #         merged = merged.dropna(subset=["connectivity_score","standard_value_median"]).copy()
+    #         print('merged data on common drugs:', merged.shape)
             
-            overlap_BC = set(merged.drug).intersection(set(BC_merged.pert_iname))
-            print('overlap between merged data with MCS vs merged data with sRGES from BinCHen2017', len(overlap_BC))
+    #         overlap_BC = set(merged.drug).intersection(set(BC_merged.pert_iname))
+    #         print('overlap between merged data with MCS vs merged data with sRGES from BinCHen2017', len(overlap_BC))
             
-            merged["log10_ic50"] = np.log10(merged["standard_value_median"])
+    #         merged["log10_ic50"] = np.log10(merged["standard_value_median"])
     
-            rho_linear, p_linear = spearmanr(merged["connectivity_score"], merged["standard_value_median"])
-            rho_log, p_log = spearmanr(merged["connectivity_score"], merged["log10_ic50"])
+    #         rho_linear, p_linear = spearmanr(merged["connectivity_score"], merged["standard_value_median"])
+    #         rho_log, p_log = spearmanr(merged["connectivity_score"], merged["log10_ic50"])
     
-            print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
-            print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
+    #         print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
+    #         print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
             
-            BC_merged["log10_ic50"] = np.log10(BC_merged["standard_value"])
+    #         BC_merged["log10_ic50"] = np.log10(BC_merged["standard_value"])
             
-            BC_rho_linear, BC_p_linear = spearmanr(BC_merged["sRGES"], BC_merged["standard_value"])
-            BC_rho_log, BC_p_log = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
+    #         BC_rho_linear, BC_p_linear = spearmanr(BC_merged["sRGES"], BC_merged["standard_value"])
+    #         BC_rho_log, BC_p_log = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
             
-            print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
-            print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
+    #         print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
+    #         print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
             
-            data_of[disease+'_'+pert_time] = [ic50.shape[0], dr.shape[0],\
-                                              merged.shape[0],BC_merged.shape[0],\
-                                            len(overlap_BC),rho_linear, p_linear,\
-                                                rho_log, p_log, BC_rho_linear,\
-                                                BC_p_linear, BC_rho_log, BC_p_log]
+    #         data_of[disease+'_'+pert_time] = [ic50.shape[0], dr.shape[0],\
+    #                                           merged.shape[0],BC_merged.shape[0],\
+    #                                         len(overlap_BC),rho_linear, p_linear,\
+    #                                             rho_log, p_log, BC_rho_linear,\
+    #                                             BC_p_linear, BC_rho_log, BC_p_log]
                 
     
-    data = pd.DataFrame(data_of).transpose()
-    data.columns= ['n_IC50','n_MCS', 'n_MCSvIC50', \
-                                            'n_sRGESvIC50','n_overlapSRGESvMCS',\
-                                            'rho','p','rho_log','p_log',\
-                                            'rho_sRGES', 'p_sRGES','rho_log_sRGES',\
-                                                'p_log_sRGES']
+    # data = pd.DataFrame(data_of).transpose()
+    # data.columns= ['n_IC50','n_MCS', 'n_MCSvIC50', \
+    #                                         'n_sRGESvIC50','n_overlapSRGESvMCS',\
+    #                                         'rho','p','rho_log','p_log',\
+    #                                         'rho_sRGES', 'p_sRGES','rho_log_sRGES',\
+    #                                             'p_log_sRGES']

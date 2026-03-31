@@ -1958,8 +1958,9 @@ no need to re-do step7 since im not really running step6 since im suing the lm f
 
 Run cs_batch for all three tumors.
 
-afternoon : make correlations with IC50.. 
+made correlations with IC50 but there are bugs according to chatgpt
 
 domani:
 
-add number of drugs e number of genes (x disease e drugs) a step2 e 6 logger. x vedere soprattutto se i numer idi geni sono gli stessi del cs_run logger, o se vengono cambiati dallo step7 di pulizia.
+-add number of drugs e number of genes (x disease e drugs) a step2 e 6 logger. x vedere soprattutto se i numer idi geni sono gli stessi del cs_run logger, o se vengono cambiati dallo step7 di pulizia.
+-carefully read binchen2017 and chatgpt's Reproduce BinChen Fig.3
