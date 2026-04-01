@@ -119,13 +119,13 @@ def run_mithril_batch(mith_input_file, MITH_APP, MITH_IN_DRUG, MITH_OUT_DRUG, or
     n_files_before = len(list(out_dir.glob("*")))
     
     return_code=123
+    start = time.time()
     if run_mith:
-        start = time.time()
         process = subprocess.Popen(command)
     
         process.wait()
         return_code = process.returncode
-        elapsed_sec = time.time() - start
+    elapsed_sec = time.time() - start
 
     # n_files_after = len(list(out_dir.glob("*")))
     # n_new_files = n_files_after - n_files_before
