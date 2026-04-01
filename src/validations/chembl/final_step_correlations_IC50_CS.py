@@ -184,7 +184,7 @@ def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True):
     df = df[df.cell_line.str.upper()==cell_line]
     
     if IC50_only:
-        df[df.standard_type=='IC50']
+        df=df[df.standard_type=='IC50']
     
     # rename for later merge
     df.rename( columns = {'pert_iname':'drug'}, inplace=True)
@@ -254,8 +254,8 @@ if __name__=="__main__":
     rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged["standard_value"])
     rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
     
-    print('linear IC50 SD5: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
-    print('log IC50 SD5: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
+    print('linear IC50 SD5: rho=', np.round(rho_linear_bc,2),' pval =' ,np.round(p_linear_bc, 2))
+    print('log IC50 SD5: rho=', np.round(rho_log_bc, 2),' pval =', np.round(p_log_bc,2))
     
     #%%
     
