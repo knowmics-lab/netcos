@@ -1964,3 +1964,6 @@ domani:
 
 -add number of drugs e number of genes (x disease e drugs) a step2 e 6 logger. x vedere soprattutto se i numer idi geni sono gli stessi del cs_run logger, o se vengono cambiati dallo step7 di pulizia.
 -carefully read binchen2017 and chatgpt's Reproduce BinChen Fig.3
+
+added n genes to logger of step6. seen that the gene difference is in the step7 . found bug.
+

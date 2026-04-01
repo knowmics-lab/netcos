@@ -117,8 +117,8 @@ def build_output_frame(
     ]
     frame.insert(0, "signature_id", signature_id)
 
-    if drop_special_gene_names:
-        frame = remove_special_gene_names(frame, gene_col="gene")
+    # if drop_special_gene_names:
+    #     frame = remove_special_gene_names(frame, gene_col="gene")
 
     frame["gene_id"] = frame["gene_id"].astype(str)
 
