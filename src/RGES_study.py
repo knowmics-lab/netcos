@@ -17,6 +17,18 @@ import matplotlib.pyplot as plt
 import  matplotlib
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
+
+def nice_hist(x, title,  imgname,xlabel='', ylabel='', save=False):
+    # plt.rcParams.update({'font.size': 22})
+    plt.figure()
+    plt.hist(x, bins=100, color='black', density=True)
+    plt.grid(linestyle='--')
+    plt.title(title)
+    plt.ylabel(ylabel, fontsize=18)
+    plt.xlabel(xlabel, fontsize=18)
+    if save:
+        plt.savefig(imgname+'.pdf')
+    return
 #%% 
 # PARAMETERS:
 # connectivity score function:
@@ -24,18 +36,18 @@ score_type='bin_chen'#'lamb'#'sirota'#
 # score_type='evil_twin'#'lamb'#'sirota'#
 
 # Length of drug gene signature:
-r=10000#14812#9892
+r=1000#14812#9892
 
 # Length of disease up regulated signature:
 # set to s_up=int(r/2) to sample drug spectrum
-s_up=int(r/2)#10#7884#4455
+s_up=100#int(r/2)#10#7884#4455
 
 # Length of disease down regulated signature:
 # set to s_down=int(r/2) to sample drug spectrum
-s_down=int(r/2)#10#6928#3954
+s_down=100#int(r/2)#10#6928#3954
 
 # Number of random iterations:
-n_iterations=10000000
+n_iterations=10000
 
 #%% sample connectivity score distribution over of random rankings of r genes:
     
@@ -45,22 +57,11 @@ print('iterations:', n_iterations,'\nr=',r,'\ntime:', time.time()-start)
 
 #%%
 
-def nice_hist(x, title,  imgname,xlabel='', ylabel='', save=False):
-    # plt.rcParams.update({'font.size': 22})
-    plt.figure()
-    plt.hist(x, bins=100, color='black')
-    plt.grid(linestyle='--')
-    plt.title(title)
-    plt.ylabel(ylabel, fontsize=18)
-    plt.xlabel(xlabel, fontsize=18)
-    if save:
-        plt.savefig(imgname+'.pdf')
-    return
+
     
-# imgname='up'+str(s_up)+'down'+str(s_down)+'r'§+str(r)+score_type
-imgname='hist_nice'
+imgname='up'+str(s_up)+'down'+str(s_down)+'r'+str(r)+score_type
 xlabel='punteggio di connettività'
-ylabel='numerosità'
+ylabel='densità'
 nice_hist(css, '', imgname, xlabel,ylabel)
 #%% Split css into n random drug samplings, and pllot correlations between them
 # and FC based drug ranking and netocos based drug ranking
@@ -99,4 +100,3 @@ plt.savefig(IMG_DIR+'KS_test_Boxplot_vs_random_samplings')
 # e confrontarle contro drug rankings, a questo punto potrei fare delle correlazioni
 # xke cosi ho un drug ranking sulle drug esistenti vere e proprie vs un disease c
 # casuale. Questa sicuramente da mettere in un altro notebook
-

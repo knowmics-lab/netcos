@@ -1967,3 +1967,4 @@ domani:
 
 added n genes to logger of step6. seen that the gene difference is in the step7 . found bug.
 
+step7: 2 collapses removing gene names with "; / : * ? " |"

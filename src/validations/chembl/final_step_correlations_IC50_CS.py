@@ -58,13 +58,183 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
-from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,\
+from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
     cell_line, diseases_of, LOGS_DIR,\
         cs_filename, disease_run_name, cell_line_run_name,\
     cs_on_LM, cs_mith, selected_cs_run_id, \
     cs_log_filename, lincs_metadata_path, chembl_val_log_filename
 from logger import append_run_metadata
 
+import matplotlib.pyplot as plt
+from scipy.stats import spearmanr, linregress, ttest_ind
+
+
+
+#%%
+def collapse_cs_profiles_to_drug(
+    cs_df,
+    score_col="connectivity_score",
+    drug_col="pert_id",
+    how="median",
+):
+    """
+    Collapse multiple LINCS profiles per compound to one score per compound.
+
+    Parameters
+    ----------
+    how : {'median', 'mean', 'best'}
+        - median: robust default if exact Bin-Chen normalization is unavailable
+        - mean: simple average
+        - best: most negative score (strongest reversal)
+    """
+    df = cs_df.copy()
+    df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
+    df = df.dropna(subset=[drug_col, score_col]).copy()
+
+    if how == "median":
+        out = (
+            df.groupby(drug_col, as_index=False)
+              .agg(
+                  score=(score_col, "median"),
+                  n_profiles=(score_col, "size"),
+              )
+        )
+    elif how == "mean":
+        out = (
+            df.groupby(drug_col, as_index=False)
+              .agg(
+                  score=(score_col, "mean"),
+                  n_profiles=(score_col, "size"),
+              )
+        )
+    elif how == "best":
+        # Bin Chen showed "best RGES" is not the best summarization overall,
+        # but it can still be useful as a comparison.
+        out = (
+            df.groupby(drug_col, as_index=False)
+              .agg(
+                  score=(score_col, "min"),   # most negative = strongest reversal
+                  n_profiles=(score_col, "size"),
+              )
+        )
+    else:
+        raise ValueError("how must be one of: 'median', 'mean', 'best'")
+
+    return out
+
+#%%
+
+
+
+
+
+def plot_binchen_fig3_style(
+    merged_df,
+    disease,
+    cell_line,
+    score_col="connectivity_score",
+    drug_label_col="drug",
+    annotate_top_n=5,
+    output_file=None,
+):
+    """
+    Reproduce the layout of Bin Chen Fig. 3:
+    - scatter of score vs log10(IC50)
+    - fitted regression line
+    - annotations for compounds with largest residuals
+    - boxplot of score in effective vs ineffective compounds
+
+    Returns
+    -------
+    fig, axes, stats_dict
+    """
+    df = merged_df.copy()
+
+    x = df[score_col].to_numpy(dtype=float)
+    y = df["log10_ic50"].to_numpy(dtype=float)
+
+    # statistics shown in the paper figure
+    lr = linregress(x, y)
+    rho, rho_p = spearmanr(x, y)
+
+    eff = df.loc[df["standard_value_median"] > 10, score_col].astype(float).to_numpy()
+    ineff = df.loc[df["standard_value_median"] < 10, score_col].astype(float).to_numpy()
+
+    # Student's t-test, matching the paper wording
+    t_res = ttest_ind(eff, ineff, equal_var=False)
+
+    fig, axes = plt.subplots(
+        nrows=1,
+        ncols=2,
+        figsize=(12, 5),
+        gridspec_kw={"width_ratios": [3.2, 1.2]},
+    )
+
+    # --- left panel: scatter ---
+    ax = axes[0]
+    ax.scatter(x, y)
+
+    xx = np.linspace(np.nanmin(x), np.nanmax(x), 200)
+    yy = lr.intercept + lr.slope * xx
+    ax.plot(xx, yy)
+
+    ax.set_xlabel("Connectivity score")
+    ax.set_ylabel("Log10 (IC50)")
+    ax.set_title(f"{disease}, {cell_line}")
+
+    txt = (
+        f"r={lr.rvalue:.2f}, P={lr.pvalue:.2e}\n"
+        f"rho={rho:.2f}, P={rho_p:.2e}"
+    )
+    ax.text(
+        0.03, 0.97, txt,
+        transform=ax.transAxes,
+        va="top",
+        ha="left",
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+    )
+
+    # annotate largest residuals, as in Bin Chen figure
+    if annotate_top_n and drug_label_col in df.columns:
+        pred = lr.intercept + lr.slope * x
+        resid = np.abs(y - pred)
+        idx = np.argsort(resid)[-annotate_top_n:]
+        for i in idx:
+            label = str(df.iloc[i][drug_label_col])
+            ax.annotate(label, (x[i], y[i]), fontsize=9)
+
+    # --- right panel: boxplot ---
+    ax2 = axes[1]
+    box_data = [
+        df.loc[df["standard_value_median"] > 10, score_col].astype(float).to_numpy(),
+        df.loc[df["standard_value_median"] < 10, score_col].astype(float).to_numpy(),
+    ]
+    ax2.boxplot(box_data, labels=["Effective", "Ineffective"])
+    ax2.set_ylabel("Connectivity score")
+    ax2.set_title(f"P={t_res.pvalue:.2e}")
+
+    fig.tight_layout()
+
+    if output_file is not None:
+        output_file = Path(output_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_file, dpi=300, bbox_inches="tight")
+
+    stats_dict = {
+        "n_compounds": int(df.shape[0]),
+        "n_effective": int((df["standard_value_median"] > 10).sum()),
+        "n_ineffective": int((df["standard_value_median"] < 10).sum()),
+        "pearson_r": float(lr.rvalue),
+        "pearson_p": float(lr.pvalue),
+        "spearman_rho": float(rho),
+        "spearman_p": float(rho_p),
+        "ttest_p": float(t_res.pvalue),
+    }
+
+    return fig, axes, stats_dict
+
+
+#%%
 
 def resolve_cs_run_id(
     cs_runs_tsv,
@@ -174,7 +344,7 @@ def translate_cl(cell_line):
         return 'HT-29'
     return cell_line
 
-def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True):
+def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True, median_IC50=False):
     
     cell_line = translate_cl(cell_line)
     df=pd.read_excel(ic50_file,\
@@ -217,9 +387,16 @@ if __name__=="__main__":
     
         #filter for 1 nM
     #%%
+    # filtering
+    IC50_only=True
+    median_IC50=True
+    
     ic50_file = DATA_DIR/'BinChen2017'/'SD8.xlsx'
-    ic50=load_IC50(ic50_file, DISEASE, cell_line)
+    ic50=load_IC50(ic50_file, DISEASE, cell_line, IC50_only=IC50_only, median_IC50=median_IC50)
     print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
+    
+    # calc median ic50
+    
     
     #%% merge on common drugs
     merged = pd.merge(dr, ic50, left_on=cs_drug_colname, right_on=ic50_drug_colname, how="inner", suffixes=("_dr","_ic50"))
@@ -257,9 +434,19 @@ if __name__=="__main__":
     print('linear IC50 SD5: rho=', np.round(rho_linear_bc,2),' pval =' ,np.round(p_linear_bc, 2))
     print('log IC50 SD5: rho=', np.round(rho_log_bc, 2),' pval =', np.round(p_log_bc,2))
     
-    #%%
-    
+    #%% plot
 
+    plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_fig3_style.png"
+    fig, axes, stats_dict = plot_binchen_fig3_style(
+        merged_df=merged,
+        disease=DISEASE,
+        cell_line=cell_line,
+        score_col="connectivity_score",
+        drug_label_col="drug",
+        annotate_top_n=5,
+        output_file=plot_file,
+    )
+#%%
 
     
     run_metadata_data = {
@@ -305,7 +492,8 @@ if __name__=="__main__":
 
     append_run_metadata(chembl_val_log_filename, run_metadata_data)
     
-    
+
+#%%   
     # #%%
     # # todo: raccogliere i calcoli di sopra in un dizionario che
     # # abbia tutte le voci, e riempirlo per tutte le disease e eprt time
