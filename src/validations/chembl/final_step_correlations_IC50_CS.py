@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-Compute Spearman correlation between a drug-ranking score (e.g., RGES/sRGES/NetCos)
+Compute correlations and classification metrics between a drug-ranking score (e.g., RGES/sRGES/NetCos)
 and ChEMBL IC50 values for MCF7, HepG2, and HT29 (Bin Chen 2017 validation).
+
+-Spearman correlation
+- Precision/recall of IC50 vs drug ranking score
 
 Inputs
 ------
@@ -62,11 +65,15 @@ from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
     cell_line, diseases_of, LOGS_DIR,\
         cs_filename, disease_run_name, cell_line_run_name,\
     cs_on_LM, cs_mith, selected_cs_run_id, \
-    cs_log_filename, lincs_metadata_path, chembl_val_log_filename
+    cs_log_filename, lincs_metadata_path, chembl_val_log_filename, ic50_file,\
+    IC50_ONLY,CS_TH, IC50_EFF_TH, DRUG_COLLAPSE_METHOD
+
 from logger import append_run_metadata
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 from scipy.stats import spearmanr, linregress, ttest_ind
+
 
 
 def collapse_cs_profiles_to_drug(
@@ -75,6 +82,7 @@ def collapse_cs_profiles_to_drug(
     drug_col="pert_id",
     how="median",
 ):
+    # TODO IMPLEMENT and add info to metadata
     """
     Collapse multiple LINCS profiles per compound to one score per compound.
 
@@ -121,110 +129,7 @@ def collapse_cs_profiles_to_drug(
     return out
 
 
-def plot_binchen_fig3_style(
-    merged_df,
-    disease,
-    cell_line,
-    score_col="connectivity_score",
-    drug_label_col="drug",
-    annotate_top_n=5,
-    output_file=None,
-):
-    """
-    Reproduce the layout of Bin Chen Fig. 3:
-    - scatter of score vs log10(IC50)
-    - fitted regression line
-    - annotations for compounds with largest residuals
-    - boxplot of score in effective vs ineffective compounds
 
-    Returns
-    -------
-    fig, axes, stats_dict
-    """
-    df = merged_df.copy()
-
-    x = df[score_col].to_numpy(dtype=float)
-    y = df["log10_ic50"].to_numpy(dtype=float)
-
-    # statistics shown in the paper figure
-    lr = linregress(x, y)
-    rho, rho_p = spearmanr(x, y)
-
-    eff = df.loc[df["standard_value_median"] > 10, score_col].astype(float).to_numpy()
-    ineff = df.loc[df["standard_value_median"] < 10, score_col].astype(float).to_numpy()
-
-    # Student's t-test, matching the paper wording
-    t_res = ttest_ind(eff, ineff, equal_var=False)
-
-    fig, axes = plt.subplots(
-        nrows=1,
-        ncols=2,
-        figsize=(12, 5),
-        gridspec_kw={"width_ratios": [3.2, 1.2]},
-    )
-
-    # --- left panel: scatter ---
-    ax = axes[0]
-    ax.scatter(x, y)
-
-    xx = np.linspace(np.nanmin(x), np.nanmax(x), 200)
-    yy = lr.intercept + lr.slope * xx
-    ax.plot(xx, yy)
-
-    ax.set_xlabel("Connectivity score")
-    ax.set_ylabel("Log10 (IC50)")
-    ax.set_title(f"{disease}, {cell_line}")
-
-    txt = (
-        f"r={lr.rvalue:.2f}, P={lr.pvalue:.2e}\n"
-        f"rho={rho:.2f}, P={rho_p:.2e}"
-    )
-    ax.text(
-        0.03, 0.97, txt,
-        transform=ax.transAxes,
-        va="top",
-        ha="left",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-    )
-
-    # annotate largest residuals, as in Bin Chen figure
-    if annotate_top_n and drug_label_col in df.columns:
-        pred = lr.intercept + lr.slope * x
-        resid = np.abs(y - pred)
-        idx = np.argsort(resid)[-annotate_top_n:]
-        for i in idx:
-            label = str(df.iloc[i][drug_label_col])
-            ax.annotate(label, (x[i], y[i]), fontsize=9)
-
-    # --- right panel: boxplot ---
-    ax2 = axes[1]
-    box_data = [
-        df.loc[df["standard_value_median"] > 10, score_col].astype(float).to_numpy(),
-        df.loc[df["standard_value_median"] < 10, score_col].astype(float).to_numpy(),
-    ]
-    ax2.boxplot(box_data, labels=["Effective", "Ineffective"])
-    ax2.set_ylabel("Connectivity score")
-    ax2.set_title(f"P={t_res.pvalue:.2e}")
-
-    fig.tight_layout()
-
-    if output_file is not None:
-        output_file = Path(output_file)
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(output_file, dpi=300, bbox_inches="tight")
-
-    stats_dict = {
-        "n_compounds": int(df.shape[0]),
-        "n_effective": int((df["standard_value_median"] > 10).sum()),
-        "n_ineffective": int((df["standard_value_median"] < 10).sum()),
-        "pearson_r": float(lr.rvalue),
-        "pearson_p": float(lr.pvalue),
-        "spearman_rho": float(rho),
-        "spearman_p": float(rho_p),
-        "ttest_p": float(t_res.pvalue),
-    }
-
-    return fig, axes, stats_dict
 
 
 def resolve_cs_run_id(
@@ -335,7 +240,7 @@ def translate_cl(cell_line):
         return 'HT-29'
     return cell_line
 
-def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True):#, median_IC50=False):
+def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True):#, median_IC50=False):
     
     cell_line = translate_cl(cell_line)
     df=pd.read_excel(ic50_file,\
@@ -344,13 +249,363 @@ def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True):#, median_IC50=
     #filter for cell line
     df = df[df.cell_line.str.upper()==cell_line]
     
-    if IC50_only:
+    if IC50_ONLY:
         df=df[df.standard_type=='IC50']
     
     # rename for later merge
     df.rename( columns = {'pert_iname':'drug'}, inplace=True)
     return df.sort_values(by='standard_value_median')
 
+# classification and plotting
+
+def classify_ic50_vs_cs(
+    df,
+    score_col="connectivity_score",
+    ic50_col="standard_value_median",
+    cs_threshold = -1.5,
+    ic50_threshold = 10.0,
+):
+    """
+    Classify compounds into TP / FP / TN / FN.
+
+    Positive class = effective drug.
+    - predicted positive: CS <= cs_threshold
+      (more negative CS = stronger predicted reversal)
+    - actual positive: IC50 <= ic50_threshold
+      (lower IC50 = stronger efficacy)
+    """
+    out = df.copy()
+    out[score_col] = pd.to_numeric(out[score_col], errors="coerce")
+    out[ic50_col] = pd.to_numeric(out[ic50_col], errors="coerce")
+    out = out.dropna(subset=[score_col, ic50_col]).copy()
+
+    out["predicted_positive"] = out[score_col] <= float(cs_threshold)
+    out["actual_positive"] = out[ic50_col] <= float(ic50_threshold)
+
+    out["quadrant"] = np.select(
+        [
+            out["predicted_positive"] & out["actual_positive"],
+            out["predicted_positive"] & ~out["actual_positive"],
+            ~out["predicted_positive"] & out["actual_positive"],
+            ~out["predicted_positive"] & ~out["actual_positive"],
+        ],
+        ["TP", "FP", "FN", "TN"],
+        default="NA",
+    )
+
+    tp = int((out["quadrant"] == "TP").sum())
+    fp = int((out["quadrant"] == "FP").sum())
+    fn = int((out["quadrant"] == "FN").sum())
+    tn = int((out["quadrant"] == "TN").sum())
+
+    precision = tp / (tp + fp) if (tp + fp) > 0 else np.nan
+    recall = tp / (tp + fn) if (tp + fn) > 0 else np.nan
+
+    metrics = {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "tn": tn,
+        "precision": precision,
+        "recall": recall,
+        "cs_threshold": float(cs_threshold),
+        "ic50_threshold": float(ic50_threshold),
+    }
+    return out, metrics
+
+def select_top_residual_annotations(
+    df,
+    x,
+    y,
+    lr,
+    drug_label_col="drug",
+    annotate_top_n=5,
+    min_dx_frac=0.03,
+    min_dy_frac=0.03,
+):
+    """
+    Select rows to annotate based on largest absolute residuals from the
+    regression line, while avoiding repeated labels and points that are too
+    close to each other.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame corresponding exactly to x and y.
+    x : np.ndarray
+        X coordinates used in the scatter plot.
+    y : np.ndarray
+        Y coordinates used in the scatter plot.
+    lr : scipy.stats._stats_py.LinregressResult
+        Result of scipy.stats.linregress(x, y).
+    drug_label_col : str
+        Column containing the label to annotate.
+    annotate_top_n : int
+        Maximum number of annotations to return.
+    min_dx_frac : float
+        Minimum allowed x-distance between annotated points, as a fraction
+        of total x range.
+    min_dy_frac : float
+        Minimum allowed y-distance between annotated points, as a fraction
+        of total y range.
+
+    Returns
+    -------
+    selected_df : pd.DataFrame
+        Subset of rows selected for annotation, with helper columns:
+        '_x', '_y', '_resid', '_label'.
+    """
+    if annotate_top_n is None or annotate_top_n <= 0:
+        return pd.DataFrame(columns=list(df.columns) + ["_x", "_y", "_resid", "_label"])
+
+    if drug_label_col not in df.columns:
+        return pd.DataFrame(columns=list(df.columns) + ["_x", "_y", "_resid", "_label"])
+
+    if len(df) != len(x) or len(df) != len(y):
+        raise ValueError("df, x, and y must have the same length.")
+
+    work_df = df.copy()
+    work_df["_x"] = np.asarray(x, dtype=float)
+    work_df["_y"] = np.asarray(y, dtype=float)
+    work_df["_label"] = work_df[drug_label_col].astype(str)
+
+    pred = lr.intercept + lr.slope * work_df["_x"].to_numpy()
+    work_df["_resid"] = np.abs(work_df["_y"].to_numpy() - pred)
+
+    # Sort from largest residual to smallest
+    work_df = work_df.sort_values("_resid", ascending=False).reset_index(drop=True)
+
+    x_range = work_df["_x"].max() - work_df["_x"].min()
+    y_range = work_df["_y"].max() - work_df["_y"].min()
+
+    # Fallback values for degenerate ranges
+    min_dx = min_dx_frac * x_range if x_range > 0 else 0.01
+    min_dy = min_dy_frac * y_range if y_range > 0 else 0.01
+
+    used_labels = set()
+    used_positions = []
+    selected_idx = []
+
+    for idx, row in work_df.iterrows():
+        label = row["_label"]
+        px = row["_x"]
+        py = row["_y"]
+
+        # Skip repeated labels
+        if label in used_labels:
+            continue
+
+        # Skip rows too close to an already selected annotation point
+        too_close = any(
+            abs(px - qx) < min_dx and abs(py - qy) < min_dy
+            for qx, qy in used_positions
+        )
+        if too_close:
+            continue
+
+        selected_idx.append(idx)
+        used_labels.add(label)
+        used_positions.append((px, py))
+
+        if len(selected_idx) >= annotate_top_n:
+            break
+
+    return work_df.loc[selected_idx].copy()
+
+def annotate_selected_points(
+    ax,
+    selected_df,
+    label_col="_label",
+    x_col="_x",
+    y_col="_y",
+    fontsize=9,
+    xytext=(4, 4),
+    add_arrows=False,
+):
+    """
+    Annotate selected points on an axis.
+    """
+    for _, row in selected_df.iterrows():
+        kwargs = {
+            "fontsize": fontsize,
+            "xytext": xytext,
+            "textcoords": "offset points",
+        }
+        if add_arrows:
+            kwargs["arrowprops"] = dict(arrowstyle="-", lw=0.5)
+
+        ax.annotate(
+            str(row[label_col]),
+            (row[x_col], row[y_col]),
+            **kwargs,
+        )
+
+def plot_binchen_fig3_style(
+    classified_df,
+    metrics,
+    disease,
+    cell_line_name,
+    score_col="connectivity_score",
+    ic50_col="standard_value_median",
+    log_ic50_col="log10_ic50",
+    drug_label_col="drug",
+    quadrant_col="quadrant",
+    annotate_top_n=5,
+    output_file=None,
+    cs_threshold=-1.5,
+    ic50_threshold=10.0,
+):
+    """
+    Reproduce the layout of Bin Chen Fig. 3:
+        - scatter of score vs log10(IC50)
+        - fitted regression line
+        - annotations for compounds with largest residuals
+        - boxplot of score in effective vs ineffective compounds
+            and adds a TP/FP/FN/TN threshold cross.
+
+    Returns
+    -------
+    fig, axes, stats_dict
+    """
+    df = classified_df.copy()
+    df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
+    df[ic50_col] = pd.to_numeric(df[ic50_col], errors="coerce")
+    df = df.dropna(subset=[score_col, ic50_col]).copy()
+    df[log_ic50_col] = np.log10(df[ic50_col])
+
+    if log_ic50_col not in df.columns:
+        df[log_ic50_col] = np.log10(df[ic50_col])
+
+    x = df[score_col].to_numpy(dtype=float)
+    y = df[log_ic50_col].to_numpy(dtype=float)
+
+    lr = linregress(x, y)
+    rho, rho_p = spearmanr(x, y)
+
+    effective_scores = classified_df.loc[
+        classified_df[ic50_col] <= ic50_threshold, score_col
+    ].astype(float).to_numpy()
+    ineffective_scores = classified_df.loc[
+        classified_df[ic50_col] > ic50_threshold, score_col
+    ].astype(float).to_numpy()
+
+    t_res = ttest_ind(effective_scores, ineffective_scores, equal_var=False)
+
+    fig, axes = plt.subplots(
+        nrows=1,
+        ncols=2,
+        figsize=(12, 5),
+        gridspec_kw={"width_ratios": [3.2, 1.2]},
+    )
+
+    # --- left panel: scatter ---
+    ax = axes[0]
+
+    # plot regression line
+    xx = np.linspace(np.nanmin(x), np.nanmax(x), 200)
+    yy = lr.intercept + lr.slope * xx
+    ax.plot(xx, yy, color='darkgrey')
+    
+    # scatter plot    
+
+    ax.scatter(x, y, s=8, facecolors= 'none', \
+               edgecolors=np.where(df[ic50_col] <= ic50_threshold, "cornflowerblue", "lightcoral"), lw=0.5)
+
+
+    ax.set_xlabel("Connectivity score")
+    ax.set_ylabel("Log10 (IC50)")
+    ax.set_title(f"{disease}, {cell_line_name}")
+
+    # threshold cross
+    y_thr = np.log10(ic50_threshold)
+    ax.axvline(cs_threshold, linestyle="--", linewidth=1, color='red', alpha=0.2)
+    ax.axhline(y_thr, linestyle="--", linewidth=1, color='red', alpha=0.2)
+    
+    
+    
+    # add legend
+    txt = (
+        f"r={lr.rvalue:.2f}, P={lr.pvalue:.2e}\n"
+        f"rho={rho:.2f}, P={rho_p:.2e}\n"
+        f"precision={metrics['precision']:.2f}, recall={metrics['recall']:.2f}"
+    )
+    ax.text(0.03,0.97, txt, transform=ax.transAxes, va="top",ha="left",  bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),    )
+    
+    # annotate true positive drugs
+    tp_mask = (df[score_col] <= cs_threshold) & (df[ic50_col] <= ic50_threshold)
+
+    for _, row in df.loc[tp_mask].iterrows():
+        ax.annotate(str(row[drug_label_col]),(row[score_col], row[log_ic50_col]),fontsize=8, xytext=(4, 4),textcoords="offset points",)
+    
+    # annotate largest residuals, as in Bin Chen figure
+    if annotate_top_n and drug_label_col in df.columns:
+        selected_annotations = select_top_residual_annotations(df=df, x=x, y=y,\
+                                lr=lr,drug_label_col=drug_label_col,annotate_top_n=annotate_top_n, min_dx_frac=0.03,min_dy_frac=0.03,)
+
+        annotate_selected_points(ax=ax, selected_df=selected_annotations,fontsize=9,xytext=(4, 4),add_arrows=False,)
+
+    # quadrant labels
+    x_min, x_max = ax.get_xlim()
+    y_min, y_max = ax.get_ylim()
+    
+    # TP quadrant highlighting
+    tp_rect = Rectangle(
+        (x_min, y_min),                     # bottom-left corner
+        cs_threshold - x_min,               # width
+        y_thr - y_min,                      # height
+        facecolor="lightblue",
+        alpha=0.2,
+        zorder=0
+    )
+    ax.add_patch(tp_rect)
+
+    def _mid(a, b):
+        return a + (b - a) / 2.0
+
+    quadrant_specs = [
+        (_mid(x_min, cs_threshold), _mid(y_min, y_thr), f"TP\nn={metrics['tp']}"),
+        (_mid(x_min, cs_threshold), _mid(y_thr, y_max), f"FP\nn={metrics['fp']}"),
+        (_mid(cs_threshold, x_max), _mid(y_min, y_thr), f"FN\nn={metrics['fn']}"),
+        (_mid(cs_threshold, x_max), _mid(y_thr, y_max), f"TN\nn={metrics['tn']}"),
+    ]
+    for qx, qy, label in quadrant_specs:
+        ax.text(qx, qy, label, ha="center", va="center", alpha=0.75)
+
+    # --- right panel: boxplot ---
+    ax2 = axes[1]
+    box_data = [effective_scores, ineffective_scores]
+    bp=ax2.boxplot(box_data, tick_labels=["Effective", "Ineffective"],  medianprops=dict(color="black", linewidth=2), patch_artist=True)
+    [b.set_facecolor(c) for b, c in zip(bp["boxes"], ["cornflowerblue", "lightcoral"])]
+    ax2.set_ylabel("Connectivity score")
+    ax2.set_title(f"P={t_res.pvalue:.2e}")
+
+    fig.tight_layout()
+
+    if output_file is not None:
+        output_file = Path(output_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_file, dpi=300, bbox_inches="tight")
+
+    stats_dict = {
+        "n_compounds": int(classified_df.shape[0]),
+        "n_effective": int((classified_df[ic50_col] <= ic50_threshold).sum()),
+        "n_ineffective": int((classified_df[ic50_col] > ic50_threshold).sum()),
+        "pearson_r": float(lr.rvalue),
+        "pearson_p": float(lr.pvalue),
+        "spearman_rho": float(rho),
+        "spearman_p": float(rho_p),
+        "ttest_p": float(t_res.pvalue),
+        "tp": metrics["tp"],
+        "fp": metrics["fp"],
+        "fn": metrics["fn"],
+        "tn": metrics["tn"],
+        "precision": float(metrics["precision"]) if pd.notna(metrics["precision"]) else np.nan,
+        "recall": float(metrics["recall"]) if pd.notna(metrics["recall"]) else np.nan,
+        "cs_threshold": float(cs_threshold),
+        "ic50_threshold": float(ic50_threshold),
+    }
+
+    return fig, axes, stats_dict
 
 #%%
 if __name__=="__main__":
@@ -378,12 +633,10 @@ if __name__=="__main__":
     
         #filter for 1 nM
     #%%
-    # filtering
-    IC50_only=True
+    
     # median_IC50=True
     
-    ic50_file = DATA_DIR/'BinChen2017'/'SD8.xlsx'
-    ic50=load_IC50(ic50_file, DISEASE, cell_line, IC50_only=IC50_only)#, median_IC50=median_IC50)
+    ic50=load_IC50(ic50_file, DISEASE, cell_line, IC50_ONLY=IC50_ONLY)#, median_IC50=median_IC50)
     print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
     
     # calc median ic50
@@ -425,17 +678,36 @@ if __name__=="__main__":
     print('linear IC50 SD5: rho=', np.round(rho_linear_bc,2),' pval =' ,np.round(p_linear_bc, 2))
     print('log IC50 SD5: rho=', np.round(rho_log_bc, 2),' pval =', np.round(p_log_bc,2))
     
+    #%% Prec/ Rec
+    
+    classified_df, pr_metrics = classify_ic50_vs_cs(
+        merged,
+        score_col="connectivity_score",
+        ic50_col="standard_value_median",
+        cs_threshold=CS_TH,
+        ic50_threshold=IC50_EFF_TH,
+    )
+    print(
+        "classification:",
+        f"TP={pr_metrics['tp']}, FP={pr_metrics['fp']}, "
+        f"FN={pr_metrics['fn']}, TN={pr_metrics['tn']}, "
+        f"precision={np.round(pr_metrics['precision'], 2)}, "
+        f"recall={np.round(pr_metrics['recall'], 2)}",
+    )
     #%% plot
 
     plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_fig3_style.png"
     fig, axes, stats_dict = plot_binchen_fig3_style(
-        merged_df=merged,
+        classified_df = classified_df,
+        metrics=pr_metrics,
         disease=DISEASE,
-        cell_line=cell_line,
+        cell_line_name=cell_line,
         score_col="connectivity_score",
         drug_label_col="drug",
         annotate_top_n=5,
         output_file=plot_file,
+        cs_threshold=CS_TH,
+        ic50_threshold=IC50_EFF_TH,
     )
 #%% Log metadata
 

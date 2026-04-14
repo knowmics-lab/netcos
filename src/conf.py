@@ -170,14 +170,28 @@ cs_log_filename = Path(LOGS_DIR) / 'cs_runs.tsv'
 # Chembl IC50 validation parameters
 ###############################################################################
 
+# FIles and directories
 VAL_DIR = BASE_DIR / 'validations' 
+
 # Chembl directory
 CHEMBL_BASE_DIR = VAL_DIR / 'chembl'
+
 # CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR / 'chembl_input'
 # cell_lines_chembl = ["MCF7", "HepG2", "HT29"]
+ic50_file = DATA_DIR/'BinChen2017'/'SD8.xlsx'
 
 chembl_val_log_filename = LOGS_DIR / "BinChen2017_chembl_validation_IC50_correlation_runs.tsv"
 
+# Hyperparameters:
+
+DRUG_COLLAPSE_METHOD='best'
+    
+# IC50 data filtering
+IC50_ONLY=True
+
+# Thresholds
+CS_TH = -1.5  # Connectivity score threshold
+IC50_EFF_TH = 10.0 # IC50 effective threshold
 
 
 # ------------------------------------------------------------------

@@ -1983,3 +1983,40 @@ Domanda. quali sono i 200 landmark genes che non ci sono in MITHRIL?
 
 
 Per il presentazione: far vedere uno schema possibile di  IC50 vs RGES True positive vs true negative- e magari metterci a lato precision e recal calcolato per  quel threshold, e poi fare una griglia (ideale) di grafici true positive vs true negative per diverse combinazioni di RGES.
+
+
+14/04
+
+aggiornato plot con colori piu belli, thresholds , calcolo PR
+
+da fare: aggiungere calcolo PR e  metriche varie al metadata
+da fare: stampare anche i grafici per LICH and COAD
+da notare: per BRCA c'e' solo un true positie, che e' docetaxel, che google ia mi dice essere un chemioterapico indicato per il trattamento di tumori al seno (avanzato o metastatico), tumore del polmone non a piccole cellule (NSCLC), carcinoma prostatico ormono-resistente, adenocarcinoma gastrico e tumori della testa e del collo.
+
+bug da capire: se guardo il plot di BRCA in cui c'e docetaxel, TP mi dice che ha n=20, ma mi da una sola drug: perche'? printando
+classified_df[['connectivity_score','drug','standard_value']][classified_df.quadrant=='TP'] vedo che sono tutte docetaxel, ma con IC50 diverso:
+onnectivity_score       drug  standard_value
+5598           -1.925873  docetaxel           215.0
+5599           -1.925873  docetaxel             1.0
+5600           -1.925873  docetaxel             0.7
+5601           -1.925873  docetaxel             1.0
+5602           -1.925873  docetaxel             1.0
+5603           -1.925873  docetaxel             1.0
+5604           -1.925873  docetaxel             1.0
+5605           -1.925873  docetaxel             1.0
+5606           -1.925873  docetaxel             1.0
+5607           -1.925873  docetaxel             1.0
+5608           -1.925873  docetaxel             1.9
+5609           -1.925873  docetaxel          4000.0
+5610           -1.925873  docetaxel             1.0
+5611           -1.925873  docetaxel          3290.0
+5612           -1.925873  docetaxel            20.0
+5613           -1.925873  docetaxel             7.9
+5614           -1.925873  docetaxel             1.0
+5615           -1.925873  docetaxel          1000.0
+5616           -1.925873  docetaxel             1.0
+5617           -1.925873  docetaxel             1.0
+
+c e un problema nel merging? printando anche il pert_id sono anche lo stesso pert_id.
+
+vediamo di vedere qual e il problema nel merge
