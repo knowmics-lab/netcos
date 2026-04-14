@@ -74,72 +74,52 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy.stats import spearmanr, linregress, ttest_ind
 
-
-
-def collapse_cs_profiles_to_drug(
-    cs_df,
-    score_col="connectivity_score",
-    drug_col="pert_id",
-    how="median",
-):
-    # TODO IMPLEMENT and add info to metadata
+def collapse_cs_profiles_to_drug(cs_df,score_col="connectivity_score",drug_col="pert_id",how="best",):
     """
-    Collapse multiple LINCS profiles per compound to one score per compound.
-
+    Collapse multiple LINCS perturbagens per drug into one row per drug 
     Parameters
     ----------
+    cs_df : pd.DataFrame
+        Input dataframe.
+    score_col : str
+        Column to aggregate.
+    drug_col : str
+        Column identifying the drug.
     how : {'median', 'mean', 'best'}
-        - median: robust default if exact Bin-Chen normalization is unavailable
-        - mean: simple average
-        - best: most negative score (strongest reversal)
+        Aggregation method:
+        - 'median': median score per drug
+        - 'mean': mean score per drug
+        - 'best': minimum score per drug
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one row per drug and the same score column name.
     """
     df = cs_df.copy()
     df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
     df = df.dropna(subset=[drug_col, score_col]).copy()
 
     if how == "median":
-        out = (
-            df.groupby(drug_col, as_index=False)
-              .agg(
-                  score=(score_col, "median"),
-                  n_profiles=(score_col, "size"),
-              )
-        )
+        out = df.groupby(drug_col, as_index=False).agg({
+            score_col: "median",
+        })
     elif how == "mean":
-        out = (
-            df.groupby(drug_col, as_index=False)
-              .agg(
-                  score=(score_col, "mean"),
-                  n_profiles=(score_col, "size"),
-              )
-        )
+        out = df.groupby(drug_col, as_index=False).agg({
+            score_col: "mean",
+        })
     elif how == "best":
-        # Bin Chen showed "best RGES" is not the best summarization overall,
-        # but it can still be useful as a comparison.
-        out = (
-            df.groupby(drug_col, as_index=False)
-              .agg(
-                  score=(score_col, "min"),   # most negative = strongest reversal
-                  n_profiles=(score_col, "size"),
-              )
-        )
+        out = df.groupby(drug_col, as_index=False).agg({
+            score_col: "min",
+        })
+    elif how == None:
+        out=df
     else:
         raise ValueError("how must be one of: 'median', 'mean', 'best'")
 
     return out
 
-
-
-
-
-def resolve_cs_run_id(
-    cs_runs_tsv,
-    disease_run_id,
-    drug_run_id,
-    cs_on_LM,
-    mith,
-    selected_cs_run_id=None,
-):
+def resolve_cs_run_id(  cs_runs_tsv,  disease_run_id,   drug_run_id,   cs_on_LM,  mith,  selected_cs_run_id=None,):
     """
     Retrieve the cs_run_id from cs log file,
     or return selected_cs_run_id, if provided
@@ -181,10 +161,7 @@ def resolve_cs_run_id(
 
     return hit.iloc[0]["cs_run_id"]
 
-def add_pert_id_to_cs( lincs_metadata_path,cs_df,
-                      cs_id_col='LINCS_id',
-                      metadata_id_col='id',
-                      metadata_pert_col='pert_id'):
+def add_pert_id_to_cs( lincs_metadata_path,cs_df, cs_id_col='LINCS_id', metadata_id_col='id', metadata_pert_col='pert_id'):
     """
     Adds a 'pert_id' column to a CS dataframe by mapping LINCS_id via LINCS metadata.
     
@@ -218,7 +195,8 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
             print(f"Warning: {n_missing} LINCS_id values could not be mapped to pert_id")
 
     return cs_df
-# select 
+
+    
 def load_drug_rankings(path, filename=None, pert_time='all',mith='mith', lincs_metadata_path =None):
     
     
@@ -258,13 +236,7 @@ def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True):#, median_IC50=
 
 # classification and plotting
 
-def classify_ic50_vs_cs(
-    df,
-    score_col="connectivity_score",
-    ic50_col="standard_value_median",
-    cs_threshold = -1.5,
-    ic50_threshold = 10.0,
-):
+def classify_ic50_vs_cs(df, score_col="connectivity_score", ic50_col="standard_value_median", cs_threshold = -1.5, ic50_threshold = 10.0,):
     """
     Classify compounds into TP / FP / TN / FN.
 
@@ -313,16 +285,7 @@ def classify_ic50_vs_cs(
     }
     return out, metrics
 
-def select_top_residual_annotations(
-    df,
-    x,
-    y,
-    lr,
-    drug_label_col="drug",
-    annotate_top_n=5,
-    min_dx_frac=0.03,
-    min_dy_frac=0.03,
-):
+def select_top_residual_annotations(df, x, y, lr, drug_label_col="drug", annotate_top_n=5, min_dx_frac=0.03, min_dy_frac=0.03,):
     """
     Select rows to annotate based on largest absolute residuals from the
     regression line, while avoiding repeated labels and points that are too
@@ -412,16 +375,7 @@ def select_top_residual_annotations(
 
     return work_df.loc[selected_idx].copy()
 
-def annotate_selected_points(
-    ax,
-    selected_df,
-    label_col="_label",
-    x_col="_x",
-    y_col="_y",
-    fontsize=9,
-    xytext=(4, 4),
-    add_arrows=False,
-):
+def annotate_selected_points(ax, selected_df, label_col="_label", x_col="_x", y_col="_y", fontsize=9, xytext=(4, 4), add_arrows=False,):
     """
     Annotate selected points on an axis.
     """
@@ -627,8 +581,12 @@ if __name__=="__main__":
     cs_drug_file = f"{cs_run_id}.tsv"
     print("Using CS file:", CS_OUT / cs_drug_file)
     
-    dr=load_drug_rankings(CS_OUT, filename = cs_drug_file)
+    dr_uncollapsed=load_drug_rankings(CS_OUT, filename = cs_drug_file)
+    print(dr_uncollapsed.shape, 'drugs ')
+    DRUG_COLLAPSE_METHOD=None
+    dr=collapse_cs_profiles_to_drug(cs_df=dr_uncollapsed, drug_col=cs_drug_colname, how=DRUG_COLLAPSE_METHOD)
     print(dr.shape, 'drugs ')
+
     #%%
     
         #filter for 1 nM
@@ -729,12 +687,16 @@ if __name__=="__main__":
         "ic50_drug_colname": ic50_drug_colname,
         # "cs_value_col": cs_value_col,
         # "ic50_value_col": ic50_value_col,
-
+        
         # sizes
-        "n_cs_rows": len(dr),
+        "drug_summarization_method": DRUG_COLLAPSE_METHOD,
+        "n_cs_rows_before_drug_collapse": len(dr_uncollapsed),
+        "n_cs_rows_after_drug_collapse": len(dr),
         "n_ic50_rows": len(ic50),
         "n_merged_rows": len(merged),
         "n_unique_drugs": merged[cs_drug_colname].nunique(),
+        
+        
 
         # results
         "spearman_r": np.round(rho_linear,2),
@@ -747,9 +709,17 @@ if __name__=="__main__":
         "spearman_pval_SD5": np.round(p_linear_bc,2),
         "spearman_r_log_SD5": np.round(rho_log_bc,2),
         "spearman_pval_log_SD5": np.round(p_log_bc,2),
+        
+        # precision recall metrics
+        "tp": pr_metrics["tp"],
+        "fp": pr_metrics["fp"],
+        "fn": pr_metrics["fn"],
+        "tn": pr_metrics["tn"],
+        "precision": np.round(pr_metrics["precision"], 4),
+        "recall": np.round(pr_metrics["recall"], 4),
 
         # output
-        # "output_plot_file": str(output_plot_file)
+        "output_plot_file": str(plot_file)
     }
     
 
