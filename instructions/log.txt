@@ -1968,3 +1968,18 @@ domani:
 added n genes to logger of step6. seen that the gene difference is in the step7 . found bug.
 
 step7: 2 collapses removing gene names with "; / : * ? " |"
+
+
+Fai una roba con tutti gli iperparametri possibili
+
+
+13/04/2024
+
+Girato final IC50 correlations con parametri base PER la run con LM solo DOPO e con step7 SENZA RIMUOVERE I GENE NAMES CON CARAtteri speciali.
+(ce' una qualche cosa )
+
+Domanda. quali sono i 200 landmark genes che non ci sono in MITHRIL?
+
+
+
+Per il presentazione: far vedere uno schema possibile di  IC50 vs RGES True positive vs true negative- e magari metterci a lato precision e recal calcolato per  quel threshold, e poi fare una griglia (ideale) di grafici true positive vs true negative per diverse combinazioni di RGES.

@@ -69,8 +69,6 @@ import matplotlib.pyplot as plt
 from scipy.stats import spearmanr, linregress, ttest_ind
 
 
-
-#%%
 def collapse_cs_profiles_to_drug(
     cs_df,
     score_col="connectivity_score",
@@ -121,11 +119,6 @@ def collapse_cs_profiles_to_drug(
         raise ValueError("how must be one of: 'median', 'mean', 'best'")
 
     return out
-
-#%%
-
-
-
 
 
 def plot_binchen_fig3_style(
@@ -233,8 +226,6 @@ def plot_binchen_fig3_style(
 
     return fig, axes, stats_dict
 
-
-#%%
 
 def resolve_cs_run_id(
     cs_runs_tsv,
@@ -344,7 +335,7 @@ def translate_cl(cell_line):
         return 'HT-29'
     return cell_line
 
-def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True, median_IC50=False):
+def load_IC50(ic50_file, cancer_type, cell_line, IC50_only=True):#, median_IC50=False):
     
     cell_line = translate_cl(cell_line)
     df=pd.read_excel(ic50_file,\
@@ -389,10 +380,10 @@ if __name__=="__main__":
     #%%
     # filtering
     IC50_only=True
-    median_IC50=True
+    # median_IC50=True
     
     ic50_file = DATA_DIR/'BinChen2017'/'SD8.xlsx'
-    ic50=load_IC50(ic50_file, DISEASE, cell_line, IC50_only=IC50_only, median_IC50=median_IC50)
+    ic50=load_IC50(ic50_file, DISEASE, cell_line, IC50_only=IC50_only)#, median_IC50=median_IC50)
     print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
     
     # calc median ic50
@@ -446,7 +437,7 @@ if __name__=="__main__":
         annotate_top_n=5,
         output_file=plot_file,
     )
-#%%
+#%% Log metadata
 
     
     run_metadata_data = {

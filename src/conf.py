@@ -19,7 +19,7 @@ from datetime import datetime
 # LINCS data parameters
 #######################
 
-landmark_disease = False  # only select landmark genes from signature data
+landmark_disease = False  # only select landmark genes from signature data (irrelevant for Bin Chen data since they are already landmark only)
 LM_flag_disease = ''
 if landmark_disease:
     LM_flag_disease = '_LM'
@@ -30,7 +30,7 @@ landmark_drug = True  # only select landmark genes from signature data
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'HT29'
+cell_line = 'MCF7'
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
@@ -145,7 +145,7 @@ mith_threads = 10
 
 cs_batch_threads = 5
 cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
-cs_on_LM = 1 # default 0: 0: calculate cs on all genes list 1: calculate on only landmark genes list
+cs_on_LM = 1 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
 
 
 
@@ -167,7 +167,7 @@ cs_log_filename = Path(LOGS_DIR) / 'cs_runs.tsv'
 
 
 ###############################################################################
-# Chembl validation parameters
+# Chembl IC50 validation parameters
 ###############################################################################
 
 VAL_DIR = BASE_DIR / 'validations' 
