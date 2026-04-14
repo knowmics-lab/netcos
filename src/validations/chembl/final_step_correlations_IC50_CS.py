@@ -583,7 +583,6 @@ if __name__=="__main__":
     
     dr_uncollapsed=load_drug_rankings(CS_OUT, filename = cs_drug_file)
     print(dr_uncollapsed.shape, 'drugs ')
-    DRUG_COLLAPSE_METHOD=None
     dr=collapse_cs_profiles_to_drug(cs_df=dr_uncollapsed, drug_col=cs_drug_colname, how=DRUG_COLLAPSE_METHOD)
     print(dr.shape, 'drugs ')
 
@@ -654,7 +653,7 @@ if __name__=="__main__":
     )
     #%% plot
 
-    plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_fig3_style.png"
+    plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_{DRUG_COLLAPSE_METHOD}_fig3_style.png"
     fig, axes, stats_dict = plot_binchen_fig3_style(
         classified_df = classified_df,
         metrics=pr_metrics,
@@ -672,7 +671,7 @@ if __name__=="__main__":
     
     run_metadata_data = {
         # identity
-        "correlation_run_id": datetime.now().strftime("%d_%m_%Y_%H_%M_%S"),
+        "IC50_validation_run_id": datetime.now().strftime("%d_%m_%Y_%H_%M_%S"),
         "datetime": datetime.now().isoformat(),
 
         # inputs
