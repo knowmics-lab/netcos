@@ -66,7 +66,8 @@ from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
         cs_filename, disease_run_name, cell_line_run_name,\
     cs_on_LM, cs_mith, selected_cs_run_id, \
     cs_log_filename, lincs_metadata_path, chembl_val_log_filename, ic50_file,\
-    IC50_ONLY,CS_TH, IC50_EFF_TH, DRUG_COLLAPSE_METHOD
+    LINCS_METADATA_PATH, IC50_ONLY,CS_TH, IC50_EFF_TH, CS_DRUG_COLLAPSE_METHOD,\
+        IC50_DRUG_COLLAPSE_METHOD
 
 from logger import append_run_metadata
 
@@ -74,7 +75,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy.stats import spearmanr, linregress, ttest_ind
 
-def collapse_cs_profiles_to_drug(cs_df,score_col="connectivity_score",drug_col="pert_id",how="best",):
+
+def add_pert_iname_to_cs(cs_df, lincs_metadata_path, cs_id_col="LINCS_id", metadata_id_col="id", metadata_name_col="pert_iname"):
+    """Add pert_iname to CS dataframe by mapping LINCS_id through LINCS metadata."""
+    meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_name_col], dtype="str").drop_duplicates(subset=[metadata_id_col])
+    return cs_df.merge(meta, left_on=cs_id_col, right_on=metadata_id_col, how="left").drop(columns=[metadata_id_col])
+
+
+
+def collapse_profiles_to_drug(in_df,score_col="connectivity_score",drug_col="pert_iname",how="best",):
     """
     Collapse multiple LINCS perturbagens per drug into one row per drug 
     Parameters
@@ -96,7 +105,7 @@ def collapse_cs_profiles_to_drug(cs_df,score_col="connectivity_score",drug_col="
     pd.DataFrame
         DataFrame with one row per drug and the same score column name.
     """
-    df = cs_df.copy()
+    df = in_df.copy()
     df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
     df = df.dropna(subset=[drug_col, score_col]).copy()
 
@@ -230,8 +239,6 @@ def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True):#, median_IC50=
     if IC50_ONLY:
         df=df[df.standard_type=='IC50']
     
-    # rename for later merge
-    df.rename( columns = {'pert_iname':'drug'}, inplace=True)
     return df.sort_values(by='standard_value_median')
 
 # classification and plotting
@@ -400,9 +407,9 @@ def plot_binchen_fig3_style(
     disease,
     cell_line_name,
     score_col="connectivity_score",
-    ic50_col="standard_value_median",
+    ic50_col="standard_value",
     log_ic50_col="log10_ic50",
-    drug_label_col="drug",
+    drug_label_col="pert_iname",
     quadrant_col="quadrant",
     annotate_top_n=5,
     output_file=None,
@@ -483,7 +490,7 @@ def plot_binchen_fig3_style(
         f"rho={rho:.2f}, P={rho_p:.2e}\n"
         f"precision={metrics['precision']:.2f}, recall={metrics['recall']:.2f}"
     )
-    ax.text(0.03,0.97, txt, transform=ax.transAxes, va="top",ha="left",  bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),    )
+    ax.text(0.625,0.97, txt, transform=ax.transAxes, va="top",ha="left",  bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),  )
     
     # annotate true positive drugs
     tp_mask = (df[score_col] <= cs_threshold) & (df[ic50_col] <= ic50_threshold)
@@ -561,11 +568,16 @@ def plot_binchen_fig3_style(
 
     return fig, axes, stats_dict
 
+
 #%%
 if __name__=="__main__":
     
-    cs_drug_colname = 'pert_id'  #"drug"
-    ic50_drug_colname = "pert_id" # "drug"
+    cs_drug_colname = 'pert_iname'  #"pert_iname"
+    cs_perturbagen_colname = 'pert_id'  #"pert_iname"
+
+    ic50_drug_colname = "pert_iname" # "drug"
+    ic50_perturbagen_colname = 'pert_id'  #"pert_iname"
+
     
     print('running correlations between chembl IC50 and drug rankings for disease:', DISEASE)
     print(DISEASE, CS_OUT,  cell_line)
@@ -581,36 +593,30 @@ if __name__=="__main__":
     cs_drug_file = f"{cs_run_id}.tsv"
     print("Using CS file:", CS_OUT / cs_drug_file)
     
-    dr_uncollapsed=load_drug_rankings(CS_OUT, filename = cs_drug_file)
+    dr_uncollapsed = load_drug_rankings(CS_OUT, filename = cs_drug_file)
+    dr_uncollapsed = add_pert_iname_to_cs(dr_uncollapsed, LINCS_METADATA_PATH)
     print(dr_uncollapsed.shape, 'drugs ')
-    dr=collapse_cs_profiles_to_drug(cs_df=dr_uncollapsed, drug_col=cs_drug_colname, how=DRUG_COLLAPSE_METHOD)
+    dr=collapse_profiles_to_drug(in_df=dr_uncollapsed, drug_col=cs_drug_colname, how=CS_DRUG_COLLAPSE_METHOD)
     print(dr.shape, 'drugs ')
 
-    #%%
-    
-        #filter for 1 nM
-    #%%
-    
-    # median_IC50=True
-    
-    ic50=load_IC50(ic50_file, DISEASE, cell_line, IC50_ONLY=IC50_ONLY)#, median_IC50=median_IC50)
+    ic50_score_col = 'standard_value'
+    ic50_uncollapsed=load_IC50(ic50_file, DISEASE, cell_line, IC50_ONLY=IC50_ONLY)#, median_IC50=median_IC50)
+    print(ic50_uncollapsed.shape, 'drugs with IC50 value for cell line', cell_line)
+    ic50 = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, how=IC50_DRUG_COLLAPSE_METHOD)
     print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
     
-    # calc median ic50
     
-    
-    #%% merge on common drugs
+    # merge on common drugs
     merged = pd.merge(dr, ic50, left_on=cs_drug_colname, right_on=ic50_drug_colname, how="inner", suffixes=("_dr","_ic50"))
     
-    merged = merged.dropna(subset=["connectivity_score","standard_value_median"]).copy()
+    merged = merged.dropna(subset=["connectivity_score",ic50_score_col]).copy()
     print('merged data on common drugs:', merged.shape)
-    
     #%% Optional: check overlap between our overlap of ic50 vs CS score
     # and BinChen's overlap of ic50vs sRGES:
     
     BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
                                  sheet_name=DISEASE)
-    overlap_BC = set(merged.drug).intersection(set(BC_merged.pert_iname))
+    overlap_BC = set(merged.pert_iname).intersection(set(BC_merged.pert_iname))
     print(overlap_BC, len(overlap_BC))
     
     #%%# calculate spearman coefficient between
@@ -618,18 +624,18 @@ if __name__=="__main__":
     # Following Bin Chen 2017, more negative reversal score 
     # (RGES/CS) should be associated with stronger efficacy (lower IC50).
     # We report rho for (CS vs IC50) and (CS vs log10(IC50)).
-    merged["log10_ic50"] = np.log10(merged["standard_value_median"])
+    merged["log10_ic50"] = np.log10(merged[ic50_score_col])
     
-    rho_linear, p_linear = spearmanr(merged["connectivity_score"], merged["standard_value_median"])
+    rho_linear, p_linear = spearmanr(merged["connectivity_score"], merged[ic50_score_col])
     rho_log, p_log = spearmanr(merged["connectivity_score"], merged["log10_ic50"])
     
     print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
     print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
     
     #%% Optional: check rho with SD5 data:
-    BC_merged["log10_ic50"] = np.log10(BC_merged["standard_value"])
+    BC_merged["log10_ic50"] = np.log10(BC_merged[ic50_score_col])
     
-    rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged["standard_value"])
+    rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged[ic50_score_col])
     rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
     
     print('linear IC50 SD5: rho=', np.round(rho_linear_bc,2),' pval =' ,np.round(p_linear_bc, 2))
@@ -640,7 +646,7 @@ if __name__=="__main__":
     classified_df, pr_metrics = classify_ic50_vs_cs(
         merged,
         score_col="connectivity_score",
-        ic50_col="standard_value_median",
+        ic50_col=ic50_score_col,
         cs_threshold=CS_TH,
         ic50_threshold=IC50_EFF_TH,
     )
@@ -653,14 +659,15 @@ if __name__=="__main__":
     )
     #%% plot
 
-    plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_{DRUG_COLLAPSE_METHOD}_fig3_style.png"
+    plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_{CS_DRUG_COLLAPSE_METHOD}_{IC50_DRUG_COLLAPSE_METHOD}_fig3_style.png"
     fig, axes, stats_dict = plot_binchen_fig3_style(
         classified_df = classified_df,
         metrics=pr_metrics,
         disease=DISEASE,
         cell_line_name=cell_line,
         score_col="connectivity_score",
-        drug_label_col="drug",
+        ic50_col=ic50_score_col,
+        drug_label_col=cs_drug_colname,
         annotate_top_n=5,
         output_file=plot_file,
         cs_threshold=CS_TH,
@@ -688,10 +695,13 @@ if __name__=="__main__":
         # "ic50_value_col": ic50_value_col,
         
         # sizes
-        "drug_summarization_method": DRUG_COLLAPSE_METHOD,
+        "LINCS_drug_collapse_method": CS_DRUG_COLLAPSE_METHOD,
+        "IC50_drug_collapse_method": IC50_DRUG_COLLAPSE_METHOD,
+
         "n_cs_rows_before_drug_collapse": len(dr_uncollapsed),
         "n_cs_rows_after_drug_collapse": len(dr),
-        "n_ic50_rows": len(ic50),
+        "n_ic50_rows_before_drug_collapse": len(ic50_uncollapsed),
+        "n_ic50_rows_after_drug_collapse": len(ic50),
         "n_merged_rows": len(merged),
         "n_unique_drugs": merged[cs_drug_colname].nunique(),
         

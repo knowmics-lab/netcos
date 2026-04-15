@@ -30,7 +30,7 @@ landmark_drug = True  # only select landmark genes from signature data
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'MCF7'
+cell_line = 'HT29'
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
@@ -131,6 +131,7 @@ else:
     LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
 
 lincs_metadata_path = LINCS_BC_DATA / "lincs_sig_info_new.csv"
+LINCS_METADATA_PATH = LINCS_BC_DATA / "lincs_sig_info_new.csv"
 
 ###############################################################################
 # MITHrIL hyperparameters
@@ -184,8 +185,9 @@ chembl_val_log_filename = LOGS_DIR / "BinChen2017_chembl_validation_IC50_correla
 
 # Hyperparameters:
 
-DRUG_COLLAPSE_METHOD='best'
-    
+CS_DRUG_COLLAPSE_METHOD= 'best' # None #
+IC50_DRUG_COLLAPSE_METHOD='median' # 
+
 # IC50 data filtering
 IC50_ONLY=True
 
