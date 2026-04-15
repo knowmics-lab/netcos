@@ -82,51 +82,35 @@ def add_pert_iname_to_cs(cs_df, lincs_metadata_path, cs_id_col="LINCS_id", metad
     return cs_df.merge(meta, left_on=cs_id_col, right_on=metadata_id_col, how="left").drop(columns=[metadata_id_col])
 
 
-
-def collapse_profiles_to_drug(in_df,score_col="connectivity_score",drug_col="pert_iname",how="best",):
-    """
-    Collapse multiple LINCS perturbagens per drug into one row per drug 
-    Parameters
-    ----------
-    cs_df : pd.DataFrame
-        Input dataframe.
-    score_col : str
-        Column to aggregate.
-    drug_col : str
-        Column identifying the drug.
-    how : {'median', 'mean', 'best'}
-        Aggregation method:
-        - 'median': median score per drug
-        - 'mean': mean score per drug
-        - 'best': minimum score per drug
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with one row per drug and the same score column name.
-    """
+def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="pert_iname", how="median", keep_cols=None):
+    """Collapse multiple profiles per drug into one row per drug_col, preserving optional extra columns with 'first'."""
     df = in_df.copy()
+    if drug_col not in df.columns:
+        raise ValueError(f"drug_col '{drug_col}' not found in dataframe")
+    if score_col not in df.columns:
+        raise ValueError(f"score_col '{score_col}' not found in dataframe")
+
+    keep_cols = [] if keep_cols is None else keep_cols
+    missing_keep_cols = [col for col in keep_cols if col not in df.columns]
+    if missing_keep_cols:
+        raise ValueError(f"keep_cols not found in dataframe: {missing_keep_cols}")
+
     df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
     df = df.dropna(subset=[drug_col, score_col]).copy()
 
     if how == "median":
-        out = df.groupby(drug_col, as_index=False).agg({
-            score_col: "median",
-        })
+        score_agg = "median"
     elif how == "mean":
-        out = df.groupby(drug_col, as_index=False).agg({
-            score_col: "mean",
-        })
+        score_agg = "mean"
     elif how == "best":
-        out = df.groupby(drug_col, as_index=False).agg({
-            score_col: "min",
-        })
-    elif how == None:
-        out=df
+        score_agg = "min"
     else:
         raise ValueError("how must be one of: 'median', 'mean', 'best'")
 
-    return out
+    agg_dict = {score_col: score_agg, **{col: "first" for col in keep_cols}}
+    return df.groupby(drug_col, as_index=False).agg(agg_dict)
+
+
 
 def resolve_cs_run_id(  cs_runs_tsv,  disease_run_id,   drug_run_id,   cs_on_LM,  mith,  selected_cs_run_id=None,):
     """
@@ -602,8 +586,10 @@ if __name__=="__main__":
     ic50_score_col = 'standard_value'
     ic50_uncollapsed=load_IC50(ic50_file, DISEASE, cell_line, IC50_ONLY=IC50_ONLY)#, median_IC50=median_IC50)
     print(ic50_uncollapsed.shape, 'drugs with IC50 value for cell line', cell_line)
-    ic50 = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, how=IC50_DRUG_COLLAPSE_METHOD)
+    ic50 = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
+                                      how=IC50_DRUG_COLLAPSE_METHOD)
     print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
+    
     
     
     # merge on common drugs
@@ -611,6 +597,17 @@ if __name__=="__main__":
     
     merged = merged.dropna(subset=["connectivity_score",ic50_score_col]).copy()
     print('merged data on common drugs:', merged.shape)
+    
+    #%%% COMPARISON BETWEEN CALCULATED MEDIANS AND BIN CHEN PRECOMPUTED MEDIANS
+    test_drug = "vinblastine"
+    tmp = ic50_uncollapsed[ic50_uncollapsed["pert_iname"] == test_drug].copy()
+    print(tmp[["pert_iname","pert_id",ic50_score_col]])
+    print("manual median:", tmp[ic50_score_col].median())
+    #%%
+    ic50_medians = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
+                                  how=IC50_DRUG_COLLAPSE_METHOD, keep_cols=['standard_value_median'])
+
+    ic50_medians.to_excel(LOGS_DIR/'SD8_IC50_medians.xlsx')
     #%% Optional: check overlap between our overlap of ic50 vs CS score
     # and BinChen's overlap of ic50vs sRGES:
     

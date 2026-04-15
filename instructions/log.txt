@@ -2020,3 +2020,8 @@ onnectivity_score       drug  standard_value
 c e un problema nel merging? printando anche il pert_id sono anche lo stesso pert_id.
 
 vediamo di vedere qual e il problema nel merge
+
+
+15/04
+fatto merge con best drug + median ic50 MA manca capire come funziona ic50 only, e confrontare con 'standard value median' calcolato da loro.
+stando attenti a leggere lo sheet giusto..
