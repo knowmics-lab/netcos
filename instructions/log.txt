@@ -2024,4 +2024,29 @@ vediamo di vedere qual e il problema nel merge
 
 15/04
 fatto merge con best drug + median ic50 MA manca capire come funziona ic50 only, e confrontare con 'standard value median' calcolato da loro.
-stando attenti a leggere lo sheet giusto..
+stando attenti a leggere lo sheet giusto quando si confronta
+dentro il validation  scripo ho messo una cosa tempranea che salvs entro LOGS_DIR un excel con le mediane calcolate e calcolate da bin chen. Che non sono uguali. ce qualcosa che non va. Perche poi non sono uguali neanche le mediane calcolate da me con python con le mediane calcolate su excel sul SD8 originale.
+da risolvere qeusto
+da ricercare nei vari agende e cose e file e log dove cacchio ho scritto le due alaternative validazioni proposte da Dennis.
+
+E poi quando saro' pronto ci avviciniamo agli iperparameter runs...
+
+16 04
+ci sono due cose sbagliate:
+1) il calcolo della mediana su viniblastine (con LIHC la loro vale 220, mentre la nostra e quella calcolata su excel vale diversamente)
+2) c'e' qualcosa che non va con COAD quando loaddo ic50 e guardo la viniblastine. non ha tutte le rows corrsipondenti: quindi la mediana calcolata da noi e' si diversa dalla mediana da loro, ma se la calcolo su excel sono ancora diverse, come ho detto ieri e non e perche alcune hanno ed50, ma c'e' un bug nel loading
+
+il problema e' che ce una cosa addizionale di cell lines. E le cell lines sono diverse. da guardare su chatgpt la risposta
+che mi viene il seguente dubbio: se anche le cell lines sono diverse in IC50, prendiamo direttamente il best anche solo in IC50? o insomma, possiamo fare la grid search anche li.. ma si stica
+
+17/04
+Ok, visto che la 'cosa addizionale di cell lines' e' giusta. Se provo a prendere tutt i d ati senza cell lines, comunque ho piu cell lines e meno differenza di mediana, ma alcune ne ho.
+COAD:
+cell_line = cell_line, IC50_ONLY = True
+37/78
+cell_line =non, IC50_ONLY = True
+9/98
+cell_line=None, IC50_ONLY=False
+9/100
+
+DA FARE: PROVARE A FARE UN PRIMO ALGORITMO DI GRID SEARCH DI PERC REC SU tutti questi parametri.

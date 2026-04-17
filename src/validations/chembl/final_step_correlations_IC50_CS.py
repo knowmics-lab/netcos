@@ -192,7 +192,6 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df, cs_id_col='LINCS_id', metadata
     
 def load_drug_rankings(path, filename=None, pert_time='all',mith='mith', lincs_metadata_path =None):
     
-    
     if not filename:
         filename=mith+'_connectivity_score.tsv'
     df= pd.read_csv(path/filename, sep='\t', header=0, dtype='str')
@@ -206,6 +205,7 @@ def load_drug_rankings(path, filename=None, pert_time='all',mith='mith', lincs_m
         
     return df
 
+
 def translate_cl(cell_line):
     if cell_line == 'HT29':
         return 'HT-29'
@@ -213,17 +213,24 @@ def translate_cl(cell_line):
 
 def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True):#, median_IC50=False):
     
-    cell_line = translate_cl(cell_line)
+    log_dict = {}
     df=pd.read_excel(ic50_file,\
                      sheet_name=cancer_type, header =0, usecols=['pert_iname', 'pert_id','standard_value', 'standard_units',\
                                  'standard_type', 'cell_line','activity', 'standard_value_median'])
     #filter for cell line
-    df = df[df.cell_line.str.upper()==cell_line]
+    cell_line = translate_cl(cell_line)
+    if cell_line is not None:
+        log_dict['IC50_rows'] = len(df)
+        df = df[df['cell_line'].astype(str).str.upper()==cell_line.upper()]
+        log_dict['IC50_rows_filtered_by_cell'] = len(df)
     
+    # IC50 filtering
     if IC50_ONLY:
         df=df[df.standard_type=='IC50']
+        log_dict['IC50_rows_filtered_by_IC50'] = len(df)
+
     
-    return df.sort_values(by='standard_value_median')
+    return df.sort_values(by='standard_value_median'), log_dict
 
 # classification and plotting
 
@@ -584,7 +591,7 @@ if __name__=="__main__":
     print(dr.shape, 'drugs ')
 
     ic50_score_col = 'standard_value'
-    ic50_uncollapsed=load_IC50(ic50_file, DISEASE, cell_line, IC50_ONLY=IC50_ONLY)#, median_IC50=median_IC50)
+    ic50_uncollapsed, ic50_log_data=load_IC50(ic50_file, DISEASE, cell_line=cell_line, IC50_ONLY=IC50_ONLY)#, median_IC50=median_IC50)
     print(ic50_uncollapsed.shape, 'drugs with IC50 value for cell line', cell_line)
     ic50 = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
                                       how=IC50_DRUG_COLLAPSE_METHOD)
@@ -599,15 +606,17 @@ if __name__=="__main__":
     print('merged data on common drugs:', merged.shape)
     
     #%%% COMPARISON BETWEEN CALCULATED MEDIANS AND BIN CHEN PRECOMPUTED MEDIANS
-    test_drug = "vinblastine"
-    tmp = ic50_uncollapsed[ic50_uncollapsed["pert_iname"] == test_drug].copy()
-    print(tmp[["pert_iname","pert_id",ic50_score_col]])
-    print("manual median:", tmp[ic50_score_col].median())
-    #%%
-    ic50_medians = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
-                                  how=IC50_DRUG_COLLAPSE_METHOD, keep_cols=['standard_value_median'])
+    # test_drug = "vinblastine"
+    # tmp = ic50_uncollapsed[ic50_uncollapsed["pert_iname"] == test_drug].copy()
+    # print(tmp[["pert_iname","pert_id",ic50_score_col]])
+    # print("manual median:", tmp[ic50_score_col].median())
+    # #%%
+    # ic50_medians = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
+    #                               how=IC50_DRUG_COLLAPSE_METHOD, keep_cols=['standard_value_median'])
 
-    ic50_medians.to_excel(LOGS_DIR/'SD8_IC50_medians.xlsx')
+    # diff=ic50_medians[ic50_medians['standard_value']!=ic50_medians['standard_value_median']]
+    # print(DISEASE, len(diff), len(ic50_medians))
+    # diff.to_excel(LOGS_DIR/f'SD8{DISEASE}_IC50_different_medians.xlsx', sheet_name=DISEASE)
     #%% Optional: check overlap between our overlap of ic50 vs CS score
     # and BinChen's overlap of ic50vs sRGES:
     
@@ -728,6 +737,7 @@ if __name__=="__main__":
         "output_plot_file": str(plot_file)
     }
     
+    run_metadata_data.update(ic50_log_data)
 
     append_run_metadata(chembl_val_log_filename, run_metadata_data)
     
