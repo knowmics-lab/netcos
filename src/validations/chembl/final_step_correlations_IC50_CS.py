@@ -71,6 +71,8 @@ from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
 
 from logger import append_run_metadata
 
+from loader import load_drug_rankings, load_IC50
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy.stats import spearmanr, linregress, ttest_ind
@@ -109,8 +111,6 @@ def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="p
 
     agg_dict = {score_col: score_agg, **{col: "first" for col in keep_cols}}
     return df.groupby(drug_col, as_index=False).agg(agg_dict)
-
-
 
 def resolve_cs_run_id(  cs_runs_tsv,  disease_run_id,   drug_run_id,   cs_on_LM,  mith,  selected_cs_run_id=None,):
     """
@@ -153,84 +153,6 @@ def resolve_cs_run_id(  cs_runs_tsv,  disease_run_id,   drug_run_id,   cs_on_LM,
         hit = hit.sort_values("timestamp", ascending=False)
 
     return hit.iloc[0]["cs_run_id"]
-
-def add_pert_id_to_cs( lincs_metadata_path,cs_df, cs_id_col='LINCS_id', metadata_id_col='id', metadata_pert_col='pert_id'):
-    """
-    Adds a 'pert_id' column to a CS dataframe by mapping LINCS_id via LINCS metadata.
-    
-    Parameters
-    ----------
-    cs_df : pd.DataFrame
-        Connectivity score dataframe containing LINCS_id column
-    lincs_metadata_path : str
-        Path to lincs_sig_info_new.csv
-    cs_id_col : str
-        Column in cs_df (default 'LINCS_id')
-    metadata_id_col : str
-        Column in metadata corresponding to LINCS_id (default 'id')
-    metadata_pert_col : str
-        Column in metadata for pert_id (default 'pert_id')
-    """
-
-    if not metadata_pert_col in cs_df.columns:
-        # load only what we need
-        meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
-    
-        # build mapping dict
-        id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
-    
-        # map
-        cs_df[metadata_pert_col] = cs_df[cs_id_col].map(id_to_pert)
-    
-        # optional sanity check
-        n_missing = cs_df['pert_id'].isna().sum()
-        if n_missing > 0:
-            print(f"Warning: {n_missing} LINCS_id values could not be mapped to pert_id")
-
-    return cs_df
-
-    
-def load_drug_rankings(path, filename=None, pert_time='all',mith='mith', lincs_metadata_path =None):
-    
-    if not filename:
-        filename=mith+'_connectivity_score.tsv'
-    df= pd.read_csv(path/filename, sep='\t', header=0, dtype='str')
-    
-    if not pert_time == 'all':
-        return dr[dr.perturbation_time==pert_time]
-    
-    if lincs_metadata_path:
-        df = add_pert_id_to_cs(lincs_metadata_path, df) 
-        
-        
-    return df
-
-
-def translate_cl(cell_line):
-    if cell_line == 'HT29':
-        return 'HT-29'
-    return cell_line
-
-def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True):#, median_IC50=False):
-    
-    log_dict = {}
-    df=pd.read_excel(ic50_file,\
-                     sheet_name=cancer_type, header =0, usecols=['pert_iname', 'pert_id','standard_value', 'standard_units',\
-                                 'standard_type', 'cell_line','activity', 'standard_value_median'])
-    #filter for cell line
-    cell_line = translate_cl(cell_line)
-    if cell_line is not None:
-        log_dict['IC50_rows'] = len(df)
-        df = df[df['cell_line'].astype(str).str.upper()==cell_line.upper()]
-        log_dict['IC50_rows_filtered_by_cell'] = len(df)
-    
-    # IC50 filtering
-    if IC50_ONLY:
-        df=df[df.standard_type=='IC50']
-        log_dict['IC50_rows_filtered_by_IC50'] = len(df)
-
-    
-    return df.sort_values(by='standard_value_median'), log_dict
 
 # classification and plotting
 
