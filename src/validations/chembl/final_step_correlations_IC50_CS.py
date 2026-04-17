@@ -532,9 +532,14 @@ if __name__=="__main__":
     # tmp = ic50_uncollapsed[ic50_uncollapsed["pert_iname"] == test_drug].copy()
     # print(tmp[["pert_iname","pert_id",ic50_score_col]])
     # print("manual median:", tmp[ic50_score_col].median())
+    # print("manual mean:", tmp[ic50_score_col].mean())
+    # tmp[ic50_score_col].tail().median()
     # #%%
     # ic50_medians = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
     #                               how=IC50_DRUG_COLLAPSE_METHOD, keep_cols=['standard_value_median'])
+
+
+    
 
     # diff=ic50_medians[ic50_medians['standard_value']!=ic50_medians['standard_value_median']]
     # print(DISEASE, len(diff), len(ic50_medians))

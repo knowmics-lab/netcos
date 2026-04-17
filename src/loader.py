@@ -6,6 +6,7 @@ Created on Wed Jan 29 10:24:39 2025
 @ author: L-F-S
 """
 import os
+from pathlib import Path
 
 import pandas as pd
 import pickle
@@ -149,6 +150,8 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df, cs_id_col='LINCS_id', metadata
 
     
 def load_drug_rankings(path, filename=None, pert_time='all',mith='mith', lincs_metadata_path =None):
+    
+    path= Path(path)
     
     if not filename:
         filename=mith+'_connectivity_score.tsv'

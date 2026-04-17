@@ -2050,3 +2050,13 @@ cell_line=None, IC50_ONLY=False
 9/100
 
 DA FARE: PROVARE A FARE UN PRIMO ALGORITMO DI GRID SEARCH DI PERC REC SU tutti questi parametri.
+
+
+ALLORA per la mediana, seguiamo la mediamna calcolata da me. Non si trova un criterio nelle discrepanze di binchen2017.
+
+allora fare ricercas su internet per vedere se altri paper hanno notato questa discrepanza. Fatta con chatgpt. Non sembra, ma tendono a ricalcolarsi chembl riscaricarselo. UFFICIALE. non uso il loro valore standard_value_median.
+
+da fare: rifare le slides per dire che non lo usi, e perche
+
+da fare: aggiornare anche netcos obsidian con tutte ste cose (prima di iniziare a fare grid search)
+da fare: ritrovare su obsidian sulle note sulla mail SU QUESTO LOG DA QUALCHE PARTE: DOVE CACCHIO HO MESSO I SUGGERIMENTI DI DENNIS PER LA VALIDAZIONE!
