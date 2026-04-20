@@ -494,7 +494,7 @@ if __name__ == "__main__":
         print(pd.Series(summary))
     
     summary_df = pd.DataFrame(all_summaries).sort_values("f1_mean", ascending=False)
-    summary_df.to_csv(out_dir / TIMESTAMP+"_chembl_cv_grid_search.tsv", sep="\t", index=False)
+    summary_df.to_csv(out_dir / (TIMESTAMP+"_chembl_cv_grid_search.tsv"), sep="\t", index=False)
     print("Saved CV outputs to:", out_dir)
     plot_config_matrix(all_oof, summary_df, IMG_DIR / "chembl_cv_grid_search_matrix.png", configs_by_name=configs_by_name)
     print("Saved CV images to:", IMG_DIR)
