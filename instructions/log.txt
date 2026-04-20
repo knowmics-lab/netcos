@@ -2060,3 +2060,14 @@ da fare: rifare le slides per dire che non lo usi, e perche
 
 da fare: aggiornare anche netcos obsidian con tutte ste cose (prima di iniziare a fare grid search)
 da fare: ritrovare su obsidian sulle note sulla mail SU QUESTO LOG DA QUALCHE PARTE: DOVE CACCHIO HO MESSO I SUGGERIMENTI DI DENNIS PER LA VALIDAZIONE!
+
+##
+20/04
+fatto primo test funzionante di grid search.
+
+da fare: il plot della grid serarch mettigli i colori bellini vecchi, che lui si e' inventato dei colori.
+magfare los cript final step ic50 ripuliscilo e chiamalo tipo single correaltion run
+e poi il plot di crossvalidation aggiungici labels che dicano i parametri
+aggiungi un BEST , magari anche visivamente fai il best come un riquadro bello.
+
+aggiungi gli altri parametri incredibili
