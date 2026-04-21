@@ -247,11 +247,7 @@ def run_bootstrap_for_config(config, n_bootstraps=200, random_state=42):
 
     boot_rows = []
     for i in range(n_bootstraps):
-        boot_df = stratified_bootstrap_sample(
-            merged,
-            label_col="actual_positive",
-            random_state=random_state + i,
-        )
+        boot_df = stratified_bootstrap_sample(merged,label_col="actual_positive",random_state=random_state + i,)
         metrics, _ = compute_metrics(boot_df, config)
         metrics["bootstrap"] = i
         metrics["n_test"] = len(boot_df)
