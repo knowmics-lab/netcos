@@ -2080,3 +2080,5 @@ todo futuro: riscaricati gli IC50 tu... .. IL BENE E' NEMICO DEL MEGLIO. FINISCI
 
 
 IMPORTANT: when we do grid search, we still would crossvalidate , not to reduce overfitting (not a problem in our case) but to reduce selection bias, I dont want to just select the best performance as is, because it could be due to the dataset. instead  itake the average metric across held out datasets. I am doing it for MODEL SELECTION
+
+added new file to create grid search with bootstrap isntead of CV

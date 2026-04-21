@@ -2,14 +2,14 @@
 """
 Created on Fri Apr 17 10:40:00 2026
 
-Cross-validated hyperparameter search for ChEMBL IC50 vs connectivity score validation.
+Bootstrap hyperparameter search for ChEMBL IC50 vs connectivity score validation.
 
 This script is intentionally built on top of final_step_correlations_IC50_CS.py.
 It reuses its data-loading, collapsing, classification, and plotting helpers, then:
 
-1. evaluates MANY fixed hyperparameter combinations under out-of-fold test evaluation
-2. stores pooled out-of-fold predictions per configuration
-3. summarizes precision / recall / F1 / Spearman across configurations
+1. evaluates MANY fixed hyperparameter combinations under stratified bootstrap resampling
+2. stores bootstrap replicate metrics per configuration
+3. summarizes precision / recall / F1 across configurations
 4. plots a matrix of fig3-like scatter panels, one panel per configuration
 5. reports also the metric on the full dataset for each configuration
 
@@ -21,6 +21,10 @@ CS / IC50 tables. Hyperparameters that require recomputing the upstream CS itsel
 CS runs) can still be included, but ONLY if the corresponding CS files / run IDs already
 exist and are passed through the grid.
 
+Recommended use
+---------------
+Use bootstrap here as a resampling-based estimate of metric variability across drugs.
+This script does not train a model; it evaluates fixed configurations.
 
 @Author: L-F-S
 """
@@ -31,20 +35,14 @@ import itertools
 import math
 import os
 import sys
-from collections import defaultdict
-from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr
-from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score
-from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold
-
+from sklearn.metrics import f1_score
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[2] if len(HERE.parents) >= 3 else HERE.parent
@@ -54,10 +52,11 @@ from conf import CS_DIR, CS_OUT, DATA_DIR, DISEASE,IC50_DRUG_COLLAPSE_METHOD,IC5
     IC50_ONLY, IMG_DIR, LINCS_METADATA_PATH,LOGS_DIR, cell_line,cell_line_run_name,\
     cs_filename,cs_log_filename,cs_mith,cs_on_LM,disease_run_name,\
     ic50_file, selected_cs_run_id
-from logger import append_run_metadata 
+from logger import append_run_metadata
 from loader import load_IC50, load_drug_rankings
 from validations.chembl.final_step_correlations_IC50_CS import add_pert_iname_to_cs, classify_ic50_vs_cs,\
     collapse_profiles_to_drug, plot_binchen_fig3_style, resolve_cs_run_id
+
 
 # -----------------------------------------------------------------------------
 # config object
@@ -74,7 +73,7 @@ class EvalConfig:
     cs_out_dir: Path
     cs_run_id: str
     cs_filename: str
-    
+
     cell_line_IC50: str
     cs_drug_colname: str = "pert_iname"
     ic50_drug_colname: str = "pert_iname"
@@ -83,8 +82,6 @@ class EvalConfig:
     cs_drug_collapse_method: str = "best"
     ic50_drug_collapse_method: str = "median"
     ic50_only: bool = True
-    
-
 
     cs_threshold: float = -1.5
     ic50_threshold: float = 10.0
@@ -96,7 +93,6 @@ class EvalConfig:
 # -----------------------------------------------------------------------------
 # utilities
 # -----------------------------------------------------------------------------
-
 
 def expand_grid(param_grid):
     """
@@ -116,18 +112,23 @@ def expand_grid(param_grid):
     return out
 
 
-
-def pick_n_splits(y, max_splits=5, min_splits=2):
+def stratified_bootstrap_sample(df, label_col="actual_positive", random_state=None):
     """
-    Choose valid number of CV splits based on class counts.
-    """
-    y = np.asarray(y)
-    _, counts = np.unique(y, return_counts=True)
-    n_splits = int(min(max_splits, counts.min()))
-    if n_splits < min_splits:
-        raise ValueError("Too few samples for stratified CV")
-    return n_splits
+    Sample a dataframe with replacement, preserving class counts.
 
+    Returns a dataframe with the same number of rows as the input, stratified on
+    label_col.
+    """
+    rng = np.random.default_rng(random_state)
+    sampled_parts = []
+
+    for _, group in df.groupby(label_col, sort=False):
+        sampled_idx = rng.choice(group.index.to_numpy(), size=len(group), replace=True)
+        sampled_parts.append(df.loc[sampled_idx])
+
+    boot_df = pd.concat(sampled_parts, axis=0)
+    boot_df = boot_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
+    return boot_df
 
 
 def resolve_cs_file(config):
@@ -142,7 +143,6 @@ def resolve_cs_file(config):
 # -----------------------------------------------------------------------------
 # data preparation
 # -----------------------------------------------------------------------------
-
 
 def load_merged_for_config(config):
     """
@@ -194,16 +194,15 @@ def load_merged_for_config(config):
 
 
 # -----------------------------------------------------------------------------
-# CV evaluation
+# bootstrap evaluation
 # -----------------------------------------------------------------------------
 
-
-def compute_fold_metrics(test_df, config):
+def compute_metrics(eval_df, config):
     """
-    Compute classification + correlation metrics on one test fold.
+    Compute classification metrics on a dataframe.
     """
     classified_df, pr = classify_ic50_vs_cs(
-        test_df,
+        eval_df,
         score_col=config.cs_score_col,
         ic50_col=config.ic50_score_col,
         cs_threshold=config.cs_threshold,
@@ -212,58 +211,56 @@ def compute_fold_metrics(test_df, config):
 
     y_true = classified_df["actual_positive"].astype(int)
     y_pred = classified_df["predicted_positive"].astype(int)
-
     f1 = f1_score(y_true, y_pred, zero_division=0)
 
-    return {
+    metrics = {
         "precision": pr["precision"],
         "recall": pr["recall"],
         "f1": f1,
-    }, classified_df
+        "tp": pr["tp"],
+        "fp": pr["fp"],
+        "fn": pr["fn"],
+        "tn": pr["tn"],
+    }
+    return metrics, classified_df
 
 
-
-def run_cv_for_config(config, n_splits, n_repeats=10, random_state=42):
+def run_bootstrap_for_config(config, n_bootstraps=200, random_state=42):
     """
-    Run repeated stratified CV for one config.
+    Run stratified bootstrap evaluation for one config.
 
     returns
     -------
-    oof : pd.DataFrame
-        Out-of-fold classified rows pooled across all folds.
-    folds : pd.DataFrame
-        One row per fold with precision / recall / F1.
+    full_classified : pd.DataFrame
+        Full-dataset classified rows.
+    boot_rows : pd.DataFrame
+        One row per bootstrap replicate with precision / recall / F1.
     summary : dict
-        Run-level summary metrics useful for logging and comparison.
+        Run-level summary metrics including full-dataset metrics and bootstrap
+        mean / sd.
     """
     merged = load_merged_for_config(config)
-    y = merged["actual_positive"].values
 
-    splitter = RepeatedStratifiedKFold(
-        n_splits=n_splits,
-        n_repeats=n_repeats,
-        random_state=random_state,
-    )
+    full_metrics, full_classified = compute_metrics(merged, config)
+    full_metrics["bootstrap"] = "full_dataset"
+    full_metrics["n_test"] = len(merged)
 
-    oof = []
-    folds = []
+    boot_rows = []
+    for i in range(n_bootstraps):
+        boot_df = stratified_bootstrap_sample(
+            merged,
+            label_col="actual_positive",
+            random_state=random_state + i,
+        )
+        metrics, _ = compute_metrics(boot_df, config)
+        metrics["bootstrap"] = i
+        metrics["n_test"] = len(boot_df)
+        boot_rows.append(metrics)
 
-    for i, (_, test_idx) in enumerate(splitter.split(merged, y)):
-        test_df = merged.iloc[test_idx]
-        metrics, classified = compute_fold_metrics(test_df, config)
-
-        metrics["fold"] = i
-        metrics["n_test"] = len(test_df)
-        folds.append(metrics)
-
-        classified["fold"] = i
-        oof.append(classified)
-
-    oof = pd.concat(oof, ignore_index=True)
-    folds = pd.DataFrame(folds)
+    boot_rows = pd.DataFrame(boot_rows)
 
     summary = {
-        "cv_run_name":TIMESTAMP,
+        "cv_run_name": TIMESTAMP,
         "config_name": config.name,
         "disease_run_id": disease_run_name,
         "drug_run_id": cell_line_run_name,
@@ -272,15 +269,20 @@ def run_cv_for_config(config, n_splits, n_repeats=10, random_state=42):
         "n_unique_drugs": merged["drug_name"].nunique(),
         "n_positive": int(merged["actual_positive"].sum()),
         "n_negative": int((1 - merged["actual_positive"]).sum()),
-        "n_splits": n_splits,
-        "n_repeats": n_repeats,
-        "n_total_folds": len(folds),
-        "precision_mean": folds["precision"].mean(),
-        "precision_sd": folds["precision"].std(ddof=1),
-        "recall_mean": folds["recall"].mean(),
-        "recall_sd": folds["recall"].std(ddof=1),
-        "f1_mean": folds["f1"].mean(),
-        "f1_sd": folds["f1"].std(ddof=1),
+        "n_bootstraps": n_bootstraps,
+        "precision_full": full_metrics["precision"],
+        "recall_full": full_metrics["recall"],
+        "f1_full": full_metrics["f1"],
+        "tp_full": full_metrics["tp"],
+        "fp_full": full_metrics["fp"],
+        "fn_full": full_metrics["fn"],
+        "tn_full": full_metrics["tn"],
+        "precision_mean": boot_rows["precision"].mean(),
+        "precision_sd": boot_rows["precision"].std(ddof=1),
+        "recall_mean": boot_rows["recall"].mean(),
+        "recall_sd": boot_rows["recall"].std(ddof=1),
+        "f1_mean": boot_rows["f1"].mean(),
+        "f1_sd": boot_rows["f1"].std(ddof=1),
         "cs_threshold": config.cs_threshold,
         "ic50_threshold": config.ic50_threshold,
         "cs_drug_collapse_method": config.cs_drug_collapse_method,
@@ -289,18 +291,16 @@ def run_cv_for_config(config, n_splits, n_repeats=10, random_state=42):
         "ic50_only": config.ic50_only,
     }
 
-    return oof, folds, summary
-
+    return full_classified, boot_rows, summary
 
 
 # -----------------------------------------------------------------------------
 # plotting
 # -----------------------------------------------------------------------------
 
-
 def plot_scatter_panel(oof_df, config, ax):
     """
-    Plot one compact Fig.3-style scatter panel from pooled out-of-fold rows.
+    Plot one compact Fig.3-style scatter panel from evaluated rows.
     """
     if oof_df is None or oof_df.empty:
         ax.set_axis_off()
@@ -316,7 +316,7 @@ def plot_scatter_panel(oof_df, config, ax):
     actual_pos = y_raw <= config.ic50_threshold
     pred_pos = x <= config.cs_threshold
 
-    edgecolors = np.where(actual_pos , "cornflowerblue", "lightcoral" )
+    edgecolors = np.where(actual_pos, "cornflowerblue", "lightcoral")
 
     ax.scatter(x, y, s=12, facecolors="none", edgecolors=edgecolors, linewidths=0.7)
     ax.axvline(config.cs_threshold, linestyle="--", linewidth=0.9, alpha=0.6)
@@ -327,11 +327,7 @@ def plot_scatter_panel(oof_df, config, ax):
     fn = int((actual_pos & ~pred_pos).sum())
     precision = tp / (tp + fp) if (tp + fp) else np.nan
     recall = tp / (tp + fn) if (tp + fn) else np.nan
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if pd.notna(precision) and pd.notna(recall) and (precision + recall)
-        else np.nan
-    )
+    f1 = 2 * precision * recall / (precision + recall) if pd.notna(precision) and pd.notna(recall) and (precision + recall) else np.nan
 
     ax.set_title(config.name, fontsize=8)
     ax.text(
@@ -352,16 +348,6 @@ def plot_scatter_panel(oof_df, config, ax):
 def plot_config_matrix(all_oof, all_summaries, out_file, configs_by_name=None):
     """
     Plot a compact matrix of scatter panels, one per configuration.
-
-    all_oof : dict
-        {config_name: oof_df}
-    all_summaries : pd.DataFrame or list of dict
-        Summary table, ideally already sorted by preferred metric.
-    out_file : str or Path
-        Output image path.
-    configs_by_name : dict or None
-        Optional {config_name: EvalConfig}. If provided, uses the original config
-        objects directly instead of reconstructing them from the summary table.
     """
     if isinstance(all_summaries, list):
         all_summaries = pd.DataFrame(all_summaries)
@@ -415,7 +401,6 @@ def plot_config_matrix(all_oof, all_summaries, out_file, configs_by_name=None):
 # main
 # -----------------------------------------------------------------------------
 
-
 def make_default_config_grid():
     """
     Define hyperparameter grid.
@@ -431,11 +416,10 @@ def make_default_config_grid():
 
     grid = {
         "cs_drug_collapse_method": ["best", "median"],
-        "ic50_drug_collapse_method": ["best", "median"], #TODO: add PRE-RANKING
+        "ic50_drug_collapse_method": ["best", "median"],
         "cs_threshold": [-1.5],
         "ic50_only": [True, False],
         "cell_line_IC50": [cell_line, None],
-        # 
     }
 
     configs = []
@@ -464,29 +448,32 @@ def make_default_config_grid():
 if __name__ == "__main__":
     configs = make_default_config_grid()
 
-    first_df = load_merged_for_config(configs[0])
-    n_splits = pick_n_splits(first_df["actual_positive"].values)
-    
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = Path(LOGS_DIR) / "chembl_cv_grid_search" #/ timestamp
+    out_dir = Path(LOGS_DIR) / "chembl_bootstrap_grid_search"
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     all_summaries = []
     all_oof = {}
     configs_by_name = {cfg.name: cfg for cfg in configs}
-    all_oof = {}
+    n_bootstraps = 200
 
     for cfg in configs:
         print("Running:", cfg.name)
-        oof, folds, summary = run_cv_for_config(cfg, n_splits)
-        
+        full_classified, boot_rows, summary = run_bootstrap_for_config(cfg, n_bootstraps=n_bootstraps)
+
         all_summaries.append(summary)
-        all_oof[cfg.name] = oof
+        all_oof[cfg.name] = full_classified
         print(pd.Series(summary))
-    
+
+        boot_rows.to_csv(out_dir / f"{DISEASE}_{TIMESTAMP}_{cfg.name}_bootstrap_metrics.tsv", sep="\t", index=False)
+        full_classified.to_csv(out_dir / f"{DISEASE}_{TIMESTAMP}_{cfg.name}_full_dataset_classified.tsv", sep="\t", index=False)
+
     summary_df = pd.DataFrame(all_summaries).sort_values("f1_mean", ascending=False)
-    summary_df.to_csv(out_dir / (DISEASE+"_"+TIMESTAMP+"_chembl_cv_grid_search.tsv"), sep="\t", index=False)
-    print("Saved CV outputs to:", out_dir)
-    plot_config_matrix(all_oof, summary_df, IMG_DIR / (DISEASE+"_chembl_cv_grid_search_matrix.png"), configs_by_name=configs_by_name)
-    print("Saved CV images to:", IMG_DIR)
+    summary_file = out_dir / f"{DISEASE}_{TIMESTAMP}_chembl_bootstrap_grid_search.tsv"
+    summary_df.to_csv(summary_file, sep="\t", index=False)
+
+    print("Saved bootstrap outputs to:", out_dir)
+    matrix_file = IMG_DIR / f"{DISEASE}_{TIMESTAMP}_chembl_bootstrap_grid_search_matrix.png"
+    plot_config_matrix(all_oof, summary_df, matrix_file, configs_by_name=configs_by_name)
+    print("Saved bootstrap images to:", IMG_DIR)
 
