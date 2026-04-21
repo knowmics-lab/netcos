@@ -273,6 +273,7 @@ def run_cv_for_config(config, n_splits, n_repeats=10, random_state=42):
         "config_name": config.name,
         "disease_run_id": disease_run_name,
         "drug_run_id": cell_line_run_name,
+        "cs_run_id": config.cs_run_id,
         "n_rows_merged": len(merged),
         "n_unique_drugs": merged["drug_name"].nunique(),
         "n_positive": int(merged["actual_positive"].sum()),
@@ -295,6 +296,125 @@ def run_cv_for_config(config, n_splits, n_repeats=10, random_state=42):
     }
 
     return oof, folds, summary
+
+
+
+# -----------------------------------------------------------------------------
+# plotting
+# -----------------------------------------------------------------------------
+
+
+def plot_scatter_panel(oof_df, config, ax):
+    """
+    Plot one compact Fig.3-style scatter panel from pooled out-of-fold rows.
+    """
+    if oof_df is None or oof_df.empty:
+        ax.set_axis_off()
+        return
+
+    x = pd.to_numeric(oof_df[config.cs_score_col], errors="coerce")
+    y_raw = pd.to_numeric(oof_df[config.ic50_score_col], errors="coerce")
+    ok = x.notna() & y_raw.notna() & (y_raw > 0)
+    x = x[ok]
+    y_raw = y_raw[ok]
+    y = np.log10(y_raw)
+
+    actual_pos = y_raw <= config.ic50_threshold
+    pred_pos = x <= config.cs_threshold
+
+    edgecolors = np.where(actual_pos , "cornflowerblue", "lightcoral" )
+
+    ax.scatter(x, y, s=12, facecolors="none", edgecolors=edgecolors, linewidths=0.7)
+    ax.axvline(config.cs_threshold, linestyle="--", linewidth=0.9, alpha=0.6)
+    ax.axhline(np.log10(config.ic50_threshold), linestyle="--", linewidth=0.9, alpha=0.6)
+
+    tp = int((actual_pos & pred_pos).sum())
+    fp = int((~actual_pos & pred_pos).sum())
+    fn = int((actual_pos & ~pred_pos).sum())
+    precision = tp / (tp + fp) if (tp + fp) else np.nan
+    recall = tp / (tp + fn) if (tp + fn) else np.nan
+    f1 = (
+        2 * precision * recall / (precision + recall)
+        if pd.notna(precision) and pd.notna(recall) and (precision + recall)
+        else np.nan
+    )
+
+    ax.set_title(config.name, fontsize=8)
+    ax.text(
+        0.02, 0.98,
+        f"P={precision:.2f}  R={recall:.2f}  F1={f1:.2f}\n"
+        f"N={len(x)}  cell={config.cell_line_IC50 if config.cell_line_IC50 is not None else 'ALL'}",
+        transform=ax.transAxes,
+        va="top",
+        ha="left",
+        fontsize=7,
+        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8),
+    )
+    ax.set_xlabel("CS", fontsize=8)
+    ax.set_ylabel("log10(IC50)", fontsize=8)
+    ax.tick_params(labelsize=7)
+
+
+def plot_config_matrix(all_oof, all_summaries, out_file, configs_by_name=None):
+    """
+    Plot a compact matrix of scatter panels, one per configuration.
+
+    all_oof : dict
+        {config_name: oof_df}
+    all_summaries : pd.DataFrame or list of dict
+        Summary table, ideally already sorted by preferred metric.
+    out_file : str or Path
+        Output image path.
+    configs_by_name : dict or None
+        Optional {config_name: EvalConfig}. If provided, uses the original config
+        objects directly instead of reconstructing them from the summary table.
+    """
+    if isinstance(all_summaries, list):
+        all_summaries = pd.DataFrame(all_summaries)
+    all_summaries = all_summaries.sort_values("f1_mean", ascending=False).reset_index(drop=True)
+
+    config_names = all_summaries["config_name"].tolist()
+    n = len(config_names)
+    if n == 0:
+        return
+
+    ncols = min(4, max(1, n))
+    nrows = int(math.ceil(n / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3.2 * nrows), squeeze=False)
+    axes = axes.ravel()
+
+    for ax in axes:
+        ax.set_axis_off()
+
+    for ax, config_name in zip(axes, config_names):
+        ax.set_axis_on()
+
+        if configs_by_name is not None and config_name in configs_by_name:
+            cfg = configs_by_name[config_name]
+        else:
+            row = all_summaries[all_summaries["config_name"] == config_name].iloc[0]
+            cfg = EvalConfig(
+                name=row["config_name"],
+                disease=DISEASE,
+                cell_line=cell_line,
+                cell_line_IC50=row["cell_line_IC50"] if pd.notna(row["cell_line_IC50"]) else None,
+                cs_out_dir=Path(CS_OUT),
+                cs_run_id=row["cs_run_id"] if "cs_run_id" in row.index else None,
+                cs_filename=f"{row['cs_run_id']}.tsv" if "cs_run_id" in row.index else None,
+                cs_drug_collapse_method=row["cs_drug_collapse_method"],
+                ic50_drug_collapse_method=row["ic50_drug_collapse_method"],
+                cs_threshold=row["cs_threshold"],
+                ic50_only=row["ic50_only"],
+                ic50_threshold=row["ic50_threshold"],
+            )
+
+        plot_scatter_panel(all_oof[config_name], cfg, ax)
+
+    fig.tight_layout()
+    out_file = Path(out_file)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_file, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 # -----------------------------------------------------------------------------
@@ -354,19 +474,25 @@ if __name__ == "__main__":
     n_splits = pick_n_splits(first_df["actual_positive"].values)
     
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = Path(LOGS_DIR) #/ "chembl_cv_grid_search" / timestamp
+    out_dir = Path(LOGS_DIR) / "chembl_cv_grid_search" #/ timestamp
     out_dir.mkdir(parents=True, exist_ok=True)
     
     all_summaries = []
+    all_oof = {}
+    configs_by_name = {cfg.name: cfg for cfg in configs}
+    all_oof = {}
 
     for cfg in configs:
         print("Running:", cfg.name)
         oof, folds, summary = run_cv_for_config(cfg, n_splits)
         
         all_summaries.append(summary)
+        all_oof[cfg.name] = oof
         print(pd.Series(summary))
     
     summary_df = pd.DataFrame(all_summaries).sort_values("f1_mean", ascending=False)
-    summary_df.to_csv(out_dir / "chembl_cv_grid_search.tsv", sep="	", index=False)
-    
+    summary_df.to_csv(out_dir / (DISEASE+"_"+TIMESTAMP+"_chembl_cv_grid_search.tsv"), sep="\t", index=False)
     print("Saved CV outputs to:", out_dir)
+    plot_config_matrix(all_oof, summary_df, IMG_DIR / (DISEASE+"_chembl_cv_grid_search_matrix.png"), configs_by_name=configs_by_name)
+    print("Saved CV images to:", IMG_DIR)
+

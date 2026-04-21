@@ -2071,3 +2071,12 @@ e poi il plot di crossvalidation aggiungici labels che dicano i parametri
 aggiungi un BEST , magari anche visivamente fai il best come un riquadro bello.
 
 aggiungi gli altri parametri incredibili
+
+remove the IC50_only hyperparameter perche e' semplicemente sbagliata metterlo come False, se mai se ne dovrebbe fare uno con IC50 e uno con EC50
+
+INSPECT DISCREPANCIES between binchen2017_chembl_validation....tsv and chembl_cv_grid_search/DISEASE_grid_searchbalbla.tsv
+
+todo futuro: riscaricati gli IC50 tu... .. IL BENE E' NEMICO DEL MEGLIO. FINISCI STA ROBA.
+
+
+IMPORTANT: when we do grid search, we still would crossvalidate , not to reduce overfitting (not a problem in our case) but to reduce selection bias, I dont want to just select the best performance as is, because it could be due to the dataset. instead  itake the average metric across held out datasets. I am doing it for MODEL SELECTION
