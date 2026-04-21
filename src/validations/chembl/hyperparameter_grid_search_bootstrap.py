@@ -291,43 +291,60 @@ def run_bootstrap_for_config(config, n_bootstraps=200, random_state=42):
         "ic50_only": config.ic50_only,
     }
 
-    return full_classified, boot_rows, summary
+    return full_classified, boot_rows, summary, full_metrics
 
 
 # -----------------------------------------------------------------------------
 # plotting
 # -----------------------------------------------------------------------------
 
-def plot_scatter_panel(oof_df, config, ax):
+def plot_scatter_panel(classified_df, config, ax, metrics=None):
     """
-    Plot one compact Fig.3-style scatter panel from evaluated rows.
+    Plot one compact Fig.3-style scatter panel from full classified rows.
+
+    metrics : dict or None
+        Optional metrics dict. If provided, uses its precision/recall/f1 values
+        instead of recomputing them inside the plotting function.
     """
-    if oof_df is None or oof_df.empty:
+    if classified_df is None or classified_df.empty:
         ax.set_axis_off()
         return
 
-    x = pd.to_numeric(oof_df[config.cs_score_col], errors="coerce")
-    y_raw = pd.to_numeric(oof_df[config.ic50_score_col], errors="coerce")
+    x = pd.to_numeric(classified_df[config.cs_score_col], errors="coerce")
+    y_raw = pd.to_numeric(classified_df[config.ic50_score_col], errors="coerce")
     ok = x.notna() & y_raw.notna() & (y_raw > 0)
     x = x[ok]
     y_raw = y_raw[ok]
     y = np.log10(y_raw)
 
     actual_pos = y_raw <= config.ic50_threshold
-    pred_pos = x <= config.cs_threshold
-
     edgecolors = np.where(actual_pos, "cornflowerblue", "lightcoral")
 
     ax.scatter(x, y, s=12, facecolors="none", edgecolors=edgecolors, linewidths=0.7)
     ax.axvline(config.cs_threshold, linestyle="--", linewidth=0.9, alpha=0.6)
     ax.axhline(np.log10(config.ic50_threshold), linestyle="--", linewidth=0.9, alpha=0.6)
+    
+    # label true positives
+    tp_mask = actual_pos & (x <= config.cs_threshold)
+    for xi, yi, name in zip(x[tp_mask], y[tp_mask], classified_df.loc[tp_mask, "drug_name"]):
+        ax.text(xi,yi,name,fontsize=6,alpha=0.8,ha="left",va="bottom")
 
-    tp = int((actual_pos & pred_pos).sum())
-    fp = int((~actual_pos & pred_pos).sum())
-    fn = int((actual_pos & ~pred_pos).sum())
-    precision = tp / (tp + fp) if (tp + fp) else np.nan
-    recall = tp / (tp + fn) if (tp + fn) else np.nan
-    f1 = 2 * precision * recall / (precision + recall) if pd.notna(precision) and pd.notna(recall) and (precision + recall) else np.nan
+    if metrics is None:
+        pred_pos = x <= config.cs_threshold
+        tp = int((actual_pos & pred_pos).sum())
+        fp = int((~actual_pos & pred_pos).sum())
+        fn = int((actual_pos & ~pred_pos).sum())
+        precision = tp / (tp + fp) if (tp + fp) else np.nan
+        recall = tp / (tp + fn) if (tp + fn) else np.nan
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if pd.notna(precision) and pd.notna(recall) and (precision + recall)
+            else np.nan
+        )
+    else:
+        precision = metrics.get("precision_full", metrics.get("precision", np.nan))
+        recall = metrics.get("recall_full", metrics.get("recall", np.nan))
+        f1 = metrics.get("f1_full", metrics.get("f1", np.nan))
 
     ax.set_title(config.name, fontsize=8)
     ax.text(
@@ -345,15 +362,28 @@ def plot_scatter_panel(oof_df, config, ax):
     ax.tick_params(labelsize=7)
 
 
-def plot_config_matrix(all_oof, all_summaries, out_file, configs_by_name=None):
+def plot_config_matrix(all_full_classified, all_summaries, out_file, configs_by_name, metrics_by_name=None):
     """
     Plot a compact matrix of scatter panels, one per configuration.
+
+    all_full_classified : dict
+        {config_name: full_classified_df}
+    all_summaries : pd.DataFrame or list of dict
+        Summary table, ideally already sorted by preferred metric.
+    out_file : str or Path
+        Output image path.
+    configs_by_name : dict
+        {config_name: EvalConfig}
+    metrics_by_name : dict or None
+        Optional {config_name: metrics_dict} used to display already-computed
+        full-dataset metrics in the plot text.
     """
     if isinstance(all_summaries, list):
         all_summaries = pd.DataFrame(all_summaries)
-    all_summaries = all_summaries.sort_values("f1_mean", ascending=False).reset_index(drop=True)
 
+    all_summaries = all_summaries.sort_values("f1_mean", ascending=False).reset_index(drop=True)
     config_names = all_summaries["config_name"].tolist()
+
     n = len(config_names)
     if n == 0:
         return
@@ -368,27 +398,11 @@ def plot_config_matrix(all_oof, all_summaries, out_file, configs_by_name=None):
 
     for ax, config_name in zip(axes, config_names):
         ax.set_axis_on()
+        cfg = configs_by_name[config_name]
+        classified_df = all_full_classified[config_name]
+        metrics = None if metrics_by_name is None else metrics_by_name.get(config_name)
 
-        if configs_by_name is not None and config_name in configs_by_name:
-            cfg = configs_by_name[config_name]
-        else:
-            row = all_summaries[all_summaries["config_name"] == config_name].iloc[0]
-            cfg = EvalConfig(
-                name=row["config_name"],
-                disease=DISEASE,
-                cell_line=cell_line,
-                cell_line_IC50=row["cell_line_IC50"] if pd.notna(row["cell_line_IC50"]) else None,
-                cs_out_dir=Path(CS_OUT),
-                cs_run_id=row["cs_run_id"] if "cs_run_id" in row.index else None,
-                cs_filename=f"{row['cs_run_id']}.tsv" if "cs_run_id" in row.index else None,
-                cs_drug_collapse_method=row["cs_drug_collapse_method"],
-                ic50_drug_collapse_method=row["ic50_drug_collapse_method"],
-                cs_threshold=row["cs_threshold"],
-                ic50_only=row["ic50_only"],
-                ic50_threshold=row["ic50_threshold"],
-            )
-
-        plot_scatter_panel(all_oof[config_name], cfg, ax)
+        plot_scatter_panel(classified_df, cfg, ax, metrics=metrics)
 
     fig.tight_layout()
     out_file = Path(out_file)
@@ -456,13 +470,19 @@ if __name__ == "__main__":
     all_oof = {}
     configs_by_name = {cfg.name: cfg for cfg in configs}
     n_bootstraps = 200
+    
+    all_full_classified = {}
+    all_full_metrics = {}
+    configs_by_name = {cfg.name: cfg for cfg in configs}
 
     for cfg in configs:
         print("Running:", cfg.name)
-        full_classified, boot_rows, summary = run_bootstrap_for_config(cfg, n_bootstraps=n_bootstraps)
+        full_classified, boot_rows, summary, full_metrics = run_bootstrap_for_config(cfg, n_bootstraps=n_bootstraps)
 
         all_summaries.append(summary)
         all_oof[cfg.name] = full_classified
+        all_full_classified[cfg.name] = full_classified
+        all_full_metrics[cfg.name] = full_metrics
         print(pd.Series(summary))
 
         boot_rows.to_csv(out_dir / f"{DISEASE}_{TIMESTAMP}_{cfg.name}_bootstrap_metrics.tsv", sep="\t", index=False)
@@ -474,6 +494,7 @@ if __name__ == "__main__":
 
     print("Saved bootstrap outputs to:", out_dir)
     matrix_file = IMG_DIR / f"{DISEASE}_{TIMESTAMP}_chembl_bootstrap_grid_search_matrix.png"
-    plot_config_matrix(all_oof, summary_df, matrix_file, configs_by_name=configs_by_name)
+    plot_config_matrix(all_full_classified,summary_df,matrix_file, configs_by_name=configs_by_name, metrics_by_name=all_full_metrics,)
+    # plot_config_matrix(all_oof, summary_df, matrix_file, configs_by_name=configs_by_name)
     print("Saved bootstrap images to:", IMG_DIR)
 
