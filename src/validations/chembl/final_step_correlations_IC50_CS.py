@@ -544,13 +544,7 @@ if __name__=="__main__":
     # diff=ic50_medians[ic50_medians['standard_value']!=ic50_medians['standard_value_median']]
     # print(DISEASE, len(diff), len(ic50_medians))
     # diff.to_excel(LOGS_DIR/f'SD8{DISEASE}_IC50_different_medians.xlsx', sheet_name=DISEASE)
-    #%% Optional: check overlap between our overlap of ic50 vs CS score
-    # and BinChen's overlap of ic50vs sRGES:
-    
-    BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
-                                 sheet_name=DISEASE)
-    overlap_BC = set(merged.pert_iname).intersection(set(BC_merged.pert_iname))
-    print(overlap_BC, len(overlap_BC))
+
     
     #%%# calculate spearman coefficient between
     #  cell_line cells drug rankings vs IC50s
@@ -565,14 +559,7 @@ if __name__=="__main__":
     print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
     print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
     
-    #%% Optional: check rho with SD5 data:
-    BC_merged["log10_ic50"] = np.log10(BC_merged[ic50_score_col])
-    
-    rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged[ic50_score_col])
-    rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
-    
-    print('linear IC50 SD5: rho=', np.round(rho_linear_bc,2),' pval =' ,np.round(p_linear_bc, 2))
-    print('log IC50 SD5: rho=', np.round(rho_log_bc, 2),' pval =', np.round(p_log_bc,2))
+
     
     #%% Prec/ Rec
     
@@ -590,6 +577,31 @@ if __name__=="__main__":
         f"precision={np.round(pr_metrics['precision'], 2)}, "
         f"recall={np.round(pr_metrics['recall'], 2)}",
     )
+    
+    #%% Optional: check overlap between our overlap of ic50 vs CS score
+    # and BinChen's overlap of ic50vs sRGES:
+    
+    BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
+                                 sheet_name=DISEASE)
+    overlap_BC = set(merged.pert_iname).intersection(set(BC_merged.pert_iname))
+    print(overlap_BC, len(overlap_BC))
+    # Optional: check rho with SD5 data:
+    BC_merged["log10_ic50"] = np.log10(BC_merged[ic50_score_col])
+    
+    rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged[ic50_score_col])
+    rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
+    
+    print('linear IC50 SD5: rho=', np.round(rho_linear_bc,2),' pval =' ,np.round(p_linear_bc, 2))
+    print('log IC50 SD5: rho=', np.round(rho_log_bc, 2),' pval =', np.round(p_log_bc,2))
+    #
+    # # TODO : IMPLEMENT THIS FOR A reasonable threshold for sRGES
+    # BC_classified_df, BC_pr_metrics = classify_ic50_vs_cs(
+    #     BC_merged,
+    #     score_col="sRGES",
+    #     ic50_col=ic50_score_col,
+    #     cs_threshold=CS_TH,
+    #     ic50_threshold=IC50_EFF_TH,
+    # )
     #%% plot
 
     plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_{CS_DRUG_COLLAPSE_METHOD}_{IC50_DRUG_COLLAPSE_METHOD}_fig3_style.png"
@@ -651,6 +663,8 @@ if __name__=="__main__":
         "spearman_pval_SD5": np.round(p_linear_bc,2),
         "spearman_r_log_SD5": np.round(rho_log_bc,2),
         "spearman_pval_log_SD5": np.round(p_log_bc,2),
+        "precision_SD5": np.round(BC_pr_metrics["precision"], 4),
+        "recall_SD5": np.round(BC_pr_metrics["recall"], 4),
         
         # precision recall metrics
         "tp": pr_metrics["tp"],
