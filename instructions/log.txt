@@ -2090,3 +2090,4 @@ TODO: calcola prec rec sui loro dati (COSA VUOL DIRE I LORO DATI?)
 
 23-04
 fanculo il uajone. ci metto il coso calcolato sulle pathway e via.
+leggiti log wednesday meetings per sapere cosa fare. stai contemporaneamente rendendo agnostico conenctivity_score per accettare pathway e cambiando logIC50 per loaddare ic50 scaricato da te.

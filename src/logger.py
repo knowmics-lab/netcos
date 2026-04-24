@@ -16,10 +16,11 @@ def append_run_metadata(metadata_path, row_dict):
 
     row_df = pd.DataFrame([row_dict])
 
-    if metadata_path.exists():
+    if metadata_path.exists()  and metadata_path.stat().st_size > 0:
         old_df = pd.read_csv(metadata_path, sep="\t")
         out_df = pd.concat([old_df, row_df], ignore_index=True)
     else:
         out_df = row_df
 
     out_df.to_csv(metadata_path, sep="\t", index=False)
+    

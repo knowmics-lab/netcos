@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pandas as pd
 import pickle
-from conf import CS_DIR, TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG
+from conf import CS_DIR, TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG,\
+    CHEMBL_INPUT_DATA_DIR
 from preprocessing_utils import get_drugs_list
 
 def load_disease_signature(DISEASE, mith=False):
@@ -170,23 +171,29 @@ def translate_cl(cell_line):
         return 'HT-29'
     return cell_line
 
-def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True):#, median_IC50=False):
+def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True, binchen_SD=True):#, median_IC50=False):
     
-    log_dict = {}
-    df=pd.read_excel(ic50_file,\
-                     sheet_name=cancer_type, header =0, usecols=['pert_iname', 'pert_id','standard_value', 'standard_units',\
-                                 'standard_type', 'cell_line','activity', 'standard_value_median'])
-    #filter for cell line
-    cell_line = translate_cl(cell_line)
-    if cell_line is not None:
-        log_dict['IC50_rows'] = len(df)
-        df = df[df['cell_line'].astype(str).str.upper()==cell_line.upper()]
-        log_dict['IC50_rows_filtered_by_cell'] = len(df)
+    if binchen_SD==True:
+        log_dict = {}
+        df=pd.read_excel(ic50_file,\
+                         sheet_name=cancer_type, header =0, usecols=['pert_iname', 'pert_id','standard_value', 'standard_units',\
+                                     'standard_type', 'cell_line','activity', 'standard_value_median'])
+        #filter for cell line
+        cell_line = translate_cl(cell_line)
+        if cell_line is not None:
+            log_dict['IC50_rows'] = len(df)
+            df = df[df['cell_line'].astype(str).str.upper()==cell_line.upper()]
+            log_dict['IC50_rows_filtered_by_cell'] = len(df)
+        
+        # IC50 filtering
+        if IC50_ONLY:
+            df=df[df.standard_type=='IC50']
+            log_dict['IC50_rows_filtered_by_IC50'] = len(df)
     
-    # IC50 filtering
-    if IC50_ONLY:
-        df=df[df.standard_type=='IC50']
-        log_dict['IC50_rows_filtered_by_IC50'] = len(df)
-
+        
+        return df.sort_values(by='standard_value_median'), log_dict
     
-    return df.sort_values(by='standard_value_median'), log_dict
+    # load downloaded IC50 data 
+    # problema: mappa chemblid to pert id e poi fallo
+    df=pd.read_csv(CHEMBL_INPUT_DATA_DIR/(cell_line+"_activity.tsv"),sep='t')
+    return df

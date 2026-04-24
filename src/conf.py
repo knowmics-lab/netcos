@@ -30,7 +30,7 @@ landmark_drug = True  # only select landmark genes from signature data
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'MCF7'
+cell_line = 'HEPG2'
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
@@ -177,7 +177,7 @@ VAL_DIR = BASE_DIR / 'validations'
 # Chembl directory
 CHEMBL_BASE_DIR = VAL_DIR / 'chembl'
 
-# CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR / 'chembl_input'
+CHEMBL_INPUT_DATA_DIR = CHEMBL_BASE_DIR / 'chembl_input'
 # cell_lines_chembl = ["MCF7", "HepG2", "HT29"]
 ic50_file = DATA_DIR/'BinChen2017'/'SD8.xlsx'
 
