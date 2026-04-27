@@ -171,9 +171,9 @@ def translate_cl(cell_line):
         return 'HT-29'
     return cell_line
 
-def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True, binchen_SD=True):#, median_IC50=False):
+def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True, IC_50_binchen_SD5=True):#, median_IC50=False):
     
-    if binchen_SD==True:
+    if IC_50_binchen_SD5==True:
         log_dict = {}
         df=pd.read_excel(ic50_file,\
                          sheet_name=cancer_type, header =0, usecols=['pert_iname', 'pert_id','standard_value', 'standard_units',\

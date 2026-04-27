@@ -67,7 +67,7 @@ from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
     cs_on_LM, cs_mith, selected_cs_run_id, \
     cs_log_filename, lincs_metadata_path, chembl_val_log_filename, ic50_file,\
     LINCS_METADATA_PATH, IC50_ONLY,CS_TH, IC50_EFF_TH, CS_DRUG_COLLAPSE_METHOD,\
-        IC50_DRUG_COLLAPSE_METHOD
+        IC50_DRUG_COLLAPSE_METHOD, IC_50_binchen_SD5
 
 from logger import append_run_metadata
 
@@ -513,7 +513,7 @@ if __name__=="__main__":
     print(dr.shape, 'drugs ')
 
     ic50_score_col = 'standard_value'
-    ic50_uncollapsed, ic50_log_data=load_IC50(ic50_file, DISEASE, cell_line=cell_line, IC50_ONLY=IC50_ONLY)#, median_IC50=median_IC50)
+    ic50_uncollapsed, ic50_log_data=load_IC50(ic50_file, DISEASE, cell_line=cell_line, IC50_ONLY=IC50_ONLY, IC_50_binchen_SD5=IC_50_binchen_SD5)#, median_IC50=median_IC50)
     print(ic50_uncollapsed.shape, 'drugs with IC50 value for cell line', cell_line)
     ic50 = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
                                       how=IC50_DRUG_COLLAPSE_METHOD)

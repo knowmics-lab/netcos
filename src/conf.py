@@ -185,6 +185,8 @@ chembl_val_log_filename = LOGS_DIR / "BinChen2017_chembl_validation_IC50_correla
 
 # Hyperparameters:
 
+IC_50_binchen_SD5= True # to implement the False: load freshly downloaded chembl  
+
 CS_DRUG_COLLAPSE_METHOD= 'best' # None #
 IC50_DRUG_COLLAPSE_METHOD='median' # 
 

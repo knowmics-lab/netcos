@@ -104,6 +104,9 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     
     singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
     
+ 
+
+    
     columns_of_interest = ['gene_id', singature_uom, 'adj.p.value']
     
     # load disease signature:

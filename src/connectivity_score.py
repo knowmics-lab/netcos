@@ -17,7 +17,33 @@ from conf import DISEASE
 from loader import load_disease_signature, load_single_drug_signature
 
 # FUNCTIONS
-def get_common_genes(disease_signature, drug_signature):
+
+def get_common_genes(disease_signature, drug_signature, id_col='gene_id'):
+    '''
+    Identifies common items between drug and disease signature.
+    Returns indexes of common items in both signatures.
+    '''
+
+    missing_items = set(disease_signature[id_col]) - set(drug_signature[id_col])
+    addional_drug_items = set(drug_signature[id_col]) - set(disease_signature[id_col])
+    common_items = set(disease_signature[id_col]) & set(drug_signature[id_col])
+
+    if not len(common_items) + len(addional_drug_items) == drug_signature.shape[0]:
+        raise ValueError(f'common items + additional drug items != len(drug_signature) for {id_col}')
+    if not len(common_items) + len(missing_items) == disease_signature.shape[0]:
+        raise ValueError(f'common items + missing drug items != len(disease_signature) for {id_col}')
+
+    drug_common = drug_signature[drug_signature[id_col].isin(common_items)].sort_values(by=id_col)
+    disease_common = disease_signature[disease_signature[id_col].isin(common_items)].sort_values(by=id_col)
+
+    left_ids = disease_signature.loc[disease_common.index].reset_index()[id_col]
+    right_ids = drug_signature.loc[drug_common.index].reset_index()[id_col]
+    if not np.all(left_ids.to_numpy() == right_ids.to_numpy()):
+        raise ValueError(f'common item indexes actually different between drug and disease for {id_col}!')
+
+    return disease_common.index, drug_common.index
+
+def get_common_genes_old(disease_signature, drug_signature):
     '''
     Identifies common genes between drug and disease signature. Returns indexes
     of common genes in both signatures.
@@ -51,7 +77,29 @@ def get_common_genes(disease_signature, drug_signature):
     return disease_common_genes_signatures.index, drug_common_genes_signatures.index
  
 
-def rank_genes(drug_signature, disease_signature, drug_col_name, disease_col_name):
+def rank_genes(drug_signature, disease_signature, drug_col_name, disease_col_name, id_col='gene_id'):
+    '''
+    Compute the array V of sorted drug item indexes, indexed by sorted disease
+    indexes.
+    Input:
+        - drug_signature: pd.DataFrame with columns [id_col, drug_col_name, ...]
+        - disease_signature: pd.DataFrame with columns [id_col, disease_col_name, ...]
+        - drug_col_name: str, column name to sort drug_signature by
+        - disease_col_name: str, column name to sort disease_signature by
+        - id_col: str, column name of gene IDs
+     Output:
+        NumPy array where the indices are sorted disease gene indexes 
+        and the values are indexes of corresponding sorted drug genes.
+    '''
+    sorted_drug_genes = drug_signature.sort_values(by=drug_col_name).reset_index(drop=True)
+    sorted_disease_genes = disease_signature.sort_values(by=disease_col_name)
+
+    merged_data_on_disease_indexes = pd.merge(sorted_disease_genes,sorted_drug_genes.reset_index(), on=id_col)
+
+    V = merged_data_on_disease_indexes['index'].to_numpy()
+    return V
+
+def rank_genes_old(drug_signature, disease_signature, drug_col_name, disease_col_name):
     '''
     Compute the array V of sorted drug gene indexes, indexed by sorted disease
     indexes.
@@ -270,7 +318,7 @@ def montecarlo_connectivity(s_up, s_down, r, n_iterations=1000, score_type='bin_
 
     return random_RGES_list
 
-def random_disease_bin_chen_connectivity(drug_signature, rank_on='magnitude'):
+def random_disease_bin_chen_connectivity(drug_signature, rank_on='magnitude', id_col='gene_id'):
     '''temp
     calculates the Reverse Gene Expression Score (RGES), a
    connectivity score, as defined in Bin, Chen, 2017, of a drug signature versus
@@ -297,27 +345,73 @@ def random_disease_bin_chen_connectivity(drug_signature, rank_on='magnitude'):
     l=np.random.randint(1,r)
     s_up = r-l
     s_down = l
-    gene_id_list = drug_signature.gene_id
+    gene_id_list = drug_signature[id_col]
     shuffled_gene_ids = gene_id_list[np.random.choice(gene_id_list.index, len(gene_id_list), replace=False)]
     random_disease_up = shuffled_gene_ids[:s_up]
     random_disease_down = shuffled_gene_ids[-s_down:]
      
     # Calculate rank map V for up and down regulated genes:
-    V_up = rank_genes(drug_signature, pd.DataFrame(random_disease_up)  , ranking_col_name, 'gene_id')
-    V_down = rank_genes(drug_signature, pd.DataFrame(random_disease_down), ranking_col_name, 'gene_id')
+    V_up = rank_genes(drug_signature, pd.DataFrame({id_col: random_disease_up})  , ranking_col_name, id_col, id_col=id_col)
+    V_down = rank_genes(drug_signature, pd.DataFrame({id_col: random_disease_down}), ranking_col_name, id_col, id_col=id_col)
     
     # Compute random KS stats:
-    a_up, b_up, _, _ = compute_KS(random_disease_up, V_up, drug_signature['gene_id'])
-    a_down , b_down, _, _ = compute_KS(random_disease_down, V_down, drug_signature['gene_id'])
+    a_up, b_up, _, _ = compute_KS(random_disease_up, V_up, drug_signature[id_col])
+    a_down , b_down, _, _ = compute_KS(random_disease_down, V_down, drug_signature[id_col])
     
     # Compute RGES:
     measured_RGES_for_random_disease = calculate_RGES(a_up, a_down, b_up, b_down)
     
     return measured_RGES_for_random_disease
 
-def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude'):
+def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude', id_col='gene_id',\
+    drug_ranking_col_name=None,    disease_ranking_col_name=None):
     '''
-    TODO corrected ranking column bug
+    calculates the Reverse Gene Expression Score (RGES), a
+   connectivity score, as defined in Bin, Chen, 2017
+    Input:
+        - disease_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
+        - drug_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
+        - rank_on: str ranking column. default='magnitude' 
+                options: {'p_value', 'magnitude'}. Do not change unless you
+                know what you're doing'
+                    
+    Output:
+        -   measured_RGES: float, calculated RGES value
+        -   p_value: float, p-value from Monte Carlo simulation
+    '''
+    
+    if drug_ranking_col_name is None or disease_ranking_col_name is None:
+        if rank_on=='p_value':
+            drug_ranking_col_name=drug_signature.columns[2]
+            disease_ranking_col_name=disease_signature.columns[2]
+        if rank_on=='magnitude':
+            drug_ranking_col_name=drug_signature.columns[1]
+            disease_ranking_col_name=disease_signature.columns[1]
+    
+    # # Get lists of up (down) regulated genes: older with 2vs
+    disease_signature_up = disease_signature[disease_signature[disease_ranking_col_name]>0]
+    disease_signature_down = disease_signature[disease_signature[disease_ranking_col_name]<0]
+    
+    # Calculate rank map V for up and down regulated genes:
+    V_up = rank_genes(drug_signature, disease_signature_up, drug_ranking_col_name, disease_ranking_col_name, id_col=id_col)
+    V_down = rank_genes(drug_signature, disease_signature_down, drug_ranking_col_name, disease_ranking_col_name, id_col=id_col)
+    
+    # Compute KS statistic for up and down regulated genes:
+    a_up, b_up, s_up, r = compute_KS(disease_signature_up[id_col], V_up, drug_signature[id_col])
+    a_down , b_down, s_down, r = compute_KS(disease_signature_down[id_col], V_down, drug_signature[id_col])
+    
+    # Compute RGES:
+    measured_RGES = calculate_RGES(a_up, a_down, b_up, b_down)
+    
+    # Calculate two tailed p-value (no assumption on the direction of RGES 
+    # between disease and drug) for measured RGES, using random sampling:
+    n_iterations=1000 
+    random_RGES_list = montecarlo_connectivity(s_up, s_down, r, n_iterations, score_type='bin_chen')
+    p_value=np.sum(np.abs(np.array(random_RGES_list))>np.abs(measured_RGES))/n_iterations
+    return measured_RGES, p_value
+
+def bin_chen_connectivity_old(disease_signature, drug_signature, rank_on='magnitude'):
+    '''
     calculates the Reverse Gene Expression Score (RGES), a
    connectivity score, as defined in Bin, Chen, 2017
     Input:
