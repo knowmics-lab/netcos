@@ -36,7 +36,7 @@ from logger import append_run_metadata
 
 STEP_NAME = "step2b_7b_mith_pathway_to_cs_input"
 TIMESTAMP = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-LOG_FILE = Path(LOGS_DIR) / "step2b_7b_runs.tsv"
+LOG_FILE = Path(LOGS_DIR) / f"{DISEASE}_step2b_7b_runs.tsv"
 
 
 REQUIRED_COLS = ["# Pathway Id",  "Pathway Name",  "Corrected Accumulator", "Adjusted pValue"]
