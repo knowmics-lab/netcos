@@ -80,7 +80,7 @@ def convert_one_file(in_file, out_file):
 
 def build_disease_paths():
     in_file = os.path.join(MITH_OUT_DISEASE, f"{DISEASE}_mith3.output.txt")
-    out_file = os.path.join(CS_IN_DISEASE, f"{DISEASE}_mith_pathways.tsv")
+    out_file = os.path.join(CS_IN_DISEASE, f"{DISEASE}_mith3_pathways.tsv")
     return in_file, out_file
 
 

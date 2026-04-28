@@ -19,14 +19,14 @@ from datetime import datetime
 # LINCS data parameters
 #######################
 
-landmark_disease = False  # only select landmark genes from signature data 
+landmark_disease = False  # only select landmark genes from signature data (irrelevant for Bin Chen data since they are already landmark only)
 LM_flag_disease = ''
 if landmark_disease:
     LM_flag_disease = '_LM'
 
 # is_gold = 1 # only select high-quality perturbagens. Default:1 for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
 # pert_time = '6h'
-landmark_drug = True  # only select landmark genes from signature data (irrelevant for Bin Chen data since they are already landmark only)
+landmark_drug = True  # only select landmark genes from signature data
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
@@ -51,9 +51,9 @@ DISEASE = diseases_of[cell_line]
 
 disease_run_name = DISEASE + LM_flag_disease
 
-###############################################################################
+################
 # DIRECTORIES and files
-###############################################################################
+################
 import local 
 # only override if it exists in local.py
 if hasattr(local, "DATA_DIR"):
@@ -64,8 +64,9 @@ else:
 DICT_DIR=DATA_DIR / 'dictionaries'
 LOGS_DIR = BASE_DIR / 'logs' 
 
-
-# MITHrIL Directories
+################
+# MITHrIL
+################
 
 MITH_APP="/home/signorini/mithril3/app-3.0.0-SNAPSHOT.jar"
 
@@ -87,7 +88,6 @@ TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
 TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
 # Connectivity score dirs
-
 CS_DIR=BASE_DIR / 'connectivity_score'
 CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line_run_name #Path(cell_line+'_'+pert_time)
 CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / disease_run_name
@@ -141,35 +141,30 @@ mith_organism = 'hsa'
 mith_threads = 10
 
 ###############################################################################
-#  Connectivity Score calculation hyperparameters and parameters
+#  CS calculation hyperparameters and parameters
 ###############################################################################
 
-# hyperparameters
-cs_batch_threads = 1
+cs_batch_threads = 5
 cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
-cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
-CS_ON_PATHWAYS = True # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
+cs_on_LM = 1 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
 
-if (cs_mith == 0 and CS_ON_PATHWAYS==1):
-    raise ValueError("Cannot load pathway signatures for DEG signatures.\
-                     Set cc_mith to 1 and run MITHrIL propagations")
-if (cs_on_LM == 1 and CS_ON_PATHWAYS==1):
-    raise ValueError("Cannot filter for landmark genes on pathways")
+
 
 cs_filename = None #'mith_connectivity_score.tsv'
 
 if cs_filename is None:
     now = datetime.now()
     datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-    mith = "_mith" if cs_mith == 1 else "_DEG"
-    pathways = "_pw" if CS_ON_PATHWAYS == 1 else ""
-    cs_filename = datetime_string + mith + pathways +"_connectivity_score.tsv"
+    cs_filename = datetime_string + (
+        '_DEG_connectivity_score.tsv' if not cs_mith else '_mith_connectivity_score.tsv'
+    )
 
 connectivity_dataset_filename=CS_OUT/cs_filename
 cs_id = Path(cs_filename).stem
 
 # log filename
 cs_log_filename = Path(LOGS_DIR) / 'cs_runs.tsv'
+
 
 
 ###############################################################################
@@ -208,6 +203,9 @@ IC50_EFF_TH = 10.0 # IC50 effective threshold
 # Leave both as None for automatic resolution from cs_runs.tsv
 # ------------------------------------------------------------------
 selected_cs_run_id = None
+
+
+
 
 
 ####################

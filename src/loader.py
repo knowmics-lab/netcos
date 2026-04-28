@@ -14,7 +14,7 @@ from conf import CS_DIR, TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRU
     CHEMBL_INPUT_DATA_DIR
 from preprocessing_utils import get_drugs_list
 
-def load_disease_signature(DISEASE, mith=False):
+def load_disease_signature(DISEASE, mith=False, pathway=False):
     '''
     inputs:
         DISEASE: str disease symbol (directory name)
@@ -25,13 +25,14 @@ def load_disease_signature(DISEASE, mith=False):
 
     returns a pandas.Dataframe where rows are genes.
     '''
+    signature = "_signature.csv" if pathway == False else "_pathways.tsv"
     
     if not mith:
         filename=os.path.join(TSR_OUT_DISEASE,DISEASE+'_signature_gene_id.csv')
         return pd.read_csv(filename, sep=';',decimal=',', dtype={'gene_id':'str'})
    
     else:
-        filename=os.path.join(CS_IN_DISEASE,DISEASE+'_mith3_signature.csv')
+        filename=os.path.join(CS_IN_DISEASE,DISEASE+'_mith3'+signature)
         return pd.read_csv(filename, sep='\t')
 
 def load_single_drug_signature(drug, mith=False, pkl=True):
@@ -100,10 +101,16 @@ def load_drug_signatures(mith=False, pkl=True):
     print(n+1, 'drugs loaded')
     return pd.concat(DEG_drug_list)
 
-def load_single_signature_cs_input(signature_id, cs_input_dir):
-    filename = os.path.join(cs_input_dir, f"{signature_id}.pkl")
-    with open(filename, "rb") as f:
-        return pickle.load(f)
+def load_single_signature_cs_input(signature_id, cs_input_dir, pathway=False):
+    if not pathway:
+        filename = os.path.join(cs_input_dir, f"{signature_id}.pkl")
+
+        with open(filename, "rb") as f:
+            return pickle.load(f)
+    else:
+        filename = os.path.join(cs_input_dir, f"{signature_id}_pathways.tsv")
+        return pd.read_csv(filename, sep='\t')
+        
     
 def load_landmark_gene_ids(path):
     landmark_genes = pd.read_csv(path / 'lincs_landmark.csv') 

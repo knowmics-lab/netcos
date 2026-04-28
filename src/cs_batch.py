@@ -21,7 +21,7 @@ from preprocessing_utils import get_signature_ids_list_from_cs_input
 from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
     disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
         cs_mith, LOGS_DIR, cell_line_run_name, cs_id, cs_log_filename,\
-            lincs_metadata_path
+            lincs_metadata_path, CS_ON_PATHWAYS
 from preprocessing_utils import get_chunk_indexes
 from logger import append_run_metadata
 from joblib import Parallel, delayed
@@ -90,7 +90,8 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
     return cs_df
 
 def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, \
-                                       rank_on='magnitude', save_file=False, cs_on_LM=False):
+                                       rank_on='magnitude', save_file=False, cs_on_LM=False,\
+                                        cs_on_pathways=False):
     '''
     wrapper function to load disease and drug data (for a  batch of drugs in drugs_list[i1:i2]), 
     and calculate their connectivity score, for given drugs and LINCS drug perturbation times.
@@ -102,15 +103,19 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     start=time.time()
     run_stats = {}
     
-    singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
-    
- 
+    if not cs_on_pathways:
+        singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
+        id_col = 'gene_id'
+        pval_col = 'adj.p.value'
+        columns_of_interest = [id_col, singature_uom, pval_col]
+    else:
+        singature_uom = "Corrected Accumulator"
+        id_col = 'Pathway Name'
+        pval_col = 'Adjusted pValue'
+        columns_of_interest = [id_col, singature_uom, pval_col]
 
-    
-    columns_of_interest = ['gene_id', singature_uom, 'adj.p.value']
-    
     # load disease signature:
-    disease_signature=load_disease_signature(disease_run_name, mith=mith)
+    disease_signature=load_disease_signature(disease_run_name, mith=mith, pathway=CS_ON_PATHWAYS)
     #log variable
     run_stats['n_disease_before_common'] = len(disease_signature)
     disease_signature=disease_signature[columns_of_interest]
@@ -122,7 +127,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     # connectrivity calculations
     # load one drug signature (all durg signatures have the same genes in the same order)
     
-    drug_signature= load_single_signature_cs_input(drugs_list[0], CS_IN_DRUG)
+    drug_signature= load_single_signature_cs_input(drugs_list[0], CS_IN_DRUG, pathway=CS_ON_PATHWAYS)
     # log variable
     run_stats['n_drug_before_common'] = len(drug_signature)
     
@@ -138,7 +143,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
         run_stats['n_drug_after_second_lm'] = len(drug_signature)
     
     # filter common genes
-    disease_common_index, drug_common_index = get_common_genes(disease_signature, drug_signature)     
+    disease_common_index, drug_common_index = get_common_genes(disease_signature, drug_signature, id_col=id_col)     
     # filter disease signature with common genes:
     # Note: indexing every time with pandas .iloc is slower than writing
     # and loading binaries for filtered dataframes, for each drug
@@ -150,7 +155,6 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     run_stats['n_disease_after_common'] = len(disease_signature)
     run_stats['n_drug_after_common'] = len(drug_common_index)
     print('common disease genes', len(disease_signature))
-    
 
     
     # Initialize dataframe:
@@ -163,7 +167,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
         
         # load drug signature
         
-        drug_signature=load_single_signature_cs_input(drug, CS_IN_DRUG)
+        drug_signature=load_single_signature_cs_input(drug, CS_IN_DRUG, pathway=CS_ON_PATHWAYS)
         if cs_on_LM:
             drug_signature = drug_signature[drug_signature['gene_id'].isin(lm_gene_ids)].reset_index(drop=True)
         
@@ -171,7 +175,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
         # Calculate connectivity score between drug and disease:
         cscore, p_value = bin_chen_connectivity(
             disease_signature, \
-            drug_signature[columns_of_interest], rank_on=rank_on)
+            drug_signature[columns_of_interest], rank_on=rank_on, id_col=id_col)
         
         # Calculate other correlations (between common genes)
         disease_signature_value=disease_signature[singature_uom]
@@ -212,7 +216,10 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     if save_file:
         if not os.path.exists(CS_OUT):
             os.mkdir(CS_OUT)
-        connectivity_dataset_filename= str(i1)+'_'+str(i2)+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+str(i1)+'_'+str(i2)+'_mith_connectivity_score.tsv'
+        if not cs_on_pathways:
+            connectivity_dataset_filename= str(i1)+'_'+str(i2)+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+str(i1)+'_'+str(i2)+'_mith_connectivity_score.tsv'
+        else:
+            connectivity_dataset_filename= CS_OUT+str(i1)+'_'+str(i2)+'_mith_pw_connectivity_score.tsv'
         connectivity_data.to_csv(CS_OUT/connectivity_dataset_filename, sep='\t', index=False)
     
     print('total elapsed time for batch of', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
@@ -244,12 +251,13 @@ if __name__=="__main__":
     print('chunk size',chunk_size)
     print('last chunk size', last_chunk_size)
     print('mith tag:', mith, '\ndisease:', disease_run_name)
+    print('pathway based signature:', CS_ON_PATHWAYS)
     
     # results = run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag)
     # cs_df=results[0]
     # first_stats=results[1]
     results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
-                                 (disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag)\
+                                 (disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)\
                             for i1,i2 in parallel_indexes)
     
     if last_chunk_size>0:
@@ -271,6 +279,8 @@ if __name__=="__main__":
     # write results
     if not os.path.exists(CS_OUT):
                 os.mkdir(CS_OUT)
+                #%%
+                cs_df
     #%% write file
     
     # now =  datetime.now()
