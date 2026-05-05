@@ -14,14 +14,14 @@ import numpy as np
 import pandas as pd
 import time
 from scipy import stats
-from connectivity_score import get_common_genes, bin_chen_connectivity
+from connectivity_score import get_common_genes, calc_connectivity_score_with
 from loader import load_disease_signature, load_single_signature_cs_input,\
     load_landmark_gene_ids
 from preprocessing_utils import get_signature_ids_list_from_cs_input
 from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
     disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
         cs_mith, LOGS_DIR, cell_line_run_name, cs_id, cs_log_filename,\
-            lincs_metadata_path, CS_ON_PATHWAYS
+            lincs_metadata_path, CS_ON_PATHWAYS,CS_METHOD
 from preprocessing_utils import get_chunk_indexes
 from logger import append_run_metadata
 from joblib import Parallel, delayed
@@ -110,7 +110,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
         columns_of_interest = [id_col, singature_uom, pval_col]
     else:
         singature_uom = "Corrected Accumulator"
-        id_col = 'Pathway Name'
+        id_col = 'ID'
         pval_col = 'Adjusted pValue'
         columns_of_interest = [id_col, singature_uom, pval_col]
 
@@ -120,7 +120,13 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     run_stats['n_disease_before_common'] = len(disease_signature)
     disease_signature=disease_signature[columns_of_interest]
     
-    
+    run_stats["disease_value_col"] = singature_uom
+    run_stats["disease_pval_col"] = pval_col
+    run_stats["disease_id_col"] = id_col
+    run_stats["drug_value_col"] = singature_uom
+    run_stats["drug_pval_col"] = pval_col
+    run_stats["drug_id_col"] = id_col
+
     # Discard disease genes that are 
     # not found in drug genes
     # DO NOT simply select common genes, as this would impact
@@ -137,8 +143,8 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     
     if cs_on_LM:
         lm_gene_ids = [str(x) for x in load_landmark_gene_ids(LINCS_BC_DATA)]
-        disease_signature = disease_signature[disease_signature['gene_id'].isin(lm_gene_ids)].reset_index(drop=True)
-        drug_signature = drug_signature[drug_signature['gene_id'].isin(lm_gene_ids)].reset_index(drop=True)
+        disease_signature = disease_signature[disease_signature[id_col].isin(lm_gene_ids)].reset_index(drop=True)
+        drug_signature = drug_signature[drug_signature[id_col].isin(lm_gene_ids)].reset_index(drop=True)
         run_stats['n_disease_after_second_lm'] = len(disease_signature)
         run_stats['n_drug_after_second_lm'] = len(drug_signature)
     
@@ -173,7 +179,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
         
             
         # Calculate connectivity score between drug and disease:
-        cscore, p_value = bin_chen_connectivity(
+        cscore, p_value = calc_connectivity_score_with[CS_METHOD](
             disease_signature, \
             drug_signature[columns_of_interest], rank_on=rank_on, id_col=id_col)
         
@@ -224,7 +230,6 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     
     print('total elapsed time for batch of', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
     return connectivity_data, run_stats
-
 #%% Parallel run for LINCS data
 if __name__=="__main__":
     start_total = time.time()
@@ -279,8 +284,6 @@ if __name__=="__main__":
     # write results
     if not os.path.exists(CS_OUT):
                 os.mkdir(CS_OUT)
-                #%%
-                cs_df
     #%% write file
     
     # now =  datetime.now()
@@ -302,11 +305,15 @@ if __name__=="__main__":
         "drug_run_id": cell_line_run_name,
         "mith": int(mith),
         "cs_on_LM": int(lm_flag),
-        "rank_on": "magnitude",
-        "drug_value_col": "Perturbation" if mith else "DE_log2_FC",
-        "drug_pval_col": "adj.p.value",
-        "disease_value_col": "Perturbation" if mith else "DE_log2_FC",
-        "disease_pval_col": "adj.p.value",
+        "CS_ON_PATHWAYS": CS_ON_PATHWAYS,
+        "rank_on": "magnitude",\
+        "drug_id_col": first_stats["drug_id_col"] ,
+        "disease_id_col": first_stats["disease_id_col"] ,
+        "drug_value_col": first_stats["drug_value_col"],
+        "drug_pval_col": first_stats["drug_pval_col"],
+        "disease_value_col": first_stats["disease_value_col"],
+        "disease_pval_col": first_stats["disease_pval_col"] ,
+        "CS_METHOD": CS_METHOD,
         "n_drugs_total": len(drugs_list),
         "n_results_rows": len(cs_df),
         "n_disease_genes_before_common": first_stats["n_disease_before_common"],
@@ -321,5 +328,5 @@ if __name__=="__main__":
         "disease_input_dir": str(CS_IN_DISEASE),
         "output_file": str(connectivity_dataset_filename),
     }
-    
+
     append_run_metadata(cs_log_filename, metadata_row)

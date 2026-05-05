@@ -148,13 +148,18 @@ mith_threads = 10
 cs_batch_threads = 1
 cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
+CS_METHOD ="bin_chen_disease_sorted"
 CS_ON_PATHWAYS = True # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
+
+# CS functions
+
 
 if (cs_mith == 0 and CS_ON_PATHWAYS==1):
     raise ValueError("Cannot load pathway signatures for DEG signatures.\
                      Set cc_mith to 1 and run MITHrIL propagations")
 if (cs_on_LM == 1 and CS_ON_PATHWAYS==1):
     raise ValueError("Cannot filter for landmark genes on pathways")
+
 
 cs_filename = None #'mith_connectivity_score.tsv'
 
@@ -163,7 +168,8 @@ if cs_filename is None:
     datetime_string = now.strftime("%d_%m_%Y_%H_%M")
     mith = "_mith" if cs_mith == 1 else "_DEG"
     pathways = "_pw" if CS_ON_PATHWAYS == 1 else ""
-    cs_filename = datetime_string + mith + pathways +"_connectivity_score.tsv"
+    score = "_"+CS_METHOD
+    cs_filename = datetime_string + mith + pathways + score + "_connectivity_score.tsv"
 
 connectivity_dataset_filename=CS_OUT/cs_filename
 cs_id = Path(cs_filename).stem

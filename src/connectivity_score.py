@@ -126,7 +126,7 @@ def rank_genes_old(drug_signature, disease_signature, drug_col_name, disease_col
 
 def compute_KS_disease_sorted(disease_disregulated_genes, V, drug_genes):
     '''
-    Compute Kolmogorov-Smirnov (KS) statistic.
+    Compute Kolmogorov-Smirnov (KS) like statistic.
     From Lamb et al., 2006 supplementary
     Input:
        - disease_disregulated_genes: list or array of gene IDs
@@ -435,7 +435,7 @@ def random_disease_bin_chen_connectivity(drug_signature, rank_on='magnitude', id
 
 
 def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude', id_col='gene_id',\
-    drug_ranking_col_name=None,    disease_ranking_col_name=None):
+    drug_ranking_col_name=None, disease_ranking_col_name=None):
     '''
     calculates the Reverse Gene Expression Score (RGES), a
    connectivity score, as defined in Bin, Chen, 2017
@@ -470,6 +470,53 @@ def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude'
     # Compute KS statistic for up and down regulated genes:
     a_up, b_up, s_up, r = compute_KS(disease_signature_up[id_col], V_up, drug_signature[id_col])
     a_down , b_down, s_down, r = compute_KS(disease_signature_down[id_col], V_down, drug_signature[id_col])
+    
+    # Compute RGES:
+    measured_RGES = calculate_RGES(a_up, a_down, b_up, b_down)
+    
+    # Calculate two tailed p-value (no assumption on the direction of RGES 
+    # between disease and drug) for measured RGES, using random sampling:
+    n_iterations=1000 
+    random_RGES_list = montecarlo_connectivity(s_up, s_down, r, n_iterations, score_type='bin_chen')
+    p_value=np.sum(np.abs(np.array(random_RGES_list))>np.abs(measured_RGES))/n_iterations
+    return measured_RGES, p_value
+
+def bin_chen_connectivity_sorted(disease_signature, drug_signature, rank_on='magnitude', id_col='gene_id',\
+    drug_ranking_col_name=None,    disease_ranking_col_name=None):
+    '''
+    calculates the Reverse Gene Expression Score (RGES), a
+   connectivity score, as defined in Bin, Chen, 2017
+    Input:
+        - disease_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
+        - drug_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
+        - rank_on: str ranking column. default='magnitude' 
+                options: {'p_value', 'magnitude'}. Do not change unless you
+                know what you're doing'
+                    
+    Output:
+        -   measured_RGES: float, calculated RGES value
+        -   p_value: float, p-value from Monte Carlo simulation
+    '''
+    
+    if drug_ranking_col_name is None or disease_ranking_col_name is None:
+        if rank_on=='p_value':
+            drug_ranking_col_name=drug_signature.columns[2]
+            disease_ranking_col_name=disease_signature.columns[2]
+        if rank_on=='magnitude':
+            drug_ranking_col_name=drug_signature.columns[1]
+            disease_ranking_col_name=disease_signature.columns[1]
+    
+    # # Get lists of up (down) regulated genes: older with 2vs
+    disease_signature_up = disease_signature[disease_signature[disease_ranking_col_name]>0]
+    disease_signature_down = disease_signature[disease_signature[disease_ranking_col_name]<0]
+    
+    # Calculate rank map V for up and down regulated genes:
+    V_up = rank_genes(drug_signature, disease_signature_up, drug_ranking_col_name, disease_ranking_col_name, id_col=id_col)
+    V_down = rank_genes(drug_signature, disease_signature_down, drug_ranking_col_name, disease_ranking_col_name, id_col=id_col)
+    
+    # Compute KS statistic for up and down regulated genes:
+    a_up, b_up, s_up, r = compute_KS_disease_sorted(disease_signature_up[id_col], V_up, drug_signature[id_col])
+    a_down , b_down, s_down, r = compute_KS_disease_sorted(disease_signature_down[id_col], V_down, drug_signature[id_col])
     
     # Compute RGES:
     measured_RGES = calculate_RGES(a_up, a_down, b_up, b_down)
@@ -526,3 +573,5 @@ def bin_chen_connectivity_old(disease_signature, drug_signature, rank_on='magnit
     random_RGES_list = montecarlo_connectivity(s_up, s_down, r, n_iterations, score_type='bin_chen')
     p_value=np.sum(np.abs(np.array(random_RGES_list))>np.abs(measured_RGES))/n_iterations
     return measured_RGES, p_value
+
+calc_connectivity_score_with = {"bin chen":bin_chen_connectivity, "bin_chen_disease_sorted":bin_chen_connectivity_sorted, "lamb":"TODO: implement me!"}
