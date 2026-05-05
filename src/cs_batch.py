@@ -102,7 +102,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
     '''
     start=time.time()
     run_stats = {}
-    print('batch',str(n),'/',n_jobs,' of', len(drugs_list[i1:i2]), 'drugs')
+    print('[Connectivity Score Calculation] Batch',str(n),'/',n_jobs,' of', len(drugs_list[i1:i2]), 'drugs ')
     if not cs_on_pathways:
         singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
         id_col = 'gene_id'
