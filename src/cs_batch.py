@@ -170,7 +170,6 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     
     # Calculate connectivity score between disease and drugs:     
     for drug in drugs_list[i1:i2]:
-        print(drug)
         
         # load drug signature
         
@@ -232,116 +231,121 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     print('total elapsed time for batch of', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
     return connectivity_data, run_stats
 #%% Parallel run for LINCS data
+import itertools
 if __name__=="__main__":
     
     #Hyperparameter master
     
     cs_on_LMs = [0, 1]
-    cs_miths = [0, 1]
-    CS_ON_PATHWAYSs = [False]
+    # cs_miths = [0, 1]
+    # CS_ON_PATHWAYSs = [False]
     CS_METHODs = ['bin_chen', 'bin_chen_disease_sorted']
     
     
-    connectivity_dataset_filename, cs_id, = make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD)
+    #############################
+    # BEGIN CS CALCULATION FOR SINGLE SET OF PARAMETERS FOR ALL DRUGS
+    for cs_on_LM, CS_METHOD in itertools.product(cs_on_LMs, CS_METHODs):
+        
+        connectivity_dataset_filename, cs_id, = make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD)
+        
+        start_total = time.time()
+        # Set calculation for MITHrIL data
+        mith=cs_mith
+        drugs_list=get_signature_ids_list_from_cs_input(CS_IN_DRUG)
+        lm_flag = cs_on_LM
+        
+        # set n of cores for parallel execution
+        n_jobs= cs_batch_threads # int(sys.argv[1]) #16
+        if n_jobs>len(drugs_list):
+            raise ValueError('n_jobs:',n_jobs,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
+        
+        # get chunk size
+        chunk_size=int(len(drugs_list)/n_jobs)
+        last_chunk_size=len(drugs_list)%n_jobs
+        parallel_indexes=[]
+        for i in range(n_jobs):
+            i1, i2 =  get_chunk_indexes(i, chunk_size)
+            parallel_indexes.append((i1,i2))
+        
+        print('n jobs', n_jobs)
+        print('len drug list', len(drugs_list))
+        print('chunk size',chunk_size)
+        print('last chunk size', last_chunk_size)
+        print('mith tag:', mith, '\ndisease:', disease_run_name)
+        print('pathway based signature:', CS_ON_PATHWAYS)
+        
+        # results = run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag)
+        # cs_df=results[0]
+        # first_stats=results[1]
+        results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
+                                     (disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)\
+                                for i1,i2 in parallel_indexes)
+        
+        if last_chunk_size>0:
+            last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i2,len(drugs_list), cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
+            results.append(last_batch)
+        
+        # build dataframe    
+        cs_df=pd.concat([x[0] for x in results], ignore_index=True)
+        
+        # take stats from first batch as representative of filtering sizes
+        first_stats = results[0][1]
+        
+        #To test:
+        cs_df = add_pert_id_to_cs(lincs_metadata_path, cs_df) 
+        
+        #
+        total_elapsed = time.time() - start_total
+        
+        # write results
+        if not os.path.exists(CS_OUT):
+                    os.mkdir(CS_OUT)
+        #%% write file
+        
+        # now =  datetime.now()
+        # datetime_string = now.strftime("%d_%m_%Y_%H_%M")
+        # cs_filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
+        # connectivity_dataset_filename=CS_OUT/cs_filename
     
+        
+        cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
+        
+        #%% write run log
+        
+        
+        metadata_row = {
+            "cs_run_id": cs_id,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "hostname": socket.gethostname(),
+            "disease_run_id": disease_run_name,
+            "drug_run_id": cell_line_run_name,
+            "mith": int(mith),
+            "cs_on_LM": int(lm_flag),
+            "CS_ON_PATHWAYS": CS_ON_PATHWAYS,
+            "rank_on": "magnitude",\
+            "drug_id_col": first_stats["drug_id_col"] ,
+            "disease_id_col": first_stats["disease_id_col"] ,
+            "drug_value_col": first_stats["drug_value_col"],
+            "drug_pval_col": first_stats["drug_pval_col"],
+            "disease_value_col": first_stats["disease_value_col"],
+            "disease_pval_col": first_stats["disease_pval_col"] ,
+            "CS_METHOD": CS_METHOD,
+            "n_drugs_total": len(drugs_list),
+            "n_results_rows": len(cs_df),
+            "n_disease_genes_before_common": first_stats["n_disease_before_common"],
+            "n_drug_genes_before_common": first_stats["n_drug_before_common"],
+            "n_disease_genes_after_second_lm": first_stats["n_disease_after_second_lm"],
+            "n_drug_genes_after_second_lm": first_stats["n_drug_after_second_lm"],
+            "n_disease_genes_after_common": first_stats["n_disease_after_common"],
+            "n_drug_genes_after_common": first_stats["n_drug_after_common"],
+            "n_jobs": n_jobs,
+            "elapsed_sec_total": total_elapsed,
+            "drug_input_dir": str(CS_IN_DRUG),
+            "disease_input_dir": str(CS_IN_DISEASE),
+            "output_file": str(connectivity_dataset_filename),
+        }
     
-    
-    
-    start_total = time.time()
-    # Set calculation for MITHrIL data
-    mith=cs_mith
-    drugs_list=get_signature_ids_list_from_cs_input(CS_IN_DRUG)
-    lm_flag = cs_on_LM
-    
-    # set n of cores for parallel execution
-    n_jobs= cs_batch_threads # int(sys.argv[1]) #16
-    if n_jobs>len(drugs_list):
-        raise ValueError('n_jobs:',n_jobs,' > len(drugs_list):',len(drugs_list),'! Reduce size of n_jobs')
-    
-    # get chunk size
-    chunk_size=int(len(drugs_list)/n_jobs)
-    last_chunk_size=len(drugs_list)%n_jobs
-    parallel_indexes=[]
-    for i in range(n_jobs):
-        i1, i2 =  get_chunk_indexes(i, chunk_size)
-        parallel_indexes.append((i1,i2))
-    
-    print('n jobs', n_jobs)
-    print('len drug list', len(drugs_list))
-    print('chunk size',chunk_size)
-    print('last chunk size', last_chunk_size)
-    print('mith tag:', mith, '\ndisease:', disease_run_name)
-    print('pathway based signature:', CS_ON_PATHWAYS)
-    
-    # results = run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag)
-    # cs_df=results[0]
-    # first_stats=results[1]
-    results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
-                                 (disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)\
-                            for i1,i2 in parallel_indexes)
-    
-    if last_chunk_size>0:
-        last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i2,len(drugs_list), cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
-        results.append(last_batch)
-    
-    # build dataframe    
-    cs_df=pd.concat([x[0] for x in results], ignore_index=True)
-    
-    # take stats from first batch as representative of filtering sizes
-    first_stats = results[0][1]
-    
-    #To test:
-    cs_df = add_pert_id_to_cs(lincs_metadata_path, cs_df) 
-    
-    #
-    total_elapsed = time.time() - start_total
-    
-    # write results
-    if not os.path.exists(CS_OUT):
-                os.mkdir(CS_OUT)
-    #%% write file
-    
-    # now =  datetime.now()
-    # datetime_string = now.strftime("%d_%m_%Y_%H_%M")
-    # cs_filename = datetime_string+'_DEG_connectivity_score.tsv' if not cs_mith else  datetime_string+'_mith_connectivity_score.tsv'
-    # connectivity_dataset_filename=CS_OUT/cs_filename
-
-    
-    cs_df.to_csv(connectivity_dataset_filename, sep='\t', index=False)
-    
-    #%% write run log
-    
-    
-    metadata_row = {
-        "cs_run_id": cs_id,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "hostname": socket.gethostname(),
-        "disease_run_id": disease_run_name,
-        "drug_run_id": cell_line_run_name,
-        "mith": int(mith),
-        "cs_on_LM": int(lm_flag),
-        "CS_ON_PATHWAYS": CS_ON_PATHWAYS,
-        "rank_on": "magnitude",\
-        "drug_id_col": first_stats["drug_id_col"] ,
-        "disease_id_col": first_stats["disease_id_col"] ,
-        "drug_value_col": first_stats["drug_value_col"],
-        "drug_pval_col": first_stats["drug_pval_col"],
-        "disease_value_col": first_stats["disease_value_col"],
-        "disease_pval_col": first_stats["disease_pval_col"] ,
-        "CS_METHOD": CS_METHOD,
-        "n_drugs_total": len(drugs_list),
-        "n_results_rows": len(cs_df),
-        "n_disease_genes_before_common": first_stats["n_disease_before_common"],
-        "n_drug_genes_before_common": first_stats["n_drug_before_common"],
-        "n_disease_genes_after_second_lm": first_stats["n_disease_after_second_lm"],
-        "n_drug_genes_after_second_lm": first_stats["n_drug_after_second_lm"],
-        "n_disease_genes_after_common": first_stats["n_disease_after_common"],
-        "n_drug_genes_after_common": first_stats["n_drug_after_common"],
-        "n_jobs": n_jobs,
-        "elapsed_sec_total": total_elapsed,
-        "drug_input_dir": str(CS_IN_DRUG),
-        "disease_input_dir": str(CS_IN_DISEASE),
-        "output_file": str(connectivity_dataset_filename),
-    }
-
-    append_run_metadata(cs_log_filename, metadata_row)
+        append_run_metadata(cs_log_filename, metadata_row)
+            
+        #############################
+        # END CS CALCULATION FOR SINGLE SET OF PARAMETERS FOR ALL DRUGS
