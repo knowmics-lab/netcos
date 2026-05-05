@@ -102,7 +102,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
     '''
     start=time.time()
     run_stats = {}
-    
+    print('batch',str(n),'/',n_jobs,' of', len(drugs_list[i1:i2]), 'drugs')
     if not cs_on_pathways:
         singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
         id_col = 'gene_id'
@@ -212,7 +212,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
     # connectivity_data= pd.DataFrame(data, columns=["disease","pert_id","connectivity_score","cs_p_value",'pearson','pearson_p_value','spearman','spearman_p_value','cos_sim']) #add other correlations, genes subset
     connectivity_data= pd.DataFrame(data)
     elapsed = time.time() - start
-    print('total elapsed time for batch',str(n),'/',n_jobs,' of', len(drugs_list[i1:i2]), 'drugs: ', elapsed)
+    print('\t total elapsed time (seconds): ', elapsed)
     
     run_stats['elapsed']=elapsed
     run_stats['n_drugs_in_batch']=len(drugs_list[i1:i2])
