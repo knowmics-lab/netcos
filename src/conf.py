@@ -161,18 +161,21 @@ if (cs_on_LM == 1 and CS_ON_PATHWAYS==1):
     raise ValueError("Cannot filter for landmark genes on pathways")
 
 
-cs_filename = None #'mith_connectivity_score.tsv'
+def make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD):
+# cs_filename = None #'mith_connectivity_score.tsv'
 
-if cs_filename is None:
+# if cs_filename is None:
     now = datetime.now()
     datetime_string = now.strftime("%d_%m_%Y_%H_%M")
     mith = "_mith" if cs_mith == 1 else "_DEG"
+    LM = "_LM" if cs_on_LM == 1 else ""
     pathways = "_pw" if CS_ON_PATHWAYS == 1 else ""
     score = "_"+CS_METHOD
-    cs_filename = datetime_string + mith + pathways + score + "_connectivity_score.tsv"
+    cs_filename = datetime_string + mith + LM + pathways + score + "_connectivity_score.tsv"
 
-connectivity_dataset_filename=CS_OUT/cs_filename
-cs_id = Path(cs_filename).stem
+    connectivity_dataset_filename=CS_OUT/cs_filename
+    cs_id = Path(cs_filename).stem
+    return connectivity_dataset_filename, cs_id
 
 # log filename
 cs_log_filename = Path(LOGS_DIR) / 'cs_runs.tsv'

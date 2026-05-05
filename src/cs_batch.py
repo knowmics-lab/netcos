@@ -19,9 +19,9 @@ from loader import load_disease_signature, load_single_signature_cs_input,\
     load_landmark_gene_ids
 from preprocessing_utils import get_signature_ids_list_from_cs_input
 from conf import DISEASE, CS_OUT, CS_IN_DRUG, CS_IN_DISEASE, cs_batch_threads,\
-    disease_run_name, connectivity_dataset_filename, cs_on_LM, LINCS_BC_DATA,\
-        cs_mith, LOGS_DIR, cell_line_run_name, cs_id, cs_log_filename,\
-            lincs_metadata_path, CS_ON_PATHWAYS,CS_METHOD
+    disease_run_name, cs_on_LM, LINCS_BC_DATA, cs_mith, LOGS_DIR,\
+        cell_line_run_name, cs_log_filename, lincs_metadata_path,\
+            CS_ON_PATHWAYS,CS_METHOD, make_cs_filename
 from preprocessing_utils import get_chunk_indexes
 from logger import append_run_metadata
 from joblib import Parallel, delayed
@@ -116,6 +116,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
 
     # load disease signature:
     disease_signature=load_disease_signature(disease_run_name, mith=mith, pathway=CS_ON_PATHWAYS)
+    
     #log variable
     run_stats['n_disease_before_common'] = len(disease_signature)
     disease_signature=disease_signature[columns_of_interest]
@@ -232,6 +233,20 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     return connectivity_data, run_stats
 #%% Parallel run for LINCS data
 if __name__=="__main__":
+    
+    #Hyperparameter master
+    
+    cs_on_LMs = [0, 1]
+    cs_miths = [0, 1]
+    CS_ON_PATHWAYSs = [False]
+    CS_METHODs = ['bin_chen', 'bin_chen_disease_sorted']
+    
+    
+    connectivity_dataset_filename, cs_id, = make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD)
+    
+    
+    
+    
     start_total = time.time()
     # Set calculation for MITHrIL data
     mith=cs_mith
@@ -266,7 +281,7 @@ if __name__=="__main__":
                             for i1,i2 in parallel_indexes)
     
     if last_chunk_size>0:
-        last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i2,len(drugs_list), cs_on_LM=lm_flag)
+        last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i2,len(drugs_list), cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
         results.append(last_batch)
     
     # build dataframe    
@@ -324,7 +339,7 @@ if __name__=="__main__":
         "n_drug_genes_after_common": first_stats["n_drug_after_common"],
         "n_jobs": n_jobs,
         "elapsed_sec_total": total_elapsed,
-        "cs_input_dir": str(CS_IN_DRUG),
+        "drug_input_dir": str(CS_IN_DRUG),
         "disease_input_dir": str(CS_IN_DISEASE),
         "output_file": str(connectivity_dataset_filename),
     }

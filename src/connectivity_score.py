@@ -574,4 +574,4 @@ def bin_chen_connectivity_old(disease_signature, drug_signature, rank_on='magnit
     p_value=np.sum(np.abs(np.array(random_RGES_list))>np.abs(measured_RGES))/n_iterations
     return measured_RGES, p_value
 
-calc_connectivity_score_with = {"bin chen":bin_chen_connectivity, "bin_chen_disease_sorted":bin_chen_connectivity_sorted, "lamb":"TODO: implement me!"}
+calc_connectivity_score_with = {"bin_chen":bin_chen_connectivity, "bin_chen_disease_sorted":bin_chen_connectivity_sorted, "lamb":"TODO: implement me!"}
