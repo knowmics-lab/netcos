@@ -89,7 +89,7 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
 
     return cs_df
 
-def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i2, \
+def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1, i2, \
                                        rank_on='magnitude', save_file=False, cs_on_LM=False,\
                                         cs_on_pathways=False):
     '''
@@ -161,7 +161,6 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     #log variables
     run_stats['n_disease_after_common'] = len(disease_signature)
     run_stats['n_drug_after_common'] = len(drug_common_index)
-    print('common disease genes', len(disease_signature))
 
     
     # Initialize dataframe:
@@ -213,17 +212,20 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i1, i
     # connectivity_data= pd.DataFrame(data, columns=["disease","pert_id","connectivity_score","cs_p_value",'pearson','pearson_p_value','spearman','spearman_p_value','cos_sim']) #add other correlations, genes subset
     connectivity_data= pd.DataFrame(data)
     elapsed = time.time() - start
-    print('total elapsed time for batch of', len(drugs_list[i1:i2]), 'drugs: ', elapsed)
+    print('total elapsed time for batch',str(n),'/',n_jobs,' of', len(drugs_list[i1:i2]), 'drugs: ', elapsed)
     
     run_stats['elapsed']=elapsed
     run_stats['n_drugs_in_batch']=len(drugs_list[i1:i2])
     
     # save connectivity scores
     if save_file:
+        
         if not os.path.exists(CS_OUT):
             os.mkdir(CS_OUT)
+        
         if not cs_on_pathways:
             connectivity_dataset_filename= str(i1)+'_'+str(i2)+'_DEG_connectivity_score.tsv' if not mith else  CS_OUT+str(i1)+'_'+str(i2)+'_mith_connectivity_score.tsv'
+        
         else:
             connectivity_dataset_filename= CS_OUT+str(i1)+'_'+str(i2)+'_mith_pw_connectivity_score.tsv'
         connectivity_data.to_csv(CS_OUT/connectivity_dataset_filename, sep='\t', index=False)
@@ -245,7 +247,8 @@ if __name__=="__main__":
     #############################
     # BEGIN CS CALCULATION FOR SINGLE SET OF PARAMETERS FOR ALL DRUGS
     for cs_on_LM, CS_METHOD in itertools.product(cs_on_LMs, CS_METHODs):
-        
+        print("cs on LM:", str(cs_on_LM))
+        print("cs method:", str(CS_METHOD))
         connectivity_dataset_filename, cs_id, = make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD)
         
         start_total = time.time()
@@ -278,8 +281,8 @@ if __name__=="__main__":
         # cs_df=results[0]
         # first_stats=results[1]
         results = Parallel(n_jobs=n_jobs)(delayed(run_connectivity_score_drugs_batch)\
-                                     (disease_run_name, mith, drugs_list, i1, i2, cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)\
-                                for i1,i2 in parallel_indexes)
+                                     (disease_run_name, mith, drugs_list, n, i1, i2, cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)\
+                                for n, (i1,i2) in enumerate(parallel_indexes))
         
         if last_chunk_size>0:
             last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i2,len(drugs_list), cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
