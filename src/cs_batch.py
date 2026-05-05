@@ -285,7 +285,7 @@ if __name__=="__main__":
                                 for n, (i1,i2) in enumerate(parallel_indexes))
         
         if last_chunk_size>0:
-            last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, i2,len(drugs_list), cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
+            last_batch=run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, (n_jobs+1), i2,len(drugs_list), cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
             results.append(last_batch)
         
         # build dataframe    
