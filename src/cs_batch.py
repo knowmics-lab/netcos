@@ -102,7 +102,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
     '''
     start=time.time()
     run_stats = {}
-    print('[Connectivity Score Calculation] Batch',str(n),'/',n_jobs,' of', len(drugs_list[i1:i2]), 'drugs ')
+    print('[Connectivity Score Calculation] Batch',str(n+1),'/',n_jobs,' of', len(drugs_list[i1:i2]), 'drugs ')
     if not cs_on_pathways:
         singature_uom = 'DE_log2_FC' if not mith else 'Perturbation'
         id_col = 'gene_id'
@@ -239,14 +239,15 @@ if __name__=="__main__":
     #Hyperparameter master
     
     cs_on_LMs = [0, 1]
-    # cs_miths = [0, 1]
+    cs_miths = [0, 1]
     # CS_ON_PATHWAYSs = [False]
     CS_METHODs = ['bin_chen', 'bin_chen_disease_sorted']
     
     
     #############################
     # BEGIN CS CALCULATION FOR SINGLE SET OF PARAMETERS FOR ALL DRUGS
-    for cs_on_LM, CS_METHOD in itertools.product(cs_on_LMs, CS_METHODs):
+    # for cs_on_LM, CS_METHOD in itertools.product(cs_on_LMs, CS_METHODs):
+    for f in [1]:
         print("cs on LM:", str(cs_on_LM))
         print("cs method:", str(CS_METHOD))
         connectivity_dataset_filename, cs_id, = make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD)

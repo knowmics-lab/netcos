@@ -78,16 +78,42 @@ MITH_IN=MITH_DIR / 'input'
 MITH_IN_DISEASE=MITH_DIR / 'input' / 'disease_signature'
 MITH_IN_DRUG=MITH_DIR / 'input' / 'drug_signature'
 
+##########################################################################
+# Bin Chen 2017 data directories
+##########################################################################
 
+if hasattr(local, "BC_DATA"):
+    BC_DATA = local.BC_DATA
+else:
+    BC_DATA = DATA_DIR / 'BinChen2017'
+
+if hasattr(local, "LINCS_BC_DATA"):
+    LINCS_BC_DATA = local.LINCS_BC_DATA
+else:
+    LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
+
+lincs_metadata_path = LINCS_BC_DATA / "lincs_sig_info_new.csv"
+LINCS_METADATA_PATH = LINCS_BC_DATA / "lincs_sig_info_new.csv"
+
+BC_DISEASE_DATA = BC_DATA / "data" / "data"
+BC_DISEASE_DIR = BC_DISEASE_DATA / DISEASE
+
+############################################
+# TSR directories
+####################################
 TSR_DIR=BASE_DIR / 'tsr'
 TSR_OUT=TSR_DIR / 'output'
-TSR_OUT_DISEASE=TSR_OUT / 'disease_signature' / DISEASE
+TSR_OUT_DISEASE= TSR_OUT / 'disease_signature' / DISEASE
 TSR_OUT_DRUG=TSR_OUT / 'drug_signature'
 TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
 TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
-# Connectivity score dirs
+# Change here the data souce
+DISEASE_SIGNATURE_SOURCE = "other"  # options: "tsr", "other"
 
+############################################
+# Connectivity score directories
+############################################
 CS_DIR=BASE_DIR / 'connectivity_score'
 CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line_run_name #Path(cell_line+'_'+pert_time)
 CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / disease_run_name
@@ -115,23 +141,7 @@ OOUT_DIR=BASE_DIR / 'other_outputs'
 # # landmark genes filename:
 # BING_GENES = LINCS_DIR / "bing_gene_symbols.csv"  # optional
 
-##########################################################################
-# Drug signature calculations using LINCS1000:
-# Bin Chen 2017 data
-##########################################################################
 
-if hasattr(local, "BC_DATA"):
-    BC_DATA = local.BC_DATA
-else:
-    BC_DATA = DATA_DIR / 'BinChen2017'
-
-if hasattr(local, "LINCS_BC_DATA"):
-    LINCS_BC_DATA = local.LINCS_BC_DATA
-else:
-    LINCS_BC_DATA = BC_DATA / Path('data/data/raw/lincs')
-
-lincs_metadata_path = LINCS_BC_DATA / "lincs_sig_info_new.csv"
-LINCS_METADATA_PATH = LINCS_BC_DATA / "lincs_sig_info_new.csv"
 
 ###############################################################################
 # MITHrIL hyperparameters
@@ -145,8 +155,8 @@ mith_threads = 10
 ###############################################################################
 
 # hyperparameters
-cs_batch_threads = 30
-cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
+cs_batch_threads = 1
+cs_mith = 0 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
 CS_METHOD ="bin_chen_disease_sorted"
 CS_ON_PATHWAYS = False # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
