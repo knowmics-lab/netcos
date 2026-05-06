@@ -193,7 +193,7 @@ for current_cell_line, current_disease in diseases_of.items():
     print("convert LINCS data to direct CS input")
 
     current_cs_drug_dir = CS_IN_DRUG.parent / current_cell_line_run_name
-    drug_cs_written = write_cs_drug_inputs(LINCS_FC_bc_filtered.iloc[:,0:3], drug_md, current_cs_drug_dir)
+    drug_cs_written = write_cs_drug_inputs(LINCS_FC_bc_filtered, drug_md, current_cs_drug_dir)
     
     n_drug_cs_files = len(drug_cs_written)
     n_drug_cs_rows_total = sum(x[2] for x in drug_cs_written)

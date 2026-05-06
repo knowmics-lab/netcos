@@ -89,6 +89,8 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
 
     return cs_df
 
+
+
 def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1, i2, \
                                        rank_on='magnitude', save_file=False, cs_on_LM=False,\
                                         cs_on_pathways=False):
@@ -134,7 +136,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
     # connectrivity calculations
     # load one drug signature (all durg signatures have the same genes in the same order)
     
-    drug_signature= load_single_signature_cs_input(drugs_list[0], CS_IN_DRUG, pathway=CS_ON_PATHWAYS)
+    drug_signature= load_single_signature_cs_input(drugs_list[0], CS_IN_DRUG, mith=mith, pathway=CS_ON_PATHWAYS)
     # log variable
     run_stats['n_drug_before_common'] = len(drug_signature)
     
@@ -172,7 +174,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
         
         # load drug signature
         
-        drug_signature=load_single_signature_cs_input(drug, CS_IN_DRUG, pathway=CS_ON_PATHWAYS)
+        drug_signature=load_single_signature_cs_input(drug, CS_IN_DRUG, mith=mith, pathway=CS_ON_PATHWAYS)
         if cs_on_LM:
             drug_signature = drug_signature[drug_signature['gene_id'].isin(lm_gene_ids)].reset_index(drop=True)
         
@@ -233,7 +235,6 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
     print('total elapsed time for batch of', len(drugs_list[i1:i2]),' drugs: ', time.time()-start)
     return connectivity_data, run_stats
 #%% Parallel run for LINCS data
-import itertools
 if __name__=="__main__":
     
     #Hyperparameter master
@@ -250,12 +251,13 @@ if __name__=="__main__":
     for f in [1]:
         print("cs on LM:", str(cs_on_LM))
         print("cs method:", str(CS_METHOD))
+        print("cs on mith:", str(cs_mith))
         connectivity_dataset_filename, cs_id, = make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD)
         
         start_total = time.time()
         # Set calculation for MITHrIL data
         mith=cs_mith
-        drugs_list=get_signature_ids_list_from_cs_input(CS_IN_DRUG)
+        drugs_list=get_signature_ids_list_from_cs_input(CS_IN_DRUG, mith=cs_mith)
         lm_flag = cs_on_LM
         
         # set n of cores for parallel execution

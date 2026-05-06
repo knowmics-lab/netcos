@@ -168,10 +168,12 @@ def load_drug_signatures(mith=False, pkl=True):
     print(n+1, 'drugs loaded')
     return pd.concat(DEG_drug_list)
 
-def load_single_signature_cs_input(signature_id, cs_input_dir, pathway=False):
+def load_single_signature_cs_input(signature_id, cs_input_dir, mith= True, pathway=False):
     if not pathway:
-        filename = os.path.join(cs_input_dir, f"{signature_id}.pkl")
-
+        if mith:
+            filename = os.path.join(cs_input_dir, f"{signature_id}.pkl")
+        else:
+            filename = os.path.join(cs_input_dir, f"{signature_id}_signature_gene_id.pkl")
         with open(filename, "rb") as f:
             return pickle.load(f)
     else:

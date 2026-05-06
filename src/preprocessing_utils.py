@@ -91,12 +91,30 @@ def get_drugs_list_from_path(drugs_path):
     drugs_list=list(np.unique(drugs_list))
     return drugs_list
 
-def get_signature_ids_list_from_cs_input(cs_input_dir):
-    return sorted([
-        os.path.splitext(f)[0]
-        for f in os.listdir(cs_input_dir)
-        if f.endswith(".pkl")
-    ])
+
+def get_signature_ids_list_from_cs_input(cs_input_dir, mith=1):
+    """
+    Return signature/drug IDs available for the current CS-input run.
+
+    Expected direct-FC drug input format:
+        <drug_id>_signature_gene_id.pkl
+
+    Backward-compatible fallback:
+        <signature_id>.pkl
+    """
+    
+    
+    suffix= "_signature_gene_id.pkl" if not mith else ".pkl"
+    
+    files = os.listdir(cs_input_dir)
+
+    run_files = sorted([f for f in files if f.endswith(suffix)])
+    if run_files:
+        return [f[:-len(suffix)] for f in run_files]
+    
+    #back compatibility
+    return sorted([     os.path.splitext(f)[0]  for f in files  if f.endswith(".pkl")])
+
 
 def get_common_genes(disease_signature, drug_signature):
     missing_genes=set.difference(set(disease_signature.gene_id),set(drug_signature.gene_id))
