@@ -7,6 +7,11 @@ chembl valdiation using NetCos
 
 @author: los4
 """
+import os
+import sys
+HERE = os.path.dirname(__file__)
+REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # go up 3 levels
+sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 from pathlib import Path
 
 # this works with conf file related to BinChen2017 chembl validation
