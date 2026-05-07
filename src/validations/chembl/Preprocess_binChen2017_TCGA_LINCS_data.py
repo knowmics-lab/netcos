@@ -136,7 +136,7 @@ for current_cell_line, current_disease in diseases_of.items():
     mith_disease_in_filename = current_disease_run_name+'_signature_gene_id.mi'
     disease_mith_input_path = MITH_IN_DISEASE/mith_disease_in_filename
     lincs_filtered_tcga = filtered_tcga[["id", "log2FoldChange"]]
-    lincs_filtered_tcga.to_csv(disease_mith_input_path, sep = '\t', index=False, header=False)
+    # lincs_filtered_tcga.to_csv(disease_mith_input_path, sep = '\t', index=False, header=False)
     
     
     print("convert disease data to direct CS input")
@@ -188,7 +188,7 @@ for current_cell_line, current_disease in diseases_of.items():
     current_cell_line_run_name = current_cell_line+LM_flag_drug
     mith_in_lincs_filename = 'LINCS_'+current_cell_line_run_name+'.mi'
     drug_mith_input_path = MITH_IN_DRUG / mith_in_lincs_filename
-    LINCS_FC_bc_filtered.to_csv(drug_mith_input_path, header = True , sep = '\t', index = True)
+    # LINCS_FC_bc_filtered.to_csv(drug_mith_input_path, header = True , sep = '\t', index = True)
     
     print("convert LINCS data to direct CS input")
 

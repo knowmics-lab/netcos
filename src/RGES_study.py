@@ -57,9 +57,7 @@ css=np.round(montecarlo_connectivity(s_up, s_down, r, n_iterations, score_type=s
 print('iterations:', n_iterations,'\nr=',r,'\ntime:', time.time()-start)
 
 #%%
-
-
-    
+   
 imgname='up'+str(s_up)+'down'+str(s_down)+'r'+str(r)+score_type
 xlabel='punteggio di connettività'
 ylabel='densità'
