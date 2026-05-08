@@ -88,7 +88,8 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
 
 
 def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1, i2,
-                                       CS_METHOD, CS_IN_DRUG, LINCS_BC_DATA, CS_OUT, n_jobs,
+                                       CS_METHOD, CS_IN_DRUG, CS_IN_DISEASE, LINCS_BC_DATA,
+                                       CS_OUT, n_jobs,
                                        rank_on='magnitude', save_file=False, cs_on_LM=False,
                                        cs_on_pathways=False):
     '''
@@ -118,7 +119,8 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
         columns_of_interest = [id_col, singature_uom, pval_col]
 
     # load disease signature:
-    disease_signature=load_disease_signature(disease_run_name, mith=mith, pathway=cs_on_pathways)
+    disease_signature=load_disease_signature(disease_run_name, cs_input_dir=CS_IN_DISEASE,
+                                             mith=mith, pathway=cs_on_pathways)
 
     #log variable
     run_stats['n_disease_before_common'] = len(disease_signature)
@@ -317,14 +319,14 @@ def run_cs_batch_for_conf(
     results = Parallel(n_jobs=n_jobs)(
         delayed(run_connectivity_score_drugs_batch)(
             disease_run_name, mith, drugs_list, n, i1, i2,
-            CS_METHOD, CS_IN_DRUG, LINCS_BC_DATA, CS_OUT, n_jobs,
+            CS_METHOD, CS_IN_DRUG, CS_IN_DISEASE, LINCS_BC_DATA, CS_OUT, n_jobs,
             cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
         for n, (i1, i2) in enumerate(parallel_indexes))
 
     if last_chunk_size > 0:
         last_batch = run_connectivity_score_drugs_batch(
             disease_run_name, mith, drugs_list, (n_jobs + 1), i2, len(drugs_list),
-            CS_METHOD, CS_IN_DRUG, LINCS_BC_DATA, CS_OUT, n_jobs,
+            CS_METHOD, CS_IN_DRUG, CS_IN_DISEASE, LINCS_BC_DATA, CS_OUT, n_jobs,
             cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
         results.append(last_batch)
 

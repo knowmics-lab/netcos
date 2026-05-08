@@ -52,7 +52,7 @@ def standardize_disease_signature(df, source):
     out["adj.p.value"] = pd.to_numeric(out["adj.p.value"], errors="coerce")
     return out.dropna(subset=["gene_id", "DE_log2_FC"])
 
-def load_disease_signature(disease, mith=False, pathway=False, source=None):
+def load_disease_signature(disease, cs_input_dir=None, mith=False, pathway=False, source=None):
     """
     Load disease signature and return a standardized dataframe.
 
@@ -60,22 +60,32 @@ def load_disease_signature(disease, mith=False, pathway=False, source=None):
         gene_id, DE_log2_FC, adj.p.value
 
     MITHrIL output schema is left unchanged.
+
+    cs_input_dir: optional Path. If None, falls back to module-level
+        CS_IN_DISEASE (i.e. the path computed from conf.py defaults).
+        The multi-conf wrapper (call_cs_batch_for_different_confs.py)
+        passes its own per-combo CS_IN_DISEASE so non-default
+        landmark_disease reads from the right subdir
+        (LIHC_LM/ instead of LIHC/, etc.). Mirrors the cs_input_dir arg
+        of load_single_signature_cs_input.
     """
     source = DISEASE_SIGNATURE_SOURCE if source is None else source
     signature = "_signature.csv" if not pathway else "_pathways.tsv"
+    if cs_input_dir is None:
+        cs_input_dir = CS_IN_DISEASE
 
     if mith:
-        filename = CS_IN_DISEASE / f"{disease}_mith3{signature}"
+        filename = cs_input_dir / f"{disease}_mith3{signature}"
         return pd.read_csv(filename, sep="\t")
-    
+
     else:
         if source == "tsr":
             filename = TSR_OUT_DISEASE / f"{disease}_signature_gene_id.csv"
             df = pd.read_csv(filename, sep=";", decimal=",", dtype={"gene_id": "str"})
             return standardize_disease_signature(df, source="tsr")
-    
+
         if source == "other":
-            filename = CS_IN_DISEASE / f"{disease}_signature_gene_id.txt"  
+            filename = cs_input_dir / f"{disease}_signature_gene_id.txt"
             df = pd.read_csv(filename, sep='\t')
             return standardize_disease_signature(df, source="binchen")
 
