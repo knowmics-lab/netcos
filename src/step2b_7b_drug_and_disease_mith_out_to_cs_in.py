@@ -30,13 +30,13 @@ HERE = os.path.dirname(__file__)
 REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, REPO_ROOT)
 
-from conf import  DISEASE, MITH_OUT_DISEASE, MITH_OUT_DRUG, CS_IN_DISEASE, CS_IN_DRUG, LOGS_DIR
+from conf import   MITH_OUT_DISEASE, MITH_OUT_DRUG, CS_IN_DISEASE, CS_IN_DRUG, LOGS_DIR, disease_run_name
 from logger import append_run_metadata
 
 
 STEP_NAME = "step2b_7b_mith_pathway_to_cs_input"
 TIMESTAMP = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-LOG_FILE = Path(LOGS_DIR) / f"{DISEASE}_step2b_7b_runs.tsv"
+LOG_FILE = Path(LOGS_DIR) / f"{disease_run_name}_step2b_7b_runs.tsv"
 
 
 REQUIRED_COLS = ["# Pathway Id",  "Pathway Name",  "Corrected Accumulator", "Adjusted pValue"]
@@ -79,8 +79,8 @@ def convert_one_file(in_file, out_file):
 
 
 def build_disease_paths():
-    in_file = os.path.join(MITH_OUT_DISEASE, f"{DISEASE}_mith3.output.txt")
-    out_file = os.path.join(CS_IN_DISEASE, f"{DISEASE}_mith3_pathways.tsv")
+    in_file = os.path.join(MITH_OUT_DISEASE, f"{disease_run_name}_mith3.output.txt")
+    out_file = os.path.join(CS_IN_DISEASE, f"{disease_run_name}_mith3_pathways.tsv")
     return in_file, out_file
 
 
@@ -113,7 +113,7 @@ def run_disease():
         "timestamp": TIMESTAMP,
         "step": STEP_NAME,
         "mode": "disease",
-        "disease": DISEASE,
+        "disease": disease_run_name,
         **meta,
     }
 
@@ -133,7 +133,7 @@ def run_drugs():
             "timestamp": TIMESTAMP,
             "step": STEP_NAME,
             "mode": "drug",
-            "disease": DISEASE,
+            "disease": disease_run_name,
             **meta,
         }
 
