@@ -19,7 +19,7 @@ from datetime import datetime
 # LINCS data parameters
 #######################
 
-landmark_disease = True  # only select landmark genes from signature data 
+landmark_disease = False  # only select landmark genes from signature data 
 LM_flag_disease = ''
 if landmark_disease:
     LM_flag_disease = '_LM'
@@ -156,25 +156,44 @@ mith_threads = 10
 
 # hyperparameters
 cs_batch_threads = 1
-cs_mith = 0 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
+cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 1 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
-CS_METHOD ="bin_chen_disease_sorted" #bin_chen
+CS_METHOD ="bin_chen" #bin_chen
 CS_ON_PATHWAYS = False # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
 
 # CS functions
 
 
-def validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS):
+def validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS,
+                             CS_METHOD=None, cs_threshold=None):
     """
-    Raise ValueError if a (cs_mith, cs_on_LM, CS_ON_PATHWAYS) combination is
-    not supported. Used both at conf import time (against this file's defaults)
-    and per-combo by the multi-conf wrapper (call_cs_batch_for_different_confs.py).
+    Raise ValueError if a hyperparameter combination is not supported.
+
+    Used both at conf import time (against this file's defaults) and per-combo
+    by the multi-conf wrappers (call_cs_batch_for_different_confs.py and
+    hyperparameter_grid_search_bootstrap.py).
+
+    The first three args are the pre-CS knobs and have always been required.
+    CS_METHOD and cs_threshold are optional (default None = skip the check)
+    so that legacy callers still work and the conf-import-time check below
+    keeps using the original 3-arg form.
     """
     if cs_mith == 0 and CS_ON_PATHWAYS == 1:
         raise ValueError("Cannot load pathway signatures for DEG signatures."
                          " Set cs_mith to 1 and run MITHrIL propagations")
     if cs_on_LM == 1 and CS_ON_PATHWAYS == 1:
         raise ValueError("Cannot filter for landmark genes on pathways")
+
+    # cs_threshold = -1.5 is calibrated for bin_chen_disease_sorted, whose
+    # outputs are sums of normalized KS statistics. bin_chen returns RGES-style
+    # values on a different scale, so a separate threshold must be calibrated
+    # via RGES_study.py before bin_chen combos can be validated.
+    if (CS_METHOD == 'bin_chen' and cs_threshold is not None
+            and float(cs_threshold) == -1.5):
+        raise ValueError("cs_threshold=-1.5 is only meaningful for "
+                         "CS_METHOD='bin_chen_disease_sorted'. For "
+                         "CS_METHOD='bin_chen', calibrate a threshold first "
+                         "(see RGES_study.py).")
 
 # fail fast if the defaults in this conf are inconsistent
 validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS)

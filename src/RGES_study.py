@@ -21,14 +21,14 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 def nice_hist(x, title,  imgname, r,s_up,s_down, xlabel='', ylabel='', save=False):
     # plt.rcParams.update({'font.size': 22})
     plt.figure()
-    plt.hist(x, bins=100, color='black', density=True)
+    plt.hist(x, bins=100, color='black')
     plt.grid(linestyle='--')
     plt.title(title)
     plt.ylabel(ylabel, fontsize=18)
     plt.xlabel(xlabel, fontsize=18)
     plt.title("r"+r+"sup"+s_up+"sdown"+s_down)
     if save:
-        plt.savefig(IMG_DIR/(imgname+'.pdf'))
+        plt.savefig(IMG_DIR/(imgname+'.png'))
     return
 #%% 
 # PARAMETERS:
@@ -37,18 +37,18 @@ score_type='bin_chen'#'lamb'#'sirota'#
 # score_type='evil_twin'#'lamb'#'sirota'#
 
 # Length of drug gene signature:
-r=1000#14812#9892
+r=2159#14812#9892
 
 # Length of disease up regulated signature:
 # set to s_up=int(r/2) to sample drug spectrum
-s_up=150#int(r/2)#10#7884#4455
+s_up=int(r/2)#10#7884#4455
 
 # Length of disease down regulated signature:
 # set to s_down=int(r/2) to sample drug spectrum
-s_down=150#int(r/2)#10#6928#3954
+s_down=int(r/2)#10#6928#3954
 
 # Number of random iterations:
-n_iterations=3000
+n_iterations=10000
 
 #%% sample connectivity score distribution over of random rankings of r genes:
     
@@ -59,9 +59,9 @@ print('iterations:', n_iterations,'\nr=',r,'\ntime:', time.time()-start)
 #%%
    
 imgname='up'+str(s_up)+'down'+str(s_down)+'r'+str(r)+score_type
-xlabel='punteggio di connettività'
-ylabel='densità'
-nice_hist(css, '', imgname,str(r),str(s_up),str(s_down), xlabel,ylabel, save=False)
+xlabel='Connectivity score'
+ylabel='Counts'
+nice_hist(css, '', imgname,str(r),str(s_up),str(s_down), xlabel,ylabel, save=True)
 #%% Split css into n random drug samplings, and pllot correlations between them
 # and FC based drug ranking and netocos based drug ranking
 

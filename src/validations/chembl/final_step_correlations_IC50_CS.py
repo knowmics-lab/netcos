@@ -52,9 +52,22 @@ References
 
 import os
 import sys
+import warnings
 HERE = os.path.dirname(__file__)
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # go up 3 levels
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
+
+# Silence openpyxl's noisy "Unknown extension is not supported" warning that
+# fires whenever pd.read_excel opens BinChen2017/{SD8,SD5}.xlsx. The files
+# carry an Excel extension (custom XML namespace, conditional formatting, ...)
+# that openpyxl's reader does not recognize; the actual data still loads
+# correctly. Targeted filter — leaves all other openpyxl warnings intact.
+warnings.filterwarnings(
+    "ignore",
+    message="Unknown extension is not supported",
+    category=UserWarning,
+    module="openpyxl",
+)
 
 from pathlib import Path
 from datetime import datetime
@@ -63,11 +76,12 @@ import numpy as np
 from scipy.stats import spearmanr
 from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
     cell_line, diseases_of, LOGS_DIR,\
-        cs_filename, disease_run_name, cell_line_run_name,\
+        disease_run_name, cell_line_run_name,\
     cs_on_LM, cs_mith, selected_cs_run_id, \
     cs_log_filename, lincs_metadata_path, chembl_val_log_filename, ic50_file,\
     LINCS_METADATA_PATH, IC50_ONLY,CS_TH, IC50_EFF_TH, CS_DRUG_COLLAPSE_METHOD,\
-        IC50_DRUG_COLLAPSE_METHOD, IC_50_binchen_SD5
+        IC50_DRUG_COLLAPSE_METHOD, IC_50_binchen_SD5,\
+    CS_METHOD, CS_ON_PATHWAYS
 
 from logger import append_run_metadata
 
@@ -112,10 +126,25 @@ def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="p
     agg_dict = {score_col: score_agg, **{col: "first" for col in keep_cols}}
     return df.groupby(drug_col, as_index=False).agg(agg_dict)
 
-def resolve_cs_run_id(  cs_runs_tsv,  disease_run_id,   drug_run_id,   cs_on_LM,  mith,  selected_cs_run_id=None,):
+def _coerce_cs_on_pathways(v):
+    """Normalize CS_ON_PATHWAYS values from cs_runs.tsv (bool / int / str) to bool."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(int(v))
+    return str(v).strip().lower() in ('true', '1', '1.0')
+
+
+def resolve_cs_run_id(cs_runs_tsv, disease_run_id, drug_run_id, cs_on_LM, mith,
+                      CS_METHOD=None, CS_ON_PATHWAYS=None, selected_cs_run_id=None):
     """
-    Retrieve the cs_run_id from cs log file,
-    or return selected_cs_run_id, if provided
+    Retrieve the cs_run_id from cs log file, or return selected_cs_run_id, if provided.
+
+    CS_METHOD and CS_ON_PATHWAYS are optional filters (default None = no filter).
+    They are needed for grid-search use cases where cs_runs.tsv contains multiple
+    rows sharing (disease_run_id, drug_run_id, cs_on_LM, mith) but differing in
+    method / pathways. Old callers that don't pass them keep their previous
+    "most-recent matching row" semantics.
     """
 
     runs = pd.read_csv(cs_runs_tsv, sep="\t")
@@ -132,12 +161,18 @@ def resolve_cs_run_id(  cs_runs_tsv,  disease_run_id,   drug_run_id,   cs_on_LM,
             )
         return selected_cs_run_id
 
-    hit = runs[
+    mask = (
         (runs["disease_run_id"] == disease_run_id) &
         (runs["drug_run_id"] == drug_run_id) &
         (runs["cs_on_LM"] == int(cs_on_LM)) &
         (runs["mith"] == int(mith))
-    ].copy()
+    )
+    if CS_METHOD is not None:
+        mask &= (runs["CS_METHOD"] == CS_METHOD)
+    if CS_ON_PATHWAYS is not None:
+        mask &= runs["CS_ON_PATHWAYS"].apply(_coerce_cs_on_pathways) == bool(CS_ON_PATHWAYS)
+
+    hit = runs[mask].copy()
 
     if len(hit) == 0:
         raise ValueError(
@@ -145,11 +180,16 @@ def resolve_cs_run_id(  cs_runs_tsv,  disease_run_id,   drug_run_id,   cs_on_LM,
             f"disease_run_id={disease_run_id}, "
             f"drug_run_id={drug_run_id}, "
             f"cs_on_LM={int(cs_on_LM)}, "
-            f"mith={int(mith)}"
+            f"mith={int(mith)}, "
+            f"CS_METHOD={CS_METHOD}, "
+            f"CS_ON_PATHWAYS={CS_ON_PATHWAYS}"
         )
 
     if len(hit) > 1:
-        hit["timestamp"] = pd.to_datetime(hit["timestamp"])
+        # cs_runs.tsv mixes dd/mm/yyyy HH:MM (older rows) with ISO-8601
+        # (newer rows). dayfirst=True parses the dd/mm form correctly and
+        # is ignored for the unambiguous ISO form.
+        hit["timestamp"] = pd.to_datetime(hit["timestamp"], dayfirst=True)
         hit = hit.sort_values("timestamp", ascending=False)
 
     return hit.iloc[0]["cs_run_id"]
@@ -482,263 +522,299 @@ def plot_binchen_fig3_style(
     return fig, axes, stats_dict
 
 
-#%%
-if __name__=="__main__":
-    
-    cs_drug_colname = 'pert_iname'  #"pert_iname"
-    cs_perturbagen_colname = 'pert_id'  #"pert_iname"
+# -----------------------------------------------------------------------------
+# Reusable per-conf routine
+# -----------------------------------------------------------------------------
 
-    ic50_drug_colname = "pert_iname" # "drug"
-    ic50_perturbagen_colname = 'pert_id'  #"pert_iname"
+def run_correlation_for_conf(
+    *,
+    cell_line,
+    landmark_disease,
+    landmark_drug,
+    CS_METHOD,
+    cs_mith,
+    cs_on_LM,
+    CS_ON_PATHWAYS,
+    cs_drug_collapse_method,
+    ic50_drug_collapse_method,
+    ic50_only,
+    cell_line_IC50,
+    cs_threshold=-1.5,
+    ic50_threshold=10.0,
+    selected_cs_run_id=None,
+    compute_sd5=False,
+    plot=False,
+    log_to_tsv=False,
+    annotate_top_n=5,
+    verbose=True,
+):
+    """
+    Run the full ChEMBL IC50 vs CS validation routine for one set of
+    hyperparameters. Equivalent to the legacy __main__ block, but parameterized.
 
-    
-    print('running correlations between chembl IC50 and drug rankings for disease:', DISEASE)
-    print(DISEASE, CS_OUT,  cell_line)
-    
-    # get CS filename for current run
-    cs_drug_file= cs_filename
-    cs_run_id = resolve_cs_run_id(cs_runs_tsv=cs_log_filename, disease_run_id=disease_run_name,\
-    drug_run_id=cell_line_run_name, cs_on_LM=cs_on_LM,   mith=cs_mith,\
-        selected_cs_run_id=selected_cs_run_id)
+    Parameters
+    ----------
+    cell_line, landmark_disease, landmark_drug, CS_METHOD, cs_mith, cs_on_LM,
+    CS_ON_PATHWAYS
+        Pre-MITHrIL / pre-CS hyperparameters that identify a unique row in
+        cs_runs.tsv (and therefore a unique CS output file).
 
-        
-    print("Resolved cs_run_id:", cs_run_id)
-    cs_drug_file = f"{cs_run_id}.tsv"
-    print("Using CS file:", CS_OUT / cs_drug_file)
-    
-    dr_uncollapsed = load_drug_rankings(CS_OUT, filename = cs_drug_file)
-    dr_uncollapsed = add_pert_iname_to_cs(dr_uncollapsed, LINCS_METADATA_PATH)
-    print(dr_uncollapsed.shape, 'drugs ')
-    dr=collapse_profiles_to_drug(in_df=dr_uncollapsed, drug_col=cs_drug_colname, how=CS_DRUG_COLLAPSE_METHOD)
-    print(dr.shape, 'drugs ')
+    cs_drug_collapse_method, ic50_drug_collapse_method, ic50_only,
+    cell_line_IC50, cs_threshold, ic50_threshold
+        Validation hyperparameters applied on top of the resolved CS file.
+        cell_line_IC50 may be a cell-line string or None ("use all cell
+        lines in the IC50 file").
 
+    selected_cs_run_id : optional override. If provided, skips resolution.
+    compute_sd5 : if True, also compute spearman / precision / recall against
+        the BinChen 2017 SD5 sRGES table for the same disease.
+    plot : if True, save a Bin Chen Fig.3-style plot to IMG_DIR.
+    log_to_tsv : if True, append the summary dict as a row in
+        chembl_val_log_filename.
+
+    Returns
+    -------
+    classified_df : pd.DataFrame
+    pr_metrics : dict
+    summary : dict
+    """
+    cs_drug_colname = 'pert_iname'
+    ic50_drug_colname = 'pert_iname'
     ic50_score_col = 'standard_value'
-    ic50_uncollapsed, ic50_log_data=load_IC50(ic50_file, DISEASE, cell_line=cell_line, IC50_ONLY=IC50_ONLY, IC_50_binchen_SD5=IC_50_binchen_SD5)#, median_IC50=median_IC50)
-    print(ic50_uncollapsed.shape, 'drugs with IC50 value for cell line', cell_line)
-    ic50 = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
-                                      how=IC50_DRUG_COLLAPSE_METHOD)
-    print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
-    
-    
-    
-    # merge on common drugs
-    merged = pd.merge(dr, ic50, left_on=cs_drug_colname, right_on=ic50_drug_colname, how="inner", suffixes=("_dr","_ic50"))
-    
-    merged = merged.dropna(subset=["connectivity_score",ic50_score_col]).copy()
-    print('merged data on common drugs:', merged.shape)
-    
-    #%%% COMPARISON BETWEEN CALCULATED MEDIANS AND BIN CHEN PRECOMPUTED MEDIANS
-    # test_drug = "vinblastine"
-    # tmp = ic50_uncollapsed[ic50_uncollapsed["pert_iname"] == test_drug].copy()
-    # print(tmp[["pert_iname","pert_id",ic50_score_col]])
-    # print("manual median:", tmp[ic50_score_col].median())
-    # print("manual mean:", tmp[ic50_score_col].mean())
-    # tmp[ic50_score_col].tail().median()
-    # #%%
-    # ic50_medians = collapse_profiles_to_drug(in_df=ic50_uncollapsed, score_col=ic50_score_col,drug_col=ic50_drug_colname, \
-    #                               how=IC50_DRUG_COLLAPSE_METHOD, keep_cols=['standard_value_median'])
 
+    # ---- resolve identifiers from upstream params ----
+    disease = diseases_of[cell_line]
+    disease_run_id = disease + ('_LM' if landmark_disease else '')
+    drug_run_id = cell_line + ('_LM' if landmark_drug else '')
+    cs_out_dir = CS_DIR / 'output' / disease_run_id
 
-    
+    if verbose:
+        print('running correlations between chembl IC50 and drug rankings for disease:', disease)
+        print(disease, cs_out_dir, cell_line)
 
-    # diff=ic50_medians[ic50_medians['standard_value']!=ic50_medians['standard_value_median']]
-    # print(DISEASE, len(diff), len(ic50_medians))
-    # diff.to_excel(LOGS_DIR/f'SD8{DISEASE}_IC50_different_medians.xlsx', sheet_name=DISEASE)
+    cs_run_id = resolve_cs_run_id(
+        cs_runs_tsv=cs_log_filename,
+        disease_run_id=disease_run_id,
+        drug_run_id=drug_run_id,
+        cs_on_LM=cs_on_LM,
+        mith=cs_mith,
+        CS_METHOD=CS_METHOD,
+        CS_ON_PATHWAYS=CS_ON_PATHWAYS,
+        selected_cs_run_id=selected_cs_run_id,
+    )
+    cs_drug_file = f"{cs_run_id}.tsv"
+    if verbose:
+        print("Resolved cs_run_id:", cs_run_id)
+        print("Using CS file:", cs_out_dir / cs_drug_file)
 
-    
-    #%%# calculate spearman coefficient between
-    #  cell_line cells drug rankings vs IC50s
-    # Following Bin Chen 2017, more negative reversal score 
-    # (RGES/CS) should be associated with stronger efficacy (lower IC50).
-    # We report rho for (CS vs IC50) and (CS vs log10(IC50)).
+    # ---- load CS rankings ----
+    dr_uncollapsed = load_drug_rankings(cs_out_dir, filename=cs_drug_file)
+    dr_uncollapsed = add_pert_iname_to_cs(dr_uncollapsed, LINCS_METADATA_PATH)
+    if verbose:
+        print(dr_uncollapsed.shape, 'drugs ')
+    dr = collapse_profiles_to_drug(
+        in_df=dr_uncollapsed,
+        drug_col=cs_drug_colname,
+        how=cs_drug_collapse_method,
+    )
+    if verbose:
+        print(dr.shape, 'drugs ')
+
+    # ---- load IC50 ----
+    ic50_uncollapsed, ic50_log_data = load_IC50(
+        ic50_file, disease,
+        cell_line=cell_line_IC50,
+        IC50_ONLY=ic50_only,
+        IC_50_binchen_SD5=IC_50_binchen_SD5,
+    )
+    if verbose:
+        print(ic50_uncollapsed.shape, 'drugs with IC50 value for cell line', cell_line_IC50)
+    ic50 = collapse_profiles_to_drug(
+        in_df=ic50_uncollapsed,
+        score_col=ic50_score_col,
+        drug_col=ic50_drug_colname,
+        how=ic50_drug_collapse_method,
+    )
+    if verbose:
+        print(ic50.shape, 'drugs with IC50 value for cell line', cell_line_IC50)
+
+    # ---- merge on common drugs ----
+    merged = pd.merge(
+        dr, ic50,
+        left_on=cs_drug_colname, right_on=ic50_drug_colname,
+        how="inner", suffixes=("_dr", "_ic50"),
+    )
+    merged = merged.dropna(subset=["connectivity_score", ic50_score_col]).copy()
+    if verbose:
+        print('merged data on common drugs:', merged.shape)
     merged["log10_ic50"] = np.log10(merged[ic50_score_col])
-    
+
+    # ---- spearman ----
     rho_linear, p_linear = spearmanr(merged["connectivity_score"], merged[ic50_score_col])
     rho_log, p_log = spearmanr(merged["connectivity_score"], merged["log10_ic50"])
-    
-    print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
-    print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
-    
+    if verbose:
+        print('linear IC50: rho=', np.round(rho_linear, 2), ' pval =', np.round(p_linear, 2))
+        print('log IC50: rho=', np.round(rho_log, 2), ' pval =', np.round(p_log, 2))
 
-    
-    #%% Prec/ Rec
-    
+    # ---- precision / recall ----
     classified_df, pr_metrics = classify_ic50_vs_cs(
         merged,
         score_col="connectivity_score",
         ic50_col=ic50_score_col,
-        cs_threshold=CS_TH,
-        ic50_threshold=IC50_EFF_TH,
+        cs_threshold=cs_threshold,
+        ic50_threshold=ic50_threshold,
     )
-    print(
-        "classification:",
-        f"TP={pr_metrics['tp']}, FP={pr_metrics['fp']}, "
-        f"FN={pr_metrics['fn']}, TN={pr_metrics['tn']}, "
-        f"precision={np.round(pr_metrics['precision'], 2)}, "
-        f"recall={np.round(pr_metrics['recall'], 2)}",
-    )
-    
-    #%% Optional: check overlap between our overlap of ic50 vs CS score
-    # and BinChen's overlap of ic50vs sRGES:
-    
-    BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
-                                 sheet_name=DISEASE)
-    overlap_BC = set(merged.pert_iname).intersection(set(BC_merged.pert_iname))
-    print(overlap_BC, len(overlap_BC))
-    # Optional: check rho with SD5 data:
-    BC_merged["log10_ic50"] = np.log10(BC_merged[ic50_score_col])
-    
-    rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged[ic50_score_col])
-    rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
-    
-    print('linear IC50 SD5: rho=', np.round(rho_linear_bc,2),' pval =' ,np.round(p_linear_bc, 2))
-    print('log IC50 SD5: rho=', np.round(rho_log_bc, 2),' pval =', np.round(p_log_bc,2))
-    #
-    # # TODO : IMPLEMENT THIS FOR A reasonable threshold for sRGES
-    # BC_classified_df, BC_pr_metrics = classify_ic50_vs_cs(
-    #     BC_merged,
-    #     score_col="sRGES",
-    #     ic50_col=ic50_score_col,
-    #     cs_threshold=CS_TH,
-    #     ic50_threshold=IC50_EFF_TH,
-    # )
-    #%% plot
+    if verbose:
+        print(
+            "classification:",
+            f"TP={pr_metrics['tp']}, FP={pr_metrics['fp']}, "
+            f"FN={pr_metrics['fn']}, TN={pr_metrics['tn']}, "
+            f"precision={np.round(pr_metrics['precision'], 2)}, "
+            f"recall={np.round(pr_metrics['recall'], 2)}",
+        )
 
-    plot_file = IMG_DIR / f"{DISEASE}_{cs_run_id}_{CS_DRUG_COLLAPSE_METHOD}_{IC50_DRUG_COLLAPSE_METHOD}_fig3_style.png"
-    fig, axes, stats_dict = plot_binchen_fig3_style(
-        classified_df = classified_df,
-        metrics=pr_metrics,
-        disease=DISEASE,
-        cell_line_name=cell_line,
-        score_col="connectivity_score",
-        ic50_col=ic50_score_col,
-        drug_label_col=cs_drug_colname,
-        annotate_top_n=5,
-        output_file=plot_file,
-        cs_threshold=CS_TH,
-        ic50_threshold=IC50_EFF_TH,
-    )
-#%% Log metadata
+    # ---- optional SD5 (BinChen 2017 sRGES) overlap and metrics ----
+    sd5_block = {}
+    if compute_sd5:
+        BC_merged = pd.read_excel(
+            DATA_DIR / 'BinChen2017' / 'SD5.xlsx',
+            sheet_name=disease,
+        )
+        overlap_BC = set(merged.pert_iname).intersection(set(BC_merged.pert_iname))
+        if verbose:
+            print(overlap_BC, len(overlap_BC))
+        BC_merged["log10_ic50"] = np.log10(BC_merged[ic50_score_col])
+        rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged[ic50_score_col])
+        rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
+        if verbose:
+            print('linear IC50 SD5: rho=', np.round(rho_linear_bc, 2), ' pval =', np.round(p_linear_bc, 2))
+            print('log IC50 SD5: rho=', np.round(rho_log_bc, 2), ' pval =', np.round(p_log_bc, 2))
+        sd5_block = {
+            "spearman_r_SD5": np.round(rho_linear_bc, 2),
+            "spearman_pval_SD5": np.round(p_linear_bc, 2),
+            "spearman_r_log_SD5": np.round(rho_log_bc, 2),
+            "spearman_pval_log_SD5": np.round(p_log_bc, 2),
+            "n_overlap_BC_SD5": len(overlap_BC),
+        }
 
-    
-    run_metadata_data = {
+    # ---- optional plot ----
+    plot_file = None
+    if plot:
+        plot_file = IMG_DIR / (
+            f"{disease}_{cs_run_id}_{cs_drug_collapse_method}_"
+            f"{ic50_drug_collapse_method}_fig3_style.png"
+        )
+        plot_binchen_fig3_style(
+            classified_df=classified_df,
+            metrics=pr_metrics,
+            disease=disease,
+            cell_line_name=cell_line,
+            score_col="connectivity_score",
+            ic50_col=ic50_score_col,
+            drug_label_col=cs_drug_colname,
+            annotate_top_n=annotate_top_n,
+            output_file=plot_file,
+            cs_threshold=cs_threshold,
+            ic50_threshold=ic50_threshold,
+        )
+
+    # ---- summary (one row in chembl_val_log_filename) ----
+    summary = {
         # identity
         "IC50_validation_run_id": datetime.now().strftime("%d_%m_%Y_%H_%M_%S"),
         "datetime": datetime.now().isoformat(),
 
         # inputs
-        "cs_file": str(CS_OUT / cs_drug_file),
+        "cs_file": str(cs_out_dir / cs_drug_file),
         "ic50_file": str(ic50_file),
         "lincs_metadata_file": str(lincs_metadata_path),
-        "disease_run_id": disease_run_name,
-        "drug_run_id" : cell_line_run_name,
+        "disease_run_id": disease_run_id,
+        "drug_run_id": drug_run_id,
+        "cs_run_id": cs_run_id,
 
-        # parameters
+        # pre-CS hyperparameters
+        "cell_line": cell_line,
+        "landmark_disease": landmark_disease,
+        "landmark_drug": landmark_drug,
+        "CS_METHOD": CS_METHOD,
+        "cs_mith": cs_mith,
+        "cs_on_LM": cs_on_LM,
+        "CS_ON_PATHWAYS": CS_ON_PATHWAYS,
+
+        # validation hyperparameters
         "cs_drug_colname": cs_drug_colname,
         "ic50_drug_colname": ic50_drug_colname,
-        # "cs_value_col": cs_value_col,
-        # "ic50_value_col": ic50_value_col,
-        
-        # sizes
-        "LINCS_drug_collapse_method": CS_DRUG_COLLAPSE_METHOD,
-        "IC50_drug_collapse_method": IC50_DRUG_COLLAPSE_METHOD,
+        "LINCS_drug_collapse_method": cs_drug_collapse_method,
+        "IC50_drug_collapse_method": ic50_drug_collapse_method,
+        "ic50_only": ic50_only,
+        "cell_line_IC50": cell_line_IC50,
+        "cs_threshold": cs_threshold,
+        "ic50_threshold": ic50_threshold,
 
+        # sizes
         "n_cs_rows_before_drug_collapse": len(dr_uncollapsed),
         "n_cs_rows_after_drug_collapse": len(dr),
         "n_ic50_rows_before_drug_collapse": len(ic50_uncollapsed),
         "n_ic50_rows_after_drug_collapse": len(ic50),
         "n_merged_rows": len(merged),
         "n_unique_drugs": merged[cs_drug_colname].nunique(),
-        
-        
 
-        # results
-        "spearman_r": np.round(rho_linear,2),
-        "spearman_pval": np.round(p_linear,2),
-        "spearman_r_log": np.round(rho_log,2),
-        "spearman_pval_log": np.round(p_log,2),
-        
-        # optional: correlations with BC data
-        "spearman_r_SD5": np.round(rho_linear_bc,2),
-        "spearman_pval_SD5": np.round(p_linear_bc,2),
-        "spearman_r_log_SD5": np.round(rho_log_bc,2),
-        "spearman_pval_log_SD5": np.round(p_log_bc,2),
-        "precision_SD5": np.round(BC_pr_metrics["precision"], 4),
-        "recall_SD5": np.round(BC_pr_metrics["recall"], 4),
-        
-        # precision recall metrics
+        # spearman
+        "spearman_r": np.round(rho_linear, 2),
+        "spearman_pval": np.round(p_linear, 2),
+        "spearman_r_log": np.round(rho_log, 2),
+        "spearman_pval_log": np.round(p_log, 2),
+
+        # precision/recall
         "tp": pr_metrics["tp"],
         "fp": pr_metrics["fp"],
         "fn": pr_metrics["fn"],
         "tn": pr_metrics["tn"],
-        "precision": np.round(pr_metrics["precision"], 4),
-        "recall": np.round(pr_metrics["recall"], 4),
+        "precision": (np.round(pr_metrics["precision"], 4)
+                      if pd.notna(pr_metrics["precision"]) else np.nan),
+        "recall": (np.round(pr_metrics["recall"], 4)
+                   if pd.notna(pr_metrics["recall"]) else np.nan),
 
         # output
-        "output_plot_file": str(plot_file)
+        "output_plot_file": str(plot_file) if plot_file is not None else None,
     }
-    
-    run_metadata_data.update(ic50_log_data)
+    summary.update(sd5_block)
+    summary.update(ic50_log_data)
 
-    append_run_metadata(chembl_val_log_filename, run_metadata_data)
-    
+    if log_to_tsv:
+        append_run_metadata(chembl_val_log_filename, summary)
 
-#%%   
-    # #%%
-    # # todo: raccogliere i calcoli di sopra in un dizionario che
-    # # abbia tutte le voci, e riempirlo per tutte le disease e eprt time
-    # # renderlo poi un dizionario, e traslare tutto su ntobeook (lo stesso di cehmbl validation)
-    # # per printare il dataframe per bene. 
-    
-    # # salvare eventualmente in un dizionario a parte,
-    # # i valori di IC50_drugs, common_drugs, overlap Drugs
-    # data_of = {}
-    # for cell_line in ['MCF7','HEPG2','HT29']:
-    #     print('-----------------------',cell_line)
-    #     disease = diseases_of[cell_line]
-    #     ic50 = load_IC50(disease, cell_line)
-    #     BC_merged = df=pd.read_excel(DATA_DIR/'BinChen2017'/'SD5.xlsx',\
-    #                                  sheet_name=disease)
-    #     print(ic50.shape, 'drugs with IC50 value for cell line', cell_line)
-    
-    #     for pert_time in ['6h', '24h']:
-    #         cs_out=CS_DIR/'output'/disease+'_2025_'+pert_time
-    #         print(cell_line, 'pert time',pert_time)
-    #         dr=load_drug_rankings(cs_out)
-    
-    #         merged = pd.merge(dr, ic50, on="drug", how="inner", suffixes=("_dr","_ic50"))
-    #         merged = merged.dropna(subset=["connectivity_score","standard_value_median"]).copy()
-    #         print('merged data on common drugs:', merged.shape)
-            
-    #         overlap_BC = set(merged.drug).intersection(set(BC_merged.pert_iname))
-    #         print('overlap between merged data with MCS vs merged data with sRGES from BinCHen2017', len(overlap_BC))
-            
-    #         merged["log10_ic50"] = np.log10(merged["standard_value_median"])
-    
-    #         rho_linear, p_linear = spearmanr(merged["connectivity_score"], merged["standard_value_median"])
-    #         rho_log, p_log = spearmanr(merged["connectivity_score"], merged["log10_ic50"])
-    
-    #         print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
-    #         print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
-            
-    #         BC_merged["log10_ic50"] = np.log10(BC_merged["standard_value"])
-            
-    #         BC_rho_linear, BC_p_linear = spearmanr(BC_merged["sRGES"], BC_merged["standard_value"])
-    #         BC_rho_log, BC_p_log = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
-            
-    #         print('linear IC50: rho=', np.round(rho_linear,2),' pval =' ,np.round(p_linear, 2))
-    #         print('log IC50: rho=', np.round(rho_log, 2),' pval =', np.round(p_log,2))
-            
-    #         data_of[disease+'_'+pert_time] = [ic50.shape[0], dr.shape[0],\
-    #                                           merged.shape[0],BC_merged.shape[0],\
-    #                                         len(overlap_BC),rho_linear, p_linear,\
-    #                                             rho_log, p_log, BC_rho_linear,\
-    #                                             BC_p_linear, BC_rho_log, BC_p_log]
-                
-    
-    # data = pd.DataFrame(data_of).transpose()
-    # data.columns= ['n_IC50','n_MCS', 'n_MCSvIC50', \
-    #                                         'n_sRGESvIC50','n_overlapSRGESvMCS',\
-    #                                         'rho','p','rho_log','p_log',\
-    #                                         'rho_sRGES', 'p_sRGES','rho_log_sRGES',\
-    #                                             'p_log_sRGES']
+    return classified_df, pr_metrics, summary
+
+
+#%%
+if __name__ == "__main__":
+    # Run the routine using conf.py defaults — preserves the original
+    # single-disease interactive behavior.
+
+    # The landmark flags are derived from the run-name suffixes that conf.py
+    # already computed. Keeps a single source of truth.
+    landmark_disease_flag = disease_run_name.endswith('_LM')
+    landmark_drug_flag = cell_line_run_name.endswith('_LM')
+
+    classified_df, pr_metrics, summary = run_correlation_for_conf(
+        cell_line=cell_line,
+        landmark_disease=landmark_disease_flag,
+        landmark_drug=landmark_drug_flag,
+        CS_METHOD=CS_METHOD,
+        cs_mith=cs_mith,
+        cs_on_LM=cs_on_LM,
+        CS_ON_PATHWAYS=CS_ON_PATHWAYS,
+        cs_drug_collapse_method=CS_DRUG_COLLAPSE_METHOD,
+        ic50_drug_collapse_method=IC50_DRUG_COLLAPSE_METHOD,
+        ic50_only=IC50_ONLY,
+        cell_line_IC50=cell_line,
+        cs_threshold=CS_TH,
+        ic50_threshold=IC50_EFF_TH,
+        selected_cs_run_id=selected_cs_run_id,
+        compute_sd5=True,
+        plot=True,
+        log_to_tsv=True,
+    )
+
+
