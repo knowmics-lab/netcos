@@ -96,24 +96,34 @@ def get_signature_ids_list_from_cs_input(cs_input_dir, mith=1):
     """
     Return signature/drug IDs available for the current CS-input run.
 
-    Expected direct-FC drug input format:
-        <drug_id>_signature_gene_id.pkl
+    File naming:
+        DEG drug input  (mith=0): <drug_id>_signature_gene_id.pkl
+        MITHrIL drug    (mith=1): <drug_id>.pkl
 
-    Backward-compatible fallback:
-        <signature_id>.pkl
+    Both filenames end in ".pkl", so the mith=1 branch must explicitly
+    exclude the DEG pkls when both file types coexist in cs_input_dir
+    (which is the case after the 06/05/2026 BinChen DEG preprocessing).
     """
-    
-    
-    suffix= "_signature_gene_id.pkl" if not mith else ".pkl"
-    
     files = os.listdir(cs_input_dir)
 
-    run_files = sorted([f for f in files if f.endswith(suffix)])
+    if mith:
+        suffix = ".pkl"
+        run_files = sorted([
+            f for f in files
+            if f.endswith(suffix) and not f.endswith("_signature_gene_id.pkl")
+        ])
+    else:
+        suffix = "_signature_gene_id.pkl"
+        run_files = sorted([f for f in files if f.endswith(suffix)])
+
     if run_files:
         return [f[:-len(suffix)] for f in run_files]
-    
-    #back compatibility
-    return sorted([     os.path.splitext(f)[0]  for f in files  if f.endswith(".pkl")])
+
+    # back compatibility: only triggered if no files matched above
+    return sorted([
+        os.path.splitext(f)[0] for f in files
+        if f.endswith(".pkl") and not f.endswith("_signature_gene_id.pkl")
+    ])
 
 
 def get_common_genes(disease_signature, drug_signature):

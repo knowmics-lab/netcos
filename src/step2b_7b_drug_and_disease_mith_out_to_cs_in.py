@@ -142,5 +142,5 @@ def run_drugs():
 #%%
 
 if __name__ == "__main__":
-    # run_disease()
+    run_disease()
     run_drugs()
