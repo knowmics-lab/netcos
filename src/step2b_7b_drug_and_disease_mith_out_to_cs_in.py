@@ -127,19 +127,20 @@ def run_drugs():
         raise FileNotFoundError(f"No drug MITHrIL outputs found in: {MITH_OUT_DRUG}")
 
     for in_file, out_file in jobs:
-        meta = convert_one_file(in_file, out_file)
-
-        log_row = {
-            "timestamp": TIMESTAMP,
-            "step": STEP_NAME,
-            "mode": "drug",
-            "disease": disease_run_name,
-            **meta,
-        }
-
-        append_run_metadata(LOG_FILE, log_row)
+        if not os.path.isfile(in_file):
+            meta = convert_one_file(in_file, out_file)
+    
+            log_row = {
+                "timestamp": TIMESTAMP,
+                "step": STEP_NAME,
+                "mode": "drug",
+                "disease": disease_run_name,
+                **meta,
+            }
+    
+            append_run_metadata(LOG_FILE, log_row)
 #%%
 
 if __name__ == "__main__":
-    run_disease()
+    # run_disease()
     run_drugs()
