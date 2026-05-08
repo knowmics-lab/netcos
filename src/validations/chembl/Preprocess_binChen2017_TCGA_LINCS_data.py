@@ -92,7 +92,7 @@ def write_cs_drug_inputs(lincs_fc, drug_md, out_dir, overwrite=False):
 
 #%%
 print(' Load LINCS signatures')
-lincs_rdata = LINCS_BC_DATA / "lincs_signatures_cmpd_landmark.Rdata"
+lincs_rdata = LINCS_BC_DATA / "lincs_signatures_cmpd_landmark.RData"
 result = pyreadr.read_r(lincs_rdata) # also works for Rds
 print(result.keys()) # 'lincs_signatures'
 

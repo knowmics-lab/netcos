@@ -157,24 +157,40 @@ mith_threads = 10
 # hyperparameters
 cs_batch_threads = 1
 cs_mith = 0 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
-cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
-CS_METHOD ="bin_chen_disease_sorted"
+cs_on_LM = 1 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
+CS_METHOD ="bin_chen_disease_sorted" #bin_chen
 CS_ON_PATHWAYS = False # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
 
 # CS functions
 
 
-if (cs_mith == 0 and CS_ON_PATHWAYS==1):
-    raise ValueError("Cannot load pathway signatures for DEG signatures.\
-                     Set cc_mith to 1 and run MITHrIL propagations")
-if (cs_on_LM == 1 and CS_ON_PATHWAYS==1):
-    raise ValueError("Cannot filter for landmark genes on pathways")
+def validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS):
+    """
+    Raise ValueError if a (cs_mith, cs_on_LM, CS_ON_PATHWAYS) combination is
+    not supported. Used both at conf import time (against this file's defaults)
+    and per-combo by the multi-conf wrapper (call_cs_batch_for_different_confs.py).
+    """
+    if cs_mith == 0 and CS_ON_PATHWAYS == 1:
+        raise ValueError("Cannot load pathway signatures for DEG signatures."
+                         " Set cs_mith to 1 and run MITHrIL propagations")
+    if cs_on_LM == 1 and CS_ON_PATHWAYS == 1:
+        raise ValueError("Cannot filter for landmark genes on pathways")
+
+# fail fast if the defaults in this conf are inconsistent
+validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS)
 
 
-def make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD):
-# cs_filename = None #'mith_connectivity_score.tsv'
+def make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD, cs_out=None):
+    """
+    Build the timestamped output filename for a CS run.
 
-# if cs_filename is None:
+    cs_out: optional Path. If None, falls back to module-level CS_OUT
+        (i.e. the disease_run_name dictated by this conf.py). The wrapper
+        passes its own cs_out so non-default landmark_disease lands in the
+        right directory.
+    """
+    if cs_out is None:
+        cs_out = CS_OUT
     now = datetime.now()
     datetime_string = now.strftime("%d_%m_%Y_%H_%M")
     mith = "_mith" if cs_mith == 1 else "_DEG"
@@ -183,7 +199,7 @@ def make_cs_filename(cs_mith, cs_on_LM, CS_ON_PATHWAYS, CS_METHOD):
     score = "_"+CS_METHOD
     cs_filename = datetime_string + mith + LM + pathways + score + "_connectivity_score.tsv"
 
-    connectivity_dataset_filename=CS_OUT/cs_filename
+    connectivity_dataset_filename = cs_out / cs_filename
     cs_id = Path(cs_filename).stem
     return connectivity_dataset_filename, cs_id
 
