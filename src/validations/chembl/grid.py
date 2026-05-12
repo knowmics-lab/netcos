@@ -39,7 +39,7 @@ For non-threshold params, also add the field to EvalConfig and to the
 """
 
 # ===================== Pre-MITHrIL and pre-CS =====================
-# Mirrors the conf.py knobs. Single source of truth for the CS sweep.
+# Mirrors the conf.py hyperparameters. Single source of truth for the CS sweep.
 cell_lines        = ['HEPG2', 'MCF7', 'HT29']
 landmark_diseases = [False, True]
 landmark_drugs    = [True]                                    # BinChen drug data is already LM only

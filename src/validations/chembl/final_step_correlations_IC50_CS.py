@@ -787,7 +787,7 @@ def run_correlation_for_conf(
     return classified_df, pr_metrics, summary
 
 
-#%%
+
 if __name__ == "__main__":
     # Run the routine using conf.py defaults — preserves the original
     # single-disease interactive behavior.
@@ -809,7 +809,7 @@ if __name__ == "__main__":
         ic50_drug_collapse_method=IC50_DRUG_COLLAPSE_METHOD,
         ic50_only=IC50_ONLY,
         cell_line_IC50=cell_line,
-        cs_threshold=CS_TH,
+        cs_threshold=-0.1,
         ic50_threshold=IC50_EFF_TH,
         selected_cs_run_id=selected_cs_run_id,
         compute_sd5=True,

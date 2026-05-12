@@ -91,37 +91,12 @@ def rank_genes(drug_signature, disease_signature, drug_col_name, disease_col_nam
         NumPy array where the indices are sorted disease gene indexes 
         and the values are indexes of corresponding sorted drug genes.
     '''
-    sorted_drug_genes = drug_signature.sort_values(by=drug_col_name).reset_index(drop=True)
+    sorted_drug_genes = drug_signature.sort_values(by=drug_col_name, ascending=False).reset_index(drop=True)
     sorted_disease_genes = disease_signature.sort_values(by=disease_col_name)
 
     merged_data_on_disease_indexes = pd.merge(sorted_disease_genes,sorted_drug_genes.reset_index(), on=id_col)
 
     V = merged_data_on_disease_indexes['index'].to_numpy()
-    return V
-
-def rank_genes_old(drug_signature, disease_signature, drug_col_name, disease_col_name):
-    '''
-    Compute the array V of sorted drug gene indexes, indexed by sorted disease
-    indexes.
-   Input:
-       - drug_signature: pd.DataFrame with columns ['gene_id', drug_col_name, ...]
-       - disease_signature: pd.DataFrame with columns ['gene_id', disease_col_name, ...]
-       - drug_col_name: str, column name to sort drug_signature by
-       - disease_col_name: str, column name to sort disease_signature by
-    Output:
-       NumPy array where the indices are sorted disease gene indexes 
-       and the values are indexes of corresponding sorted drug genes.
-   '''
-    
-    # Sort genes in both datasets:
-    sorted_drug_genes=drug_signature.sort_values(by=drug_col_name).reset_index(drop=True)
-    sorted_disease_genes=disease_signature.sort_values(by=disease_col_name)
-    
-    # Merge dataset and keep disease index sorting
-    merged_data_on_disease_indexes = pd.merge(sorted_disease_genes, sorted_drug_genes.reset_index(), on='gene_id')
-    
-    # Extract drug index of sorted genes
-    V=merged_data_on_disease_indexes['index'].to_numpy() 
     return V
 
 def compute_KS_disease_sorted(disease_disregulated_genes, V, drug_genes):

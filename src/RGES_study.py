@@ -37,26 +37,26 @@ score_type='bin_chen'#'lamb'#'sirota'#
 # score_type='evil_twin'#'lamb'#'sirota'#
 
 # Length of drug gene signature:
-r=2159#14812#9892
+r=978#14812#9892
 
 # Length of disease up regulated signature:
 # set to s_up=int(r/2) to sample drug spectrum
-s_up=int(r/2)#10#7884#4455
+s_up=int(70/2)#10#7884#4455
 
 # Length of disease down regulated signature:
 # set to s_down=int(r/2) to sample drug spectrum
-s_down=int(r/2)#10#6928#3954
+s_down=int(70/2)#10#6928#3954
 
 # Number of random iterations:
 n_iterations=10000
 
-#%% sample connectivity score distribution over of random rankings of r genes:
+# sample connectivity score distribution over of random rankings of r genes:
     
 start=time.time()
 css=np.round(montecarlo_connectivity(s_up, s_down, r, n_iterations, score_type=score_type), 3)
 print('iterations:', n_iterations,'\nr=',r,'\ntime:', time.time()-start)
 
-#%%
+#
    
 imgname='up'+str(s_up)+'down'+str(s_down)+'r'+str(r)+score_type
 xlabel='Connectivity score'

@@ -19,7 +19,7 @@ from datetime import datetime
 # LINCS data parameters
 #######################
 
-landmark_disease = False  # only select landmark genes from signature data 
+landmark_disease = True  # only select landmark genes from signature data 
 LM_flag_disease = ''
 if landmark_disease:
     LM_flag_disease = '_LM'
@@ -156,9 +156,9 @@ mith_threads = 10
 
 # hyperparameters
 cs_batch_threads = 1
-cs_mith = 1 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
+cs_mith = 0 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 1 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
-CS_METHOD ="bin_chen" #bin_chen
+CS_METHOD ="bin_chen" #bin_chen_disease_sorted
 CS_ON_PATHWAYS = False # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
 
 # CS functions
