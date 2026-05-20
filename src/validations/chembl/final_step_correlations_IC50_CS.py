@@ -2,52 +2,73 @@
 # -*- coding: utf-8 -*-
 
 """
-Compute correlations and classification metrics between a drug-ranking score (e.g., RGES/sRGES/NetCos)
-and ChEMBL IC50 values for MCF7, HepG2, and HT29 (Bin Chen 2017 validation).
-
--Spearman correlation
-- Precision/recall of IC50 vs drug ranking score
-
-Inputs
-------
-1) Drug ranking file (CSV/TSV): must contain at least two columns
-   - "compound" (drug name or InChIKey)
-   - "score"    (your ranking value; more negative/positive as per your method)
-   Optional columns are ignored.
-
-2) IC50 file(s) from Bin Chen 2017 Supplementary Data (CSV or XLSX).
-   - If XLSX: the file may have one or multiple sheets; the script will read all sheets
-     and look for columns that map to ["compound", "cell_line", "ic50"].
-   - If CSV/TSV: same expectation.
-   - If you have both Supplementary Data 3 and 8, you can pass multiple files; they will be concatenated.
-
-Assumptions
------------
-- IC50 units are consistent within the file(s) (often µM in the Supplementary Data).
-- Multiple IC50 measurements per (compound, cell_line) are reduced by median, as in the paper.
-- Join key is "compound" (case-insensitive). If both datasets have an "inchi_key" column,
-  set --join-key inchi_key to join on that instead.
+Compute correlations and classification metrics between a drug-ranking score
+(e.g. RGES / sRGES / NetCoS connectivity score) and ChEMBL IC50 values for
+MCF7, HepG2, and HT29 — the Bin Chen 2017 validation set.
 
 Outputs
 -------
-- Prints a small summary table with N, Spearman rho, and p-value for each cell line.
-- Optionally writes the merged tables per cell line to CSV for inspection (--out-dir).
+- Spearman correlation between the drug-ranking score and the median IC50
+  (linear and log10 scales).
+- Precision / recall at user-defined CS and IC50 thresholds.
+- Optional comparison against BinChen2017 SD5 sRGES values (same disease).
+- Optional Bin Chen Fig.3-style scatter plot saved under `IMG_DIR`.
+- Optional append of a one-row summary to `chembl_val_log_filename`.
 
-Usage
------
-python chembl_validation_spearman.py \
-  --rankings path/to/your_drug_rankings.csv \
-  --ic50 path/to/SuppData8.xlsx path/to/SuppData3.xlsx \
-  --cell-lines MCF7 HepG2 HT29 \
-  --score-column score \
-  --compound-column compound \
-  --join-key compound \
-  --out-dir results/
+Inputs (resolved via `src/conf.py` — no CLI)
+--------------------------------------------
+- CS rankings TSV produced by the NetCoS connectivity-score step, picked
+  out of `logs/cs_runs.tsv` by `loader.pick_canonical_cs_run` from the
+  upstream hyperparameters (CS_METHOD, cs_mith, cs_on_LM, CS_ON_PATHWAYS,
+  landmark_disease, landmark_drug, cell_line).
+- `BinChen2017/SD8.xlsx` — raw ChEMBL IC50 per disease (loaded by
+  `loader.load_IC50`). Carries `pert_iname`, `pert_id`, `standard_value`,
+  `standard_value_median`, `standard_inchi`, etc.
+- `BinChen2017/SD5.xlsx` — BinChen sRGES + IC50 reference table per
+  disease (used only when `compute_sd5=True`).
+
+Merge semantics
+---------------
+Bin Chen 2017 joins drug-side tables on InChI (the canonical chemical
+identifier), so this script follows the same convention via
+`_merge_cs_ic50_inchi_first`:
+
+  Pass 1 (primary): inner merge of CS rankings vs ChEMBL IC50 on
+                    `standard_inchi` for rows whose InChI is non-empty on
+                    both sides.
+  Pass 2 (fallback): for rows not matched in pass 1, an inner merge on
+                    `pert_iname`. Keeps coverage when InChI is missing on
+                    either side; degenerates to the legacy single-pass
+                    `pert_iname` merge when neither side carries InChI.
+
+The SD5 overlap reporting (in the `compute_sd5` block) also prefers InChI
+and falls back to `pert_iname` when SD5 doesn't expose `standard_inchi`.
+
+Where `standard_inchi` comes from on each side
+----------------------------------------------
+- IC50 side: read directly from SD8 by `loader.load_IC50` when the column
+  exists in the sheet.
+- CS side: BinChen-replication shortcut: `LINCS_id` -> `pert_id` via the
+  LINCS metadata file, then `pert_id` -> `standard_inchi` via SD8 itself.
+  CS rows whose `pert_id` can't be resolved against SD8 are dropped. This
+  path matches the strict BinChen2017 replication regime; once a richer
+  external LINCS -> InChI mapping is available it should replace the SD8
+  shortcut so we stop discarding CS rows that aren't in SD8.
+
+Configuration
+-------------
+All runtime parameters (which CS run to load, which IC50 file, which cell
+line, collapse methods, thresholds) come from `src/conf.py`. Swap
+experiments by copying a `configs/<experiment>/conf.py` over `src/conf.py`
+(see `configs/README.txt`). There is no CLI.
 
 References
 ----------
-- Bin Chen et al., Nature Communications (2017): validation correlates reversal potency with IC50
-  in MCF7 (BRCA), HepG2 (LIHC), HT29 (COAD) using Spearman correlation and median IC50. 
+- Bin Chen et al., Nature Communications (2017): "Reversal of cancer gene
+  expression correlates with drug efficacy and reveals therapeutic
+  targets." Validation correlates reversal potency with IC50 in MCF7
+  (BRCA), HepG2 (LIHC), HT29 (COAD) via Spearman correlation against
+  median IC50.
 """
 
 import os
@@ -85,21 +106,62 @@ from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
 
 from logger import append_run_metadata
 
-from loader import load_drug_rankings, load_IC50
+from loader import load_drug_rankings, load_IC50, pick_canonical_cs_run
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy.stats import spearmanr, linregress, ttest_ind
 
 
-def add_pert_iname_to_cs(cs_df, lincs_metadata_path, cs_id_col="LINCS_id", metadata_id_col="id", metadata_name_col="pert_iname"):
-    """Add pert_iname to CS dataframe by mapping LINCS_id through LINCS metadata."""
-    meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_name_col], dtype="str").drop_duplicates(subset=[metadata_id_col])
-    return cs_df.merge(meta, left_on=cs_id_col, right_on=metadata_id_col, how="left").drop(columns=[metadata_id_col])
+def add_pert_iname_to_cs(cs_df, lincs_metadata_path, cs_id_col="LINCS_id",
+                         metadata_id_col="id", metadata_name_col="pert_iname",
+                         metadata_inchi_col="standard_inchi"):
+    """Add `pert_iname` (and InChI when available) to a CS dataframe by
+    left-joining LINCS metadata on LINCS_id.
+
+    If `metadata_inchi_col` is present in the metadata file, it is also
+    propagated so downstream code can merge CS vs IC50 on InChI (Bin Chen
+    2017 convention). If the column is missing, only `pert_iname` is
+    propagated; this matches the current BinChen-replication regime where
+    InChI on the CS side is sourced from SD8 via
+    `loader.add_pert_id_to_cs` + a downstream pert_id -> SD8 lookup rather
+    than from `lincs_sig_info_new.csv`.
+    """
+    header_cols = pd.read_csv(lincs_metadata_path, nrows=0, dtype="str").columns
+    use_cols = [metadata_id_col, metadata_name_col]
+    if metadata_inchi_col in header_cols:
+        use_cols.append(metadata_inchi_col)
+    meta = pd.read_csv(lincs_metadata_path, usecols=use_cols, dtype="str")\
+        .drop_duplicates(subset=[metadata_id_col])
+    return cs_df.merge(meta, left_on=cs_id_col, right_on=metadata_id_col, how="left")\
+        .drop(columns=[metadata_id_col])
 
 
-def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="pert_iname", how="median", keep_cols=None):
-    """Collapse multiple profiles per drug into one row per drug_col, preserving optional extra columns with 'first'."""
+def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="pert_iname", how="median", keep_cols=None,
+                              srges_kwargs=None):
+    """Collapse multiple profiles per drug into one row per drug_col, preserving optional extra columns with 'first'.
+
+    Parameters
+    ----------
+    how : str, one of {'median', 'mean', 'best', 'srges'}
+        - 'median' / 'mean' / 'best' use a single-column groupby aggregation
+          ('best' == min, since lower CS / lower RGES means stronger reversal).
+        - 'srges' delegates to src/sRGES.py::compute_sRGES, which reproduces
+          Bin Chen 2017's summarized RGES (with per-instance dose/time
+          correction and optional cell-line cor weighting). This requires the
+          input dataframe to also carry the per-signature metadata columns
+          named in `srges_kwargs` (cell_col / dose_col / time_col,
+          default 'cell_id' / 'pert_dose' / 'pert_time'). NetCoS CS values
+          are fed directly 
+
+    srges_kwargs : dict | None
+        Extra keyword arguments forwarded to compute_sRGES when how='srges'.
+        Common keys: cell_col, dose_col, time_col, cell_lines (str | list to
+        restrict to specific LINCS cell lines — yields the Fig.3 per-cell-line
+        variant; None yields the SD6 full-sRGES variant), cell_line_weights
+        (dict mapping cell_id -> cor for the cor*RGES weighting; None to skip
+        it), filter_is_gold, srges_diff_mode.
+    """
     df = in_df.copy()
     if drug_col not in df.columns:
         raise ValueError(f"drug_col '{drug_col}' not found in dataframe")
@@ -114,6 +176,20 @@ def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="p
     df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
     df = df.dropna(subset=[drug_col, score_col]).copy()
 
+    if how == "srges":
+        # Lazy import to keep sRGES.py optional for callers that never use it.
+        from sRGES import compute_sRGES
+        srges_kwargs = dict(srges_kwargs or {})
+        out = compute_sRGES(df, score_col=score_col, drug_col=drug_col,
+            return_full=False, **srges_kwargs)
+        # Match the return shape of the median/mean/best branch: drug_col +
+        # score_col (with sRGES value written into score_col), plus keep_cols.
+        out = out.rename(columns={"sRGES": score_col})
+        if keep_cols:
+            first = df.groupby(drug_col, as_index=False)[keep_cols].first()
+            out = out.merge(first, on=drug_col, how="left")
+        return out
+
     if how == "median":
         score_agg = "median"
     elif how == "mean":
@@ -121,7 +197,7 @@ def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="p
     elif how == "best":
         score_agg = "min"
     else:
-        raise ValueError("how must be one of: 'median', 'mean', 'best'")
+        raise ValueError("how must be one of: 'median', 'mean', 'best', 'srges'")
 
     agg_dict = {score_col: score_agg, **{col: "first" for col in keep_cols}}
     return df.groupby(drug_col, as_index=False).agg(agg_dict)
@@ -193,6 +269,110 @@ def resolve_cs_run_id(cs_runs_tsv, disease_run_id, drug_run_id, cs_on_LM, mith,
         hit = hit.sort_values("timestamp", ascending=False)
 
     return hit.iloc[0]["cs_run_id"]
+
+# -----------------------------------------------------------------------------
+# Merge helpers (CS rankings <-> ChEMBL IC50)
+# -----------------------------------------------------------------------------
+
+def _coalesce_suffixed(merged_df, base_col, suffixes=("_dr", "_ic50")):
+    """If both `base_col + suffixes[0]` and `base_col + suffixes[1]` exist
+    in merged_df, collapse them into a single `base_col` (first non-null
+    wins) and drop the suffixed pair. Used to normalize column schemas
+    across the InChI-keyed and pert_iname-keyed merge passes so they can be
+    concatenated cleanly.
+    """
+    a = base_col + suffixes[0]
+    b = base_col + suffixes[1]
+    if a in merged_df.columns and b in merged_df.columns:
+        merged_df = merged_df.copy()
+        merged_df[base_col] = merged_df[a].combine_first(merged_df[b])
+        merged_df = merged_df.drop(columns=[a, b])
+    return merged_df
+
+
+def _merge_cs_ic50_inchi_first(dr, ic50, *, cs_drug_colname='pert_iname',
+                               ic50_drug_colname='pert_iname',
+                               inchi_col='standard_inchi', verbose=False):
+    """Two-pass inner merge of CS rankings against IC50 measurements.
+
+    Bin Chen 2017 uses InChI as the canonical chemical identifier when
+    joining drug-side tables, so this merge prefers InChI over pert_iname.
+
+    Pass 1 (primary): inner merge on `inchi_col` for rows whose InChI is
+        non-empty on both sides.
+    Pass 2 (fallback): inner merge on `pert_iname` for rows not matched in
+        pass 1. Covers compounds with missing InChI on either side (LINCS
+        metadata not yet augmented, ChEMBL entries with empty standard_inchi,
+        etc.) so we don't lose coverage during the transition.
+
+    The two pass results are normalized to the same column schema before
+    being concatenated. The returned dataframe carries single un-suffixed
+    `pert_iname` and `standard_inchi` columns and behaves like the original
+    single-pass merge result for all downstream consumers.
+    """
+    use_inchi = (
+        inchi_col in dr.columns and inchi_col in ic50.columns
+    )
+
+    if not use_inchi:
+        # Fall back to the legacy single-pass merge.
+        merged = pd.merge(
+            dr, ic50,
+            left_on=cs_drug_colname, right_on=ic50_drug_colname,
+            how='inner', suffixes=('_dr', '_ic50'),
+        )
+        if verbose:
+            print(f"[merge] InChI column '{inchi_col}' not available on both "
+                  f"sides; falling back to single-pass merge on "
+                  f"{cs_drug_colname}.")
+        return merged
+
+    # --- Pass 1: InChI-keyed merge ---
+    dr_inchi_mask = dr[inchi_col].notna() & (dr[inchi_col].astype(str).str.strip() != '')
+    ic50_inchi_mask = ic50[inchi_col].notna() & (ic50[inchi_col].astype(str).str.strip() != '')
+    dr_with_inchi = dr[dr_inchi_mask].copy()
+    ic50_with_inchi = ic50[ic50_inchi_mask].copy()
+
+    if not dr_with_inchi.empty and not ic50_with_inchi.empty:
+        merged_inchi = pd.merge(
+            dr_with_inchi, ic50_with_inchi,
+            on=inchi_col, how='inner',
+            suffixes=('_dr', '_ic50'),
+        )
+        # After merging on InChI, both sides retain their pert_iname
+        # column (suffixed). Coalesce to a single pert_iname.
+        merged_inchi = _coalesce_suffixed(merged_inchi, cs_drug_colname)
+    else:
+        merged_inchi = pd.DataFrame()
+
+    # --- Pass 2: pert_iname fallback ---
+    if cs_drug_colname in merged_inchi.columns and not merged_inchi.empty:
+        matched_inames = set(merged_inchi[cs_drug_colname].dropna().astype(str))
+    else:
+        matched_inames = set()
+
+    dr_left = dr[~dr[cs_drug_colname].astype(str).isin(matched_inames)].copy()
+    ic50_left = ic50[~ic50[ic50_drug_colname].astype(str).isin(matched_inames)].copy()
+
+    if not dr_left.empty and not ic50_left.empty:
+        merged_name = pd.merge(
+            dr_left, ic50_left,
+            left_on=cs_drug_colname, right_on=ic50_drug_colname,
+            how='inner', suffixes=('_dr', '_ic50'),
+        )
+        # pert_iname is single (left_on==right_on collapses it); InChI gets
+        # suffixed if both sides have it -> coalesce.
+        merged_name = _coalesce_suffixed(merged_name, inchi_col)
+    else:
+        merged_name = pd.DataFrame()
+
+    if verbose:
+        print(f"[merge] inchi-matched rows: {len(merged_inchi)}; "
+              f"pert_iname-fallback rows: {len(merged_name)}")
+
+    merged = pd.concat([merged_inchi, merged_name], ignore_index=True, sort=False)
+    return merged
+
 
 # classification and plotting
 
@@ -528,6 +708,7 @@ def plot_binchen_fig3_style(
 
 def run_correlation_for_conf(
     *,
+    disease,
     cell_line,
     landmark_disease,
     landmark_drug,
@@ -552,6 +733,14 @@ def run_correlation_for_conf(
     Run the full ChEMBL IC50 vs CS validation routine for one set of
     hyperparameters. Equivalent to the legacy __main__ block, but parameterized.
 
+    Merge semantics
+    ---------------
+    CS rankings and ChEMBL IC50 are joined via `_merge_cs_ic50_inchi_first`:
+    primary inner merge on `standard_inchi`, fallback inner merge on
+    `pert_iname` for rows with missing InChI on either side. The SD5
+    overlap (when `compute_sd5=True`) is computed on the same key with the
+    same fallback. See the module-level docstring for the full description.
+
     Parameters
     ----------
     cell_line, landmark_disease, landmark_drug, CS_METHOD, cs_mith, cs_on_LM,
@@ -567,7 +756,9 @@ def run_correlation_for_conf(
 
     selected_cs_run_id : optional override. If provided, skips resolution.
     compute_sd5 : if True, also compute spearman / precision / recall against
-        the BinChen 2017 SD5 sRGES table for the same disease.
+        the BinChen 2017 SD5 sRGES table for the same disease. The
+        InChI-vs-pert_iname overlap key actually used is logged in the
+        returned summary dict under `overlap_key_BC_SD5`.
     plot : if True, save a Bin Chen Fig.3-style plot to IMG_DIR.
     log_to_tsv : if True, append the summary dict as a row in
         chembl_val_log_filename.
@@ -592,30 +783,52 @@ def run_correlation_for_conf(
         print('running correlations between chembl IC50 and drug rankings for disease:', disease)
         print(disease, cs_out_dir, cell_line)
 
-    cs_run_id = resolve_cs_run_id(
-        cs_runs_tsv=cs_log_filename,
-        disease_run_id=disease_run_id,
-        drug_run_id=drug_run_id,
-        cs_on_LM=cs_on_LM,
+    # cs_run_id = resolve_cs_run_id(
+    #     cs_runs_tsv=cs_log_filename,
+    #     disease_run_id=disease_run_id,
+    #     drug_run_id=drug_run_id,
+    #     cs_on_LM=cs_on_LM,
+    #     mith=cs_mith,
+    #     CS_METHOD=CS_METHOD,
+    #     CS_ON_PATHWAYS=CS_ON_PATHWAYS,
+    #     selected_cs_run_id=selected_cs_run_id,
+    # )
+    # cs_drug_file = f"{cs_run_id}.tsv"
+    
+    cs_drug_file = pick_canonical_cs_run(
+        disease=disease,
+        landmark_disease_pref=landmark_disease,
+        cs_log_path=None,
+        cs_dir=None,
+        cs_method=CS_METHOD,
         mith=cs_mith,
-        CS_METHOD=CS_METHOD,
-        CS_ON_PATHWAYS=CS_ON_PATHWAYS,
-        selected_cs_run_id=selected_cs_run_id,
+        cs_on_LM=cs_on_LM,
+        cs_on_pathways=CS_ON_PATHWAYS,
+        require_file_on_disk=True,
+        verbose=True,
     )
-    cs_drug_file = f"{cs_run_id}.tsv"
+    
+    cs_run_id = cs_drug_file.split('.')[0]
+    
     if verbose:
-        print("Resolved cs_run_id:", cs_run_id)
         print("Using CS file:", cs_out_dir / cs_drug_file)
+
+    # Bin Chen 2017 joins drug-side tables on InChI. The CS side picks it
+    # up via add_pert_iname_to_cs (when the LINCS metadata file carries
+    # standard_inchi), and the IC50 side picks it up via loader.load_IC50.
+    inchi_col = 'standard_inchi'
 
     # ---- load CS rankings ----
     dr_uncollapsed = load_drug_rankings(cs_out_dir, filename=cs_drug_file)
     dr_uncollapsed = add_pert_iname_to_cs(dr_uncollapsed, LINCS_METADATA_PATH)
     if verbose:
         print(dr_uncollapsed.shape, 'drugs ')
+    dr_keep = [inchi_col] if inchi_col in dr_uncollapsed.columns else []
     dr = collapse_profiles_to_drug(
         in_df=dr_uncollapsed,
         drug_col=cs_drug_colname,
         how=cs_drug_collapse_method,
+        keep_cols=dr_keep,
     )
     if verbose:
         print(dr.shape, 'drugs ')
@@ -629,20 +842,24 @@ def run_correlation_for_conf(
     )
     if verbose:
         print(ic50_uncollapsed.shape, 'drugs with IC50 value for cell line', cell_line_IC50)
+    ic50_keep = [inchi_col] if inchi_col in ic50_uncollapsed.columns else []
     ic50 = collapse_profiles_to_drug(
         in_df=ic50_uncollapsed,
         score_col=ic50_score_col,
         drug_col=ic50_drug_colname,
         how=ic50_drug_collapse_method,
+        keep_cols=ic50_keep,
     )
     if verbose:
         print(ic50.shape, 'drugs with IC50 value for cell line', cell_line_IC50)
 
-    # ---- merge on common drugs ----
-    merged = pd.merge(
+    # ---- merge: InChI primary, pert_iname fallback ----
+    merged = _merge_cs_ic50_inchi_first(
         dr, ic50,
-        left_on=cs_drug_colname, right_on=ic50_drug_colname,
-        how="inner", suffixes=("_dr", "_ic50"),
+        cs_drug_colname=cs_drug_colname,
+        ic50_drug_colname=ic50_drug_colname,
+        inchi_col=inchi_col,
+        verbose=verbose,
     )
     merged = merged.dropna(subset=["connectivity_score", ic50_score_col]).copy()
     if verbose:
@@ -680,9 +897,29 @@ def run_correlation_for_conf(
             DATA_DIR / 'BinChen2017' / 'SD5.xlsx',
             sheet_name=disease,
         )
-        overlap_BC = set(merged.pert_iname).intersection(set(BC_merged.pert_iname))
+        # Overlap with the NetCoS merged result: join on InChI (BinChen
+        # 2017 convention) when both sides carry `standard_inchi`. Falls
+        # back to pert_iname if SD5 doesn't expose InChI, so this also
+        # works on older SD5 sheets. The overlap is a sanity-check count;
+        # the spearman below is computed on BC_merged alone (SD5's own
+        # sRGES against SD5's IC50) and is independent of the join key.
+        if inchi_col in BC_merged.columns and inchi_col in merged.columns:
+            overlap_key = inchi_col
+            cs_inchis = set(
+                merged[inchi_col].dropna().astype(str).str.strip()
+            ) - {''}
+            sd5_inchis = set(
+                BC_merged[inchi_col].dropna().astype(str).str.strip()
+            ) - {''}
+            overlap_BC = cs_inchis.intersection(sd5_inchis)
+        else:
+            overlap_key = cs_drug_colname
+            overlap_BC = set(merged[cs_drug_colname]).intersection(
+                set(BC_merged[cs_drug_colname])
+            )
         if verbose:
-            print(overlap_BC, len(overlap_BC))
+            print(f"SD5 overlap on '{overlap_key}': {len(overlap_BC)} drugs")
+            print(overlap_BC)
         BC_merged["log10_ic50"] = np.log10(BC_merged[ic50_score_col])
         rho_linear_bc, p_linear_bc = spearmanr(BC_merged["sRGES"], BC_merged[ic50_score_col])
         rho_log_bc, p_log_bc = spearmanr(BC_merged["sRGES"], BC_merged["log10_ic50"])
@@ -695,6 +932,7 @@ def run_correlation_for_conf(
             "spearman_r_log_SD5": np.round(rho_log_bc, 2),
             "spearman_pval_log_SD5": np.round(p_log_bc, 2),
             "n_overlap_BC_SD5": len(overlap_BC),
+            "overlap_key_BC_SD5": overlap_key,
         }
 
     # ---- optional plot ----
@@ -798,6 +1036,7 @@ if __name__ == "__main__":
     landmark_drug_flag = cell_line_run_name.endswith('_LM')
 
     classified_df, pr_metrics, summary = run_correlation_for_conf(
+        disease=DISEASE,
         cell_line=cell_line,
         landmark_disease=landmark_disease_flag,
         landmark_drug=landmark_drug_flag,

@@ -43,7 +43,7 @@ For non-threshold params, also add the field to EvalConfig and to the
 cell_lines        = ['HEPG2', 'MCF7', 'HT29']
 landmark_diseases = [False, True]
 landmark_drugs    = [True]                                    # BinChen drug data is already LM only
-CS_METHODs        = ['bin_chen_disease_sorted', 'bin_chen']
+CS_METHODs        = [ 'bin_chen_disease_sorted']#'bin_chen']#
 cs_miths          = [0, 1]
 cs_on_LMs         = [0, 1]
 CS_ON_PATHWAYSs   = [False, True]
@@ -52,9 +52,9 @@ CS_ON_PATHWAYSs   = [False, True]
 # ==================== Validation hyperparameters ===================
 # Validation hyperparameters evaluated by hyperparameter_grid_search_bootstrap.py on top
 # of each CS file. Names mirror the conf.py validation parameters.
-cs_drug_collapse_methods   = ['best', 'median']
-ic50_drug_collapse_methods = ['best', 'median']
-ic50_onlys                 = [True, False]
+cs_drug_collapse_methods   = ['srges','best']#['best', 'median', 'srges']
+ic50_drug_collapse_methods = ['best', 'median', 'srges']
+ic50_onlys                 = [True]#, False]
 
 # Connectivity-score threshold for the "predicted positive" classification.
 # NOTE: -1.5 is calibrated for CS_METHOD='bin_chen_disease_sorted'. For

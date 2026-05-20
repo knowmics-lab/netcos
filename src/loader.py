@@ -11,8 +11,326 @@ from pathlib import Path
 import pandas as pd
 import pickle
 from conf import CS_DIR, TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG,\
-    CHEMBL_INPUT_DATA_DIR, BC_DISEASE_DATA, DISEASE_SIGNATURE_SOURCE
+    CHEMBL_INPUT_DATA_DIR, BC_DISEASE_DATA, DISEASE_SIGNATURE_SOURCE, cs_log_filename
+import conf as _conf  # for conf-default fallbacks in load_cs_run
 from preprocessing_utils import get_drugs_list
+
+
+# ---------------------------------------------------------------------------
+# NetCoS CS-run discovery / picking
+# ---------------------------------------------------------------------------
+#
+# Shared by:
+#   - src/validations/binchen2017/compare_rges_per_disease.py
+#       (per-signature RGES replication: NetCoS CS vs BinChen RGES)
+#   - src/validations/binchen2017/test_sRGES_replication.py
+#       (per-drug sRGES replication: NetCoS CS -> sRGES vs BinChen sRGES)
+
+def cs_out_dir_for(disease, landmark_disease=False, cs_dir=None):
+    """Return the per-disease NetCoS CS output directory.
+
+    Parameters
+    ----------
+    disease : str
+        Disease symbol (e.g. 'LIHC', 'BRCA', 'COAD').
+    landmark_disease : bool
+        If True, points to '<disease>_LM' which holds the landmark-filtered
+        disease-signature runs.
+    cs_dir : Path | None
+        Override the conf-supplied CS root. Default conf.CS_DIR.
+    """
+    base = Path(cs_dir) if cs_dir is not None else CS_DIR
+    suffix = "_LM" if landmark_disease else ""
+    return base / "output" / (disease + suffix)
+
+
+def _parse_cs_run_id_ts(cs_run_id):
+    """Parse the DD_MM_YYYY_HH_MM prefix of a cs_run_id into a Timestamp.
+
+    cs_run_ids are always of the form ``DD_MM_YYYY_HH_MM_<rest>`` (see
+    src/logger.py + src/conf.py::make_cs_filename), which is a more reliable
+    date source than the ``timestamp`` column in cs_runs.tsv (that column
+    historically mixes ``dd/mm/yyyy HH:MM`` with ISO-8601).
+    """
+    parts = str(cs_run_id).split("_")
+    if len(parts) < 5:
+        return pd.NaT
+    try:
+        d, m, y, h, mn = parts[:5]
+        return pd.Timestamp(year=int(y), month=int(m), day=int(d),
+                            hour=int(h), minute=int(mn))
+    except (ValueError, TypeError):
+        return pd.NaT
+
+
+def pick_canonical_cs_run(
+    disease,
+    landmark_disease_pref=False,
+    *,
+    cs_log_path=None,
+    cs_dir=None,
+    cs_method="bin_chen",
+    mith=0,
+    cs_on_LM=1,
+    cs_on_pathways=0,
+    require_file_on_disk=True,
+    verbose=True,
+):
+    """Pick the most recent NetCoS CS run matching the canonical Bin Chen
+    RGES-replication config.
+
+    Defaults match the canonical Bin Chen replication setup:
+        CS_METHOD = 'bin_chen' (NOT 'bin_chen_disease_sorted'),
+        mith = 0, cs_on_LM = 1, CS_ON_PATHWAYS = 0.
+
+    Robustness:
+      1) Sort key is the DD_MM_YYYY_HH_MM prefix parsed from the cs_run_id
+         itself (via _parse_cs_run_id_ts). Falls back to the cs_runs.tsv
+         ``timestamp`` column if the prefix doesn't parse.
+      2) If ``require_file_on_disk`` (default), drop matching rows whose
+         .tsv has been deleted from the local CS output dir — this prevents
+         picking an orphan row left behind after manual cleanup. Skipped
+         rows are listed when verbose=True.
+
+    Parameters
+    ----------
+    disease : str
+        Disease symbol (e.g. 'LIHC').
+    landmark_disease_pref : bool
+        Prefer the landmark-disease '<disease>_LM' rows.
+    cs_log_path : Path | str | None
+        Path to logs/cs_runs.tsv. Defaults to conf.cs_log_filename.
+    cs_dir : Path | None
+        CS output root. Defaults to conf.CS_DIR. Only used for the
+        require_file_on_disk filesystem check.
+    cs_method, mith, cs_on_LM, cs_on_pathways : filter values
+        Pre-CS hyperparameters that identify the canonical Bin Chen run.
+    require_file_on_disk : bool
+        If True (default), skip rows whose .tsv is missing from disk.
+    verbose : bool
+        Print informative messages about which rows were skipped / picked.
+
+    Returns
+    -------
+    str | None
+        The filename (cs_run_id + '.tsv') of the most recent matching run,
+        or None if no match is found.
+    """
+    log_path = Path(cs_log_path) if cs_log_path is not None else Path(cs_log_filename)
+    if not log_path.exists():
+        if verbose:
+            print(f"[pick_canonical_cs_run] cs_runs.tsv not found at {log_path}")
+        return None
+
+    try:
+        df = pd.read_csv(log_path, sep="\t")
+    except Exception as e:
+        if verbose:
+            print(f"[pick_canonical_cs_run] could not read {log_path}: {e}")
+        return None
+
+    suffix = "_LM" if landmark_disease_pref else ""
+    target_disease_run = disease + suffix
+    mask = (
+        (df["disease_run_id"] == target_disease_run)
+        & (df["mith"].astype(int) == int(mith))
+        & (df["cs_on_LM"].astype(int) == int(cs_on_LM))
+        & (df["CS_ON_PATHWAYS"].astype(int) == int(cs_on_pathways))
+        & (df["CS_METHOD"] == cs_method)
+    )
+    hits = df.loc[mask].copy()
+    if hits.empty:
+        if verbose:
+            print(f"[pick_canonical_cs_run] no rows in {log_path.name} match "
+                  f"disease_run_id={target_disease_run} mith={mith} "
+                  f"cs_on_LM={cs_on_LM} CS_ON_PATHWAYS={cs_on_pathways} "
+                  f"CS_METHOD={cs_method!r}")
+        return None
+
+    out_dir = cs_out_dir_for(disease, landmark_disease_pref, cs_dir=cs_dir)
+    candidates, skipped = [], []
+    for _, row in hits.iterrows():
+        run_id = str(row["cs_run_id"])
+        fname = run_id + ".tsv"
+        if require_file_on_disk and not (out_dir / fname).exists():
+            skipped.append(fname)
+            continue
+        ts = _parse_cs_run_id_ts(run_id)
+        if pd.isna(ts):
+            ts = pd.to_datetime(row.get("timestamp"),
+                                 errors="coerce", dayfirst=True)
+        candidates.append((ts, fname))
+
+    if verbose and skipped:
+        print(f"[pick_canonical_cs_run] skipped {len(skipped)} matching "
+              f"cs_runs.tsv row(s) whose .tsv is missing from "
+              f"{out_dir}:")
+        for f in skipped:
+            print(f"    {f}")
+
+    if not candidates:
+        if verbose:
+            print(f"[pick_canonical_cs_run] no canonical CS .tsv exists on disk "
+                  f"for disease={disease!r} landmark_disease_pref={landmark_disease_pref}. "
+                  f"Either re-run cs_batch.py with the canonical config or pass "
+                  f"the .tsv path explicitly.")
+        return None
+
+    candidates.sort(key=lambda x: (pd.isna(x[0]), x[0]))
+    chosen_ts, chosen_fname = candidates[-1]
+    if verbose:
+        print(f"[pick_canonical_cs_run] picked: {chosen_fname}  (ts={chosen_ts})")
+    return chosen_fname
+
+
+def load_cs_run(
+    *,
+    # ----- filters: None means "pull current value from conf.py" -----
+    disease=None,
+    landmark_disease=None,
+    drug_run_id=None,
+    mith=None,
+    cs_on_LM=None,
+    CS_ON_PATHWAYS=None,
+    CS_METHOD=None,
+    # ----- explicit overrides (bypass the filter-based picker) -----
+    selected_cs_run_id=None,
+    cs_file_path=None,
+    # ----- knobs -----
+    cs_log_path=None,
+    cs_dir=None,
+    score_col=None,
+    require_file_on_disk=True,
+    verbose=True,
+):
+    """One-stop loader for a NetCoS CS .tsv produced by cs_batch.py.
+
+    Call with **no arguments** to load the CS run that matches the
+    hyperparameters currently set in src/conf.py — i.e. the run you'd produce
+    by running cs_batch.py right now with the active conf::
+
+        df, path, run_id = load_cs_run()                  # use conf.py defaults
+
+    Common partial overrides::
+
+        df, path, run_id = load_cs_run(CS_METHOD='bin_chen_disease_sorted')
+        df, path, run_id = load_cs_run(disease='BRCA', landmark_disease=False)
+        df, path, run_id = load_cs_run(selected_cs_run_id='13_05_2026_..._connectivity_score')
+        df, path, run_id = load_cs_run(cs_file_path='/abs/path/to/run.tsv')
+
+    Filter semantics:
+        Each filter kwarg (disease, landmark_disease, drug_run_id, mith,
+        cs_on_LM, CS_ON_PATHWAYS, CS_METHOD) accepts an explicit value, or
+        ``None`` to inherit the corresponding conf.py default. Filters are
+        used to query cs_runs.tsv via pick_canonical_cs_run, which:
+          - sorts matches by the DD_MM_YYYY_HH_MM prefix of cs_run_id
+            (more reliable than the timestamp column);
+          - skips rows whose .tsv has been deleted from the local CS output
+            dir (set ``require_file_on_disk=False`` to disable).
+        The most recent surviving row wins.
+
+    Override semantics (in priority order)::
+        cs_file_path  >  selected_cs_run_id  >  filter-based picker
+
+    Returns:
+        (df, resolved_path, cs_run_id)
+        - df            : pandas.DataFrame (full CS .tsv contents)
+        - resolved_path : pathlib.Path of the file actually loaded
+        - cs_run_id     : str (cs_run_id without the '.tsv' suffix)
+
+    If ``score_col`` is supplied, the function validates it exists and
+    coerces it to numeric (rows with non-numeric values are dropped).
+    """
+    # 1) Direct file path bypass.
+    if cs_file_path is not None:
+        path = Path(cs_file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"cs_file_path does not exist: {path}")
+        df = pd.read_csv(path, sep="\t")
+        return _validate_cs_df(df, score_col, path), path, path.stem
+
+    # 2) Resolve conf.py defaults for any filter left as None.
+    if disease is None:
+        disease = _conf.DISEASE
+    if landmark_disease is None:
+        landmark_disease = bool(getattr(_conf, "landmark_disease", False))
+    if drug_run_id is None:
+        drug_run_id = getattr(_conf, "cell_line_run_name", None)
+    if mith is None:
+        mith = int(getattr(_conf, "cs_mith", 0))
+    if cs_on_LM is None:
+        cs_on_LM = int(getattr(_conf, "cs_on_LM", 1))
+    if CS_ON_PATHWAYS is None:
+        CS_ON_PATHWAYS = int(bool(getattr(_conf, "CS_ON_PATHWAYS", False)))
+    if CS_METHOD is None:
+        CS_METHOD = str(getattr(_conf, "CS_METHOD", "bin_chen"))
+    if selected_cs_run_id is None:
+        selected_cs_run_id = getattr(_conf, "selected_cs_run_id", None)
+
+    out_dir = cs_out_dir_for(disease, landmark_disease, cs_dir=cs_dir)
+
+    # 3) Explicit cs_run_id bypass (no filter validation; just open the file).
+    if selected_cs_run_id is not None:
+        run_id = str(selected_cs_run_id)
+        fname = run_id if run_id.endswith(".tsv") else run_id + ".tsv"
+        path = out_dir / fname
+        if not path.exists():
+            raise FileNotFoundError(
+                f"selected_cs_run_id resolves to a path that does not exist: {path}"
+            )
+        if verbose:
+            print(f"[load_cs_run] selected_cs_run_id override -> {path}")
+        df = pd.read_csv(path, sep="\t")
+        bare_run_id = run_id[:-4] if run_id.endswith(".tsv") else run_id
+        return _validate_cs_df(df, score_col, path), path, bare_run_id
+
+    # 4) Filter-based pick from cs_runs.tsv.
+    fname = pick_canonical_cs_run(
+        disease,
+        landmark_disease_pref=landmark_disease,
+        cs_log_path=cs_log_path,
+        cs_dir=cs_dir,
+        cs_method=CS_METHOD,
+        mith=mith,
+        cs_on_LM=cs_on_LM,
+        cs_on_pathways=CS_ON_PATHWAYS,
+        require_file_on_disk=require_file_on_disk,
+        verbose=verbose,
+    )
+    if fname is None:
+        raise FileNotFoundError(
+            "load_cs_run: no CS run found matching:\n"
+            f"  disease={disease}  landmark_disease={landmark_disease}\n"
+            f"  drug_run_id={drug_run_id}\n"
+            f"  mith={mith}  cs_on_LM={cs_on_LM}  CS_ON_PATHWAYS={CS_ON_PATHWAYS}\n"
+            f"  CS_METHOD={CS_METHOD!r}\n"
+            f"Either change those parameters, pass selected_cs_run_id explicitly, "
+            f"or pass cs_file_path explicitly."
+        )
+    path = out_dir / fname
+    df = pd.read_csv(path, sep="\t")
+    bare_run_id = fname[:-4] if fname.endswith(".tsv") else fname
+    return _validate_cs_df(df, score_col, path), path, bare_run_id
+
+
+def _validate_cs_df(df, score_col, source_path):
+    """Helper for load_cs_run: optionally validate & numeric-coerce score_col."""
+    if score_col is None:
+        return df
+    if score_col not in df.columns:
+        raise ValueError(
+            f"score_col {score_col!r} not in {source_path} columns "
+            f"(available: {list(df.columns)})"
+        )
+    df = df.copy()
+    df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
+    df = df.dropna(subset=[score_col]).copy()
+    if df.empty:
+        raise ValueError(
+            f"After numeric coercion of {score_col!r} in {source_path}, "
+            f"no rows remain."
+        )
+    return df
 
 
 def standardize_disease_signature(df, source):
@@ -261,9 +579,18 @@ def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True, IC_50_binchen_S
     
     if IC_50_binchen_SD5==True:
         log_dict = {}
-        df=pd.read_excel(ic50_file,\
-                         sheet_name=cancer_type, header =0, usecols=['pert_iname', 'pert_id','standard_value', 'standard_units',\
-                                     'standard_type', 'cell_line','activity', 'standard_value_median'])
+        # 'standard_inchi' is loaded so downstream merges (e.g. the
+        # CS-vs-IC50 join in final_step_correlations_IC50_CS.py) can use
+        # InChI as primary join key, matching Bin Chen 2017's convention.
+        # Falls back gracefully if SD8 doesn't carry it.
+        sd8_cols = pd.read_excel(ic50_file, sheet_name=cancer_type, nrows=0).columns
+        wanted_cols = ['pert_iname', 'pert_id', 'standard_value', 'standard_units',
+                       'standard_type', 'cell_line', 'activity',
+                       'standard_value_median', 'standard_inchi']
+        use_cols = [c for c in wanted_cols if c in sd8_cols]
+        df = pd.read_excel(ic50_file,
+                           sheet_name=cancer_type, header=0,
+                           usecols=use_cols)
         #filter for cell line
         cell_line = translate_cl(cell_line)
         if cell_line is not None:

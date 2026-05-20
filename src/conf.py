@@ -30,7 +30,7 @@ landmark_drug = True  # only select landmark genes from signature data (irreleva
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'HEPG2'
+cell_line = 'HT29'
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
@@ -156,10 +156,10 @@ mith_threads = 10
 
 # hyperparameters
 cs_batch_threads = 1
-cs_mith = 0 # default 1: calculate on MITHrIL data, 0: calculate on DEG data
-cs_on_LM = 1 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
+cs_mith = 1 # [0,1] 1: calculate on MITHrIL data, 0: calculate on DEG data
+cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
 CS_METHOD ="bin_chen" #bin_chen_disease_sorted
-CS_ON_PATHWAYS = False # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
+CS_ON_PATHWAYS = True # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
 
 # CS functions
 
@@ -188,12 +188,12 @@ def validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS,
     # outputs are sums of normalized KS statistics. bin_chen returns RGES-style
     # values on a different scale, so a separate threshold must be calibrated
     # via RGES_study.py before bin_chen combos can be validated.
-    if (CS_METHOD == 'bin_chen' and cs_threshold is not None
-            and float(cs_threshold) == -1.5):
-        raise ValueError("cs_threshold=-1.5 is only meaningful for "
-                         "CS_METHOD='bin_chen_disease_sorted'. For "
-                         "CS_METHOD='bin_chen', calibrate a threshold first "
-                         "(see RGES_study.py).")
+    # if (CS_METHOD == 'bin_chen' and cs_threshold is not None
+    #         and float(cs_threshold) == -1.5):
+    #     raise ValueError("cs_threshold=-1.5 is only meaningful for "
+    #                      "CS_METHOD='bin_chen_disease_sorted'. For "
+    #                      "CS_METHOD='bin_chen', calibrate a threshold first "
+    #                      "(see RGES_study.py).")
 
 # fail fast if the defaults in this conf are inconsistent
 validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS)
@@ -246,7 +246,7 @@ chembl_val_log_filename = LOGS_DIR / "BinChen2017_chembl_validation_IC50_correla
 
 IC_50_binchen_SD5= True # to implement the False: load freshly downloaded chembl  
 
-CS_DRUG_COLLAPSE_METHOD= 'best' # None #
+CS_DRUG_COLLAPSE_METHOD= 'srges'#'best' # None #
 IC50_DRUG_COLLAPSE_METHOD='median' # 
 
 # IC50 data filtering

@@ -65,6 +65,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 import conf  # noqa: E402
+from loader import cs_out_dir_for, pick_canonical_cs_run as _pick_canonical_cs_run_shared  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -88,11 +89,13 @@ CANONICAL_TAG = "DEG_LM_bin_chen"
 # ---------------------------------------------------------------------------
 # I/O helpers
 # ---------------------------------------------------------------------------
-def cs_out_dir_for(disease, landmark_disease=False):
-    """Return the local CS output directory for this disease."""
-    suffix = "_LM" if landmark_disease else ""
-    return conf.CS_DIR / "output" / (disease + suffix)
-
+# cs_out_dir_for() and pick_canonical_cs_run() now live in src/loader.py so
+# this script and test_sRGES_replication.py share one implementation. The
+# imports are at the top of the file. We keep a thin local wrapper around
+# pick_canonical_cs_run that adds a fallback: if cs_runs.tsv lookup yields
+# nothing, glob the local CS output dir for files containing CANONICAL_TAG
+# (e.g. '_DEG_LM_bin_chen_'). This fallback predates cs_runs.tsv and
+# is kept for backward compat.
 
 def binchen_disease_dir(disease):
     """Return Bin Chen's per-disease data dir on local disk."""
@@ -100,43 +103,15 @@ def binchen_disease_dir(disease):
 
 
 def pick_canonical_cs_run(disease, landmark_disease_pref=False):
+    """Pick the most recent NetCoS CS .tsv matching the Bin Chen canonical
+    config for `disease`. Delegates to loader.pick_canonical_cs_run, then
+    falls back to a CANONICAL_TAG glob if cs_runs.tsv lookup returns None.
     """
-    Pick the most recent NetCoS CS output file that matches the Bin Chen
-    RGES canonical config for `disease`.
-
-    Strategy: read logs/cs_runs.tsv, filter to rows where
-        - disease_run_id == disease (and matches landmark_disease_pref)
-        - mith == 0, cs_on_LM == 1, CS_ON_PATHWAYS == 0
-        - CS_METHOD == 'bin_chen' (NOT 'bin_chen_disease_sorted')
-    return the latest by timestamp.
-
-    Falls back to scanning the local output dir if cs_runs.tsv lookup fails.
-    """
-    suffix = "_LM" if landmark_disease_pref else ""
-    target_disease_run = disease + suffix
-    log_path = Path(conf.cs_log_filename)
-    if log_path.exists():
-        try:
-            df = pd.read_csv(log_path, sep="\t")
-            mask = (
-                (df["disease_run_id"] == target_disease_run)
-                & (df["mith"] == 0)
-                & (df["cs_on_LM"] == 1)
-                & (df["CS_ON_PATHWAYS"] == 0)
-                & (df["CS_METHOD"] == "bin_chen")
-            )
-            hits = df.loc[mask].copy()
-            if len(hits) > 0:
-                # cs_run_id starts with DD_MM_YYYY_HH_MM, sort lexicographically
-                # by the cs_run_id is unreliable across years; use timestamp
-                hits["_ts"] = pd.to_datetime(
-                    hits["timestamp"], errors="coerce", dayfirst=True
-                )
-                hits = hits.sort_values("_ts", na_position="first")
-                return hits.iloc[-1]["cs_run_id"] + ".tsv"
-        except Exception as e:
-            print(f"[warn] could not read {log_path}: {e}")
-
+    chosen = _pick_canonical_cs_run_shared(
+        disease, landmark_disease_pref=landmark_disease_pref
+    )
+    if chosen is not None:
+        return chosen
     # Fallback: glob the local CS output dir for canonical-tag files.
     candidates = sorted(
         cs_out_dir_for(disease, landmark_disease_pref).glob(
@@ -450,7 +425,7 @@ def _parse_args():
                    help="Auto-pick the most recent canonical Bin Chen RGES run "
                         "(mith=0, cs_on_LM=1, CS_ON_PATHWAYS=0, CS_METHOD=bin_chen) "
                         "from logs/cs_runs.tsv.")
-    p.add_argument("--ref", default="lincs_score_0",
+    p.add_argument("--ref", default="lincs_score_1",
                    choices=["lincs_score_0", "lincs_score_1"],
                    help="Bin Chen reference file (per-disease folder). "
                         "lincs_score_0 = all signatures; lincs_score_1 = filtered subset.")

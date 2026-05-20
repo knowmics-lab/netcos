@@ -43,6 +43,9 @@ logs and instructoins/
 instructions/
 logs/
 
+# Debug, testing scripts
+src/other/
+
 
 # Data and outputs (tracked with LFS or stored outside repo)
 /data/

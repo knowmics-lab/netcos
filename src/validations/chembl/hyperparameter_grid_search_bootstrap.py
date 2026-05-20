@@ -74,6 +74,7 @@ class EvalConfig:
     name: str
     # pre-CS
     cell_line: str
+    disease: str
     landmark_disease: bool
     landmark_drug: bool
     CS_METHOD: str
@@ -368,6 +369,7 @@ def main(n_bootstraps=200, ic50_threshold=10.0):
         configs.append(EvalConfig(
             name=name,
             cell_line=cell_line,
+            disease=diseases_of[cell_line],
             landmark_disease=ld_dis,
             landmark_drug=ld_drug,
             CS_METHOD=method,
@@ -409,6 +411,7 @@ def main(n_bootstraps=200, ic50_threshold=10.0):
         print(f"\n=== [{i}/{len(configs)}] {cfg.name} ===")
         try:
             classified_df, pr_metrics, summary = run_correlation_for_conf(
+                disease=cfg.disease,
                 cell_line=cfg.cell_line,
                 landmark_disease=cfg.landmark_disease,
                 landmark_drug=cfg.landmark_drug,
@@ -435,7 +438,6 @@ def main(n_bootstraps=200, ic50_threshold=10.0):
         boot_rows, boot_summary = run_bootstrap(
             classified_df, cfg, n_bootstraps=n_bootstraps,
         )
-
         # merge full-dataset metrics into the per-combo summary
         full_metrics = {
             "precision_full": pr_metrics["precision"],
