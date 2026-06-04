@@ -227,6 +227,7 @@ def compute_sRGES(
     *,
     score_col: str = "RGES",
     drug_col: str = "pert_iname",
+    drug_id_col: str = "LINCS_id",
     cell_col: str = "cell_id",
     dose_col: str = "pert_dose",
     time_col: str = "pert_time",
@@ -287,15 +288,48 @@ def compute_sRGES(
         return pd.DataFrame(columns=cols)
 
     df = rges_df.copy()
-    
-    # load LINCS metadata:
-    lincs_metadata_df= pd.read_csv(LINCS_METADATA_PATH, usecols = ['id', cell_col,  dose_col, time_col], dtype='str')
-    print(df.columns)
-    # Add dose and time to drugs data
-    df = df.merge(lincs_metadata_df,left_on="LINCS_id",  right_on="id", how="left")
-    df = df.drop(columns=["id"])
-    print(df.columns)
 
+    # ------------------------------------------------------------------
+    # Auto-enrich with LINCS metadata IFF the signature-level columns
+    # (cell_col / dose_col / time_col) are not already present.
+    #
+    # The three callers feed compute_sRGES different schemas:
+    #   1) test_sRGES_replication.py BinChen path
+    #        (load_binchen_all_lincs_score): already has cell_id /
+    #         pert_dose / pert_time, but no LINCS_id -> merge would fail.
+    #   2) test_sRGES_replication.py NetCoS path
+    #        (load_netcos_cs[_combined] -> add_lincs_metadata_to_cs):
+    #         already has all metadata columns -> merge would duplicate
+    #         them into _x / _y and break every downstream lookup.
+    #   3) ChEMBL validation
+    #        (collapse_profiles_to_drug(how='srges')): has LINCS_id +
+    #         connectivity_score + pert_iname only -> merge is needed
+    #         to add cell_id / pert_dose / pert_time.
+    #
+    # Doing the merge unconditionally only worked for case (3); the
+    # conditional below makes the function robust to all three.
+    # ------------------------------------------------------------------
+    needed_meta = [cell_col, dose_col, time_col]
+    missing_meta = [c for c in needed_meta if c not in df.columns]
+    if missing_meta:
+        if drug_id_col not in df.columns:
+            raise ValueError(
+                f"compute_sRGES: input dataframe is missing {missing_meta} "
+                f"and also lacks drug_id_col={drug_id_col!r}, so LINCS "
+                f"metadata cannot be joined in. Either pre-enrich the "
+                f"dataframe (e.g. via loader.add_lincs_metadata_to_cs) "
+                f"or pass a drug_id_col that exists in the dataframe."
+            )
+        lincs_metadata_df = pd.read_csv(
+            LINCS_METADATA_PATH,
+            usecols=["id", cell_col, dose_col, time_col],
+            dtype="str",
+        )
+        df = df.merge(
+            lincs_metadata_df, left_on=drug_id_col, right_on="id", how="left"
+        )
+        if "id" in df.columns and "id" != drug_id_col:
+            df = df.drop(columns=["id"])
 
     # Optional is_gold filter.
     if filter_is_gold and is_gold_col is not None and is_gold_col in df.columns:

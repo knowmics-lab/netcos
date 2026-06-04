@@ -942,6 +942,7 @@ def run_correlation_for_conf(
             f"{disease}_{cs_run_id}_{cs_drug_collapse_method}_"
             f"{ic50_drug_collapse_method}_fig3_style.png"
         )
+        print(plot_file)
         plot_binchen_fig3_style(
             classified_df=classified_df,
             metrics=pr_metrics,

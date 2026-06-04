@@ -227,6 +227,29 @@ cs_log_filename = Path(LOGS_DIR) / 'cs_runs.tsv'
 
 
 ###############################################################################
+# BinChen 2017 sRGES replication parameters
+# (validations/binchen2017/test_sRGES_replication.py)
+###############################################################################
+
+# cell line per disease
+DEFAULT_CELL_LINE = {
+    "LIHC": "HEPG2",
+    "BRCA": "MCF7",
+    "COAD": "HT29",
+}
+
+# sRGES algorithmic mode: 'binchen_r' faithfully reproduces the R source;
+# 'corrected' fixes the integer-index quirk (see src/sRGES.py docstring).
+srges_diff_mode = "binchen_r"
+
+# Apply per-cell-line cor*RGES weighting (Bin Chen sRGES_all_cmpds.R).
+srges_use_cor = False
+
+# Default output directory for binchen2017 validation reports.
+BINCHEN_VALIDATION_OUT_DIR = OOUT_DIR / "binchen2017_validation"
+
+
+###############################################################################
 # Chembl IC50 validation parameters
 ###############################################################################
 

@@ -575,6 +575,135 @@ def translate_cl(cell_line):
         return 'HT-29'
     return cell_line
 
+# ---------------------------------------------------------------------------
+# BinChen 2017 sRGES replication loaders
+# Used by src/validations/binchen2017/test_sRGES_replication.py.
+# All functions default to the disease / paths active in conf.py.
+# ---------------------------------------------------------------------------
+
+def binchen_disease_dir(disease=None):
+    """Return the BinChen per-disease data directory (BC_DISEASE_DATA / disease)."""
+    disease = disease if disease is not None else _conf.DISEASE
+    return BC_DISEASE_DATA / disease
+
+
+def add_lincs_metadata_to_cs(
+    cs_df,
+    lincs_metadata_path=None,
+    *,
+    cs_id_col="LINCS_id",
+    metadata_id_col="id",
+    extra_cols=("pert_iname", "cell_id", "pert_dose", "pert_time", "is_gold"),
+):
+    """Enrich a NetCoS CS dataframe with the LINCS metadata columns required
+    by sRGES. Joins on LINCS_id <-> id in lincs_sig_info{_new}.csv."""
+    if lincs_metadata_path is None:
+        lincs_metadata_path = _conf.LINCS_METADATA_PATH
+    usecols = [metadata_id_col, *extra_cols]
+    meta = (pd.read_csv(lincs_metadata_path, usecols=usecols, dtype="str")
+              .drop_duplicates(subset=[metadata_id_col]))
+    out = cs_df.merge(meta, left_on=cs_id_col, right_on=metadata_id_col, how="left")
+    if metadata_id_col in out.columns and metadata_id_col != cs_id_col:
+        out = out.drop(columns=[metadata_id_col])
+    if "pert_dose" in out.columns:
+        out["pert_dose"] = pd.to_numeric(out["pert_dose"], errors="coerce")
+    if "pert_time" in out.columns:
+        out["pert_time"] = pd.to_numeric(out["pert_time"], errors="coerce")
+    n_missing = out["pert_iname"].isna().sum() if "pert_iname" in out.columns else 0
+    if n_missing:
+        print(f"[warn] add_lincs_metadata_to_cs: {n_missing} LINCS_id rows had "
+              f"no metadata match (dropped from sRGES input).")
+        out = out.dropna(subset=["pert_iname", "cell_id", "pert_dose", "pert_time"])
+    return out
+
+
+def load_netcos_cs(cs_file_path, lincs_metadata_path=None):
+    """Load a NetCoS CS .tsv and enrich it with per-signature LINCS metadata."""
+    if lincs_metadata_path is None:
+        lincs_metadata_path = _conf.LINCS_METADATA_PATH
+    df = pd.read_csv(cs_file_path, sep="\t", dtype={"LINCS_id": str})
+    if "LINCS_id" not in df.columns or "connectivity_score" not in df.columns:
+        raise ValueError(
+            f"NetCoS CS file missing required columns "
+            f"LINCS_id/connectivity_score: {cs_file_path}"
+        )
+    return add_lincs_metadata_to_cs(df, lincs_metadata_path)
+
+
+def load_netcos_cs_combined(cs_file_paths, lincs_metadata_path=None):
+    """Concatenate multiple per-cell-line NetCoS CS .tsv files and enrich.
+
+    BinChen's full sRGES expects one row per (drug-signature, cell), so when
+    the NetCoS pipeline emits one CS file per cell line they must be stacked
+    before sRGES aggregation. Per-(sig, cell) duplicates are intentionally
+    preserved.
+    """
+    if lincs_metadata_path is None:
+        lincs_metadata_path = _conf.LINCS_METADATA_PATH
+    parts = []
+    for p in cs_file_paths:
+        d = pd.read_csv(p, sep="\t", dtype={"LINCS_id": str})
+        d["__cs_source_file__"] = Path(p).name
+        parts.append(d)
+    if not parts:
+        raise ValueError("No CS files provided")
+    df = pd.concat(parts, ignore_index=True)
+    return add_lincs_metadata_to_cs(df, lincs_metadata_path)
+
+
+def load_binchen_all_lincs_score(disease=None):
+    """Load Bin Chen's per-instance RGES file (their per-signature output).
+
+    Note: the column is named `cmap_score` in this file, but semantically it
+    is the per-instance RGES (matches `RGES` in lincs_score_1.csv exactly
+    for rows that overlap). It is renamed to `RGES` on load.
+    """
+    disease = disease if disease is not None else _conf.DISEASE
+    path = binchen_disease_dir(disease) / "all_lincs_score.csv"
+    if not path.exists():
+        raise FileNotFoundError(path)
+    df = pd.read_csv(path).rename(columns={"cmap_score": "RGES"})
+    df["pert_dose"] = pd.to_numeric(df["pert_dose"], errors="coerce")
+    df["pert_time"] = pd.to_numeric(df["pert_time"], errors="coerce")
+    return df
+
+
+def load_reference_full_sRGES(disease=None):
+    """Load Bin Chen's per-drug sRGES (SD6-equivalent local file)."""
+    disease = disease if disease is not None else _conf.DISEASE
+    path = binchen_disease_dir(disease) / "lincs_cancer_sRGES.csv"
+    if not path.exists():
+        raise FileNotFoundError(path)
+    return pd.read_csv(path)
+
+
+def load_reference_fig3_sRGES(disease=None):
+    """Load Bin Chen's per-drug sRGES restricted to drugs with IC50
+    (SD5 / Fig. 3)."""
+    disease = disease if disease is not None else _conf.DISEASE
+    path = binchen_disease_dir(disease) / "rges_ic50_normalized.csv"
+    if not path.exists():
+        raise FileNotFoundError(path)
+    return pd.read_csv(path)
+
+
+def cor_weights_for_disease(disease=None):
+    """Build the lincs_cell_id -> cor map used by the sRGES_all_cmpds.R cor
+    weighting. Returns None if either input file is missing on disk."""
+    # Lazy import: keep sRGES.py optional for callers that never need cor.
+    from sRGES import load_cell_line_weights_binchen
+    disease = disease if disease is not None else _conf.DISEASE
+    cl_path = binchen_disease_dir(disease) / f"cell_line_{disease}_tacle.csv"
+    ccle_path = BC_DISEASE_DATA / "raw" / "cell_line_lincs_ccle.csv"
+    if not cl_path.exists() or not ccle_path.exists():
+        return None
+    return load_cell_line_weights_binchen(str(cl_path), str(ccle_path))
+
+
+# ---------------------------------------------------------------------------
+# Bin Chen 2017 ChEMBL IC50 loader (used by validations/chembl/...)
+# ---------------------------------------------------------------------------
+
 def load_IC50(ic50_file, cancer_type, cell_line, IC50_ONLY=True, IC_50_binchen_SD5=True):#, median_IC50=False):
     
     if IC_50_binchen_SD5==True:

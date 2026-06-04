@@ -99,8 +99,8 @@ def test_full_pipeline_no_corweight():
         df, score_col="RGES", drug_col="pert_iname",
         cell_col="cell_id", dose_col="pert_dose", time_col="pert_time",
         cell_lines=None, cell_line_weights=None,
-        apply_cor_weight=False, sign_flip=False,
-        srges_diff_mode="binchen_r", filter_is_gold=False,
+        apply_cor_weight=False, srges_diff_mode="binchen_r", 
+        filter_is_gold=False,
     )
 
     def expected_srges(drug):
