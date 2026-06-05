@@ -251,6 +251,8 @@ def run_cs_batch_for_conf(
     CS_ON_PATHWAYS=None,
     cs_batch_threads=None,
     rank_on='magnitude',
+    CS_IN_DRUG=None,
+    CS_IN_DISEASE=None,
 ):
     """
     Run cs_batch for a single hyperparameter configuration.
@@ -258,7 +260,7 @@ def run_cs_batch_for_conf(
     Any kwarg left as None is filled from the active conf module, so
     `python cs_batch.py` (no args, runs main block below) reproduces the
     pre-refactor single-conf behavior. The multi-conf wrapper
-    (call_cs_batch_for_different_confs.py) overrides every kwarg per combo.
+    (validations/chembl/call_cs_batch_for_different_confs.py) overrides every kwarg per combo.
     """
     # fall back to conf defaults for anything left None
     cell_line        = cell_line        if cell_line        is not None else conf.cell_line
@@ -278,8 +280,10 @@ def run_cs_batch_for_conf(
     DISEASE            = conf.diseases_of[cell_line]
     disease_run_name   = DISEASE + LM_flag_disease
     cell_line_run_name = cell_line + LM_flag_drug
-    CS_IN_DRUG    = conf.CS_DIR / 'input'  / 'drug_signature_2025'    / cell_line_run_name
-    CS_IN_DISEASE = conf.CS_DIR / 'input'  / 'disease_signature_2025' / disease_run_name
+    if CS_IN_DRUG is None:
+        CS_IN_DRUG    = conf.CS_DIR / 'input'  / 'drug_signature_2025'    / cell_line_run_name
+    if CS_IN_DISEASE is None:
+        CS_IN_DISEASE = conf.CS_DIR / 'input'  / 'disease_signature_2025' / disease_run_name
     CS_OUT        = conf.CS_DIR / 'output' / disease_run_name
     LINCS_BC_DATA = conf.LINCS_BC_DATA
 
@@ -387,5 +391,5 @@ def run_cs_batch_for_conf(
 #%% Parallel run for LINCS data
 if __name__ == "__main__":
     # Standalone: calculate connectivity score for NetCos parameters set in src/conf.py (.
-    # To sweep multiple configurations, run call_cs_batch_for_different_confs.py.
+    # To sweep multiple configurations, run validations/chembl/call_cs_batch_for_different_confs.py.
     run_cs_batch_for_conf()
