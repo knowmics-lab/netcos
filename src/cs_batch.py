@@ -253,6 +253,7 @@ def run_cs_batch_for_conf(
     rank_on='magnitude',
     CS_IN_DRUG=None,
     CS_IN_DISEASE=None,
+    DISEASE=None
 ):
     """
     Run cs_batch for a single hyperparameter configuration.
@@ -277,7 +278,8 @@ def run_cs_batch_for_conf(
     # derived names + paths (mirrors the construction in conf.py)
     LM_flag_disease    = '_LM' if landmark_disease else ''
     LM_flag_drug       = '_LM' if landmark_drug    else ''
-    DISEASE            = conf.diseases_of[cell_line]
+    if DISEASE is None:
+        DISEASE            = conf.diseases_of[cell_line]
     disease_run_name   = DISEASE + LM_flag_disease
     cell_line_run_name = cell_line + LM_flag_drug
     if CS_IN_DRUG is None:

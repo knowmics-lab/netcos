@@ -30,7 +30,7 @@ landmark_drug = False  # only select landmark genes from signature data (irrelev
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'HT29'
+cell_line = 'all'#'HT29'
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
@@ -45,7 +45,8 @@ mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 # name of cell line for chembl validation
 diseases_of = {'HEPG2':'LIHC',
                'MCF7':'BRCA',
-               'HT29':'COAD'}
+               'HT29':'COAD',
+               'all':'any'}
 
 DISEASE = "ipf"#diseases_of[cell_line] 
 
