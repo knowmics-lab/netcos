@@ -58,6 +58,9 @@ validations/SAveRUNNER/
 validations/octad tests/
 data.zip
 
+# Litterature
+/sources/
+
 # OS files
 .DS_Store
 Thumbs.db

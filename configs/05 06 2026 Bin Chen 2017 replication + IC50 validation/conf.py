@@ -15,18 +15,18 @@ from local import BASE_DIR
 from datetime import datetime
 # !! IMPORTANT: keep spaces around '=' and spaces before cmments for pipeline to work  
 
-##############################################################################
-# LINCS1000 level 4 data parameters
-##############################################################################
+#######################
+# LINCS data parameters
+#######################
 
-landmark_disease = False  # only select landmark genes from signature data 
+landmark_disease = True  # only select landmark genes from signature data 
 LM_flag_disease = ''
 if landmark_disease:
     LM_flag_disease = '_LM'
 
 # is_gold = 1 # only select high-quality perturbagens. Default:1 for all versions (33k perturbagens x 2 time steps = 66k perturbagens)
 # pert_time = '6h'
-landmark_drug = False  # only select landmark genes from signature data (irrelevant for Bin Chen data since they are already landmark only)
+landmark_drug = True  # only select landmark genes from signature data (irrelevant for Bin Chen data since they are already landmark only)
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
@@ -47,7 +47,7 @@ diseases_of = {'HEPG2':'LIHC',
                'MCF7':'BRCA',
                'HT29':'COAD'}
 
-DISEASE = "ipf"#diseases_of[cell_line] 
+DISEASE = diseases_of[cell_line] 
 
 disease_run_name = DISEASE + LM_flag_disease
 
@@ -109,7 +109,7 @@ TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
 TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
 # Change here the data souce
-DISEASE_SIGNATURE_SOURCE = "tsr"  # options: "tsr", "other"
+DISEASE_SIGNATURE_SOURCE = "other"  # options: "tsr", "other"
 
 ############################################
 # Connectivity score directories
@@ -159,7 +159,7 @@ cs_batch_threads = 1
 cs_mith = 1 # [0,1] 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
 CS_METHOD ="bin_chen" #bin_chen_disease_sorted
-CS_ON_PATHWAYS = False # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
+CS_ON_PATHWAYS = True # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
 
 # CS functions
 
