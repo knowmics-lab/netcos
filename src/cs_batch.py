@@ -279,7 +279,7 @@ def run_cs_batch_for_conf(
     LM_flag_disease    = '_LM' if landmark_disease else ''
     LM_flag_drug       = '_LM' if landmark_drug    else ''
     if DISEASE is None:
-        DISEASE            = conf.diseases_of[cell_line]
+        DISEASE            = conf.DISEASE
     disease_run_name   = DISEASE + LM_flag_disease
     cell_line_run_name = cell_line + LM_flag_drug
     if CS_IN_DRUG is None:
