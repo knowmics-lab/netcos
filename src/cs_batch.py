@@ -91,7 +91,7 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
                                        CS_METHOD, CS_IN_DRUG, CS_IN_DISEASE, LINCS_BC_DATA,
                                        CS_OUT, n_jobs,
                                        rank_on='magnitude', save_file=False, cs_on_LM=False,
-                                       cs_on_pathways=False):
+                                       cs_on_pathways=False, drug_collapsed=False):
     '''
     wrapper function to load disease and drug data (for a batch of drugs in drugs_list[i1:i2]),
     and calculate their connectivity score, for given drugs and LINCS drug perturbation times.
@@ -103,6 +103,14 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
     Hyperparameters and paths that used to come from the conf module are now passed
     in explicitly so this function works under the multi-conf wrapper as well as
     standalone runs of cs_batch.py.
+
+    drug_collapsed: bool
+        False (default, BRCA/LINCS): each entry of drugs_list is an individual
+            LINCS perturbation id, written to the output as 'LINCS_id'; pert_id is
+            mapped in afterwards by run_cs_batch_for_conf.
+        True (IPF): drugs were already collapsed (one signature per drug) before
+            CS, so each entry of drugs_list IS a pert_id and is written directly to
+            the 'pert_id' column.
     '''
     start=time.time()
     run_stats = {}
@@ -195,10 +203,15 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
         spearman=stats.spearmanr(disease_signature_value, drug_signature_value)
         cosine_sim=np.dot(np.array(disease_signature_value),np.array(drug_signature_value))/(np.linalg.norm(np.array(disease_signature_value))*np.linalg.norm(np.array(drug_signature_value)))
 
-        # carry metadata through if present
+        # carry metadata through if present.
+        # When drugs are already collapsed (IPF), the signature id IS the pert_id
+        # (the drug name), so write it straight to 'pert_id'. Otherwise it is an
+        # individual LINCS perturbation id, written to 'LINCS_id' (pert_id is
+        # mapped in afterwards by run_cs_batch_for_conf).
+        id_output_col = "pert_id" if drug_collapsed else "LINCS_id"
         row = {
             "disease": disease_run_name,
-            "LINCS_id":drug,
+            id_output_col: drug,
             "connectivity_score": cscore,
             "cs_p_value": p_value,
             "pearson": pearson[0],
@@ -207,8 +220,9 @@ def run_connectivity_score_drugs_batch(disease_run_name, mith, drugs_list, n, i1
             "spearman_p_value": spearman[1],
             "cos_sim": cosine_sim,
         }
+        # don't let the metadata-carry loop overwrite the id column we just set
         for col in ["pert_iname", "pert_desc", "pert_id", "sig_id", "cell_id", "pert_time", "pert_dose", "pert_type", "is_gold", "DrugBank.ID"]:
-            if col in drug_signature.columns:
+            if col != id_output_col and col in drug_signature.columns:
                 row[col] = drug_signature[col].iloc[0]
 
         data.append(row)
@@ -253,7 +267,8 @@ def run_cs_batch_for_conf(
     rank_on='magnitude',
     CS_IN_DRUG=None,
     CS_IN_DISEASE=None,
-    DISEASE=None
+    DISEASE=None,
+    drug_collapsed=None
 ):
     """
     Run cs_batch for a single hyperparameter configuration.
@@ -272,6 +287,9 @@ def run_cs_batch_for_conf(
     cs_on_LM         = cs_on_LM         if cs_on_LM         is not None else conf.cs_on_LM
     CS_ON_PATHWAYS   = CS_ON_PATHWAYS   if CS_ON_PATHWAYS   is not None else conf.CS_ON_PATHWAYS
     cs_batch_threads = cs_batch_threads if cs_batch_threads is not None else conf.cs_batch_threads
+    # getattr fallback so configs predating this flag still default to the
+    # LINCS_id (non-collapsed) behavior.
+    drug_collapsed   = drug_collapsed   if drug_collapsed   is not None else getattr(conf, 'drug_collapsed_before_cs', False)
 
     conf.validate_hyperparameters(cs_mith, cs_on_LM, CS_ON_PATHWAYS)
 
@@ -321,19 +339,20 @@ def run_cs_batch_for_conf(
     print('last chunk size', last_chunk_size)
     print('mith tag:', mith, '\ndisease:', disease_run_name)
     print('pathway based signature:', CS_ON_PATHWAYS)
+    print('drug collapsed before cs:', drug_collapsed)
 
     results = Parallel(n_jobs=n_jobs)(
         delayed(run_connectivity_score_drugs_batch)(
             disease_run_name, mith, drugs_list, n, i1, i2,
             CS_METHOD, CS_IN_DRUG, CS_IN_DISEASE, LINCS_BC_DATA, CS_OUT, n_jobs,
-            cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
+            cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS, drug_collapsed=drug_collapsed)
         for n, (i1, i2) in enumerate(parallel_indexes))
 
     if last_chunk_size > 0:
         last_batch = run_connectivity_score_drugs_batch(
             disease_run_name, mith, drugs_list, (n_jobs + 1), i2, len(drugs_list),
             CS_METHOD, CS_IN_DRUG, CS_IN_DISEASE, LINCS_BC_DATA, CS_OUT, n_jobs,
-            cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS)
+            cs_on_LM=lm_flag, cs_on_pathways=CS_ON_PATHWAYS, drug_collapsed=drug_collapsed)
         results.append(last_batch)
 
     # build dataframe
@@ -342,7 +361,11 @@ def run_cs_batch_for_conf(
     # take stats from first batch as representative of filtering sizes
     first_stats = results[0][1]
 
-    cs_df = add_pert_id_to_cs(lincs_metadata_path, cs_df)
+    # Map LINCS_id -> pert_id only when the drugs were NOT already collapsed.
+    # In the collapsed (IPF) case the id column already IS pert_id (the drug
+    # name), so this mapping step is skipped.
+    if not drug_collapsed:
+        cs_df = add_pert_id_to_cs(lincs_metadata_path, cs_df)
 
     total_elapsed = time.time() - start_total
 
@@ -362,6 +385,7 @@ def run_cs_batch_for_conf(
         "mith": int(mith),
         "cs_on_LM": int(lm_flag),
         "CS_ON_PATHWAYS": CS_ON_PATHWAYS,
+        "drug_collapsed_before_cs": int(drug_collapsed),
         "rank_on": rank_on,
         "drug_id_col": first_stats["drug_id_col"],
         "disease_id_col": first_stats["disease_id_col"],

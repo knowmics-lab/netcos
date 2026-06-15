@@ -31,7 +31,7 @@ landmark_drug = False  # only select landmark genes from signature data (irrelev
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'all'#'HT29'
+cell_line = 'HT29'#'all'#
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 
@@ -49,7 +49,7 @@ diseases_of = {'HEPG2':'LIHC',
                'HT29':'COAD',
                'all':'any'}
 
-DISEASE = "ipf"#diseases_of[cell_line] 
+DISEASE = diseases_of[cell_line] #"ipf"#
 
 disease_run_name = DISEASE + LM_flag_disease
 
@@ -161,7 +161,20 @@ cs_batch_threads = 1
 cs_mith = 1 # [0,1] 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
 CS_METHOD ="bin_chen" #bin_chen_disease_sorted
-CS_ON_PATHWAYS = False # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
+CS_ON_PATHWAYS = True # Bool Default: False, calculate on signatures or pathways. Only works on mithril data
+
+# Drug-collapse stage flag.
+# False (BRCA/LINCS BinChen pipeline): the CS drug-input signatures are
+#   individual LINCS1000 perturbations (one id per drug x time x dose, the 'ID'
+#   column of the LINCS metadata, written as 'LINCS_id' in the cs_batch output).
+#   pert_id (the drug name, with possible duplicates across timepoints/doses) is
+#   mapped in AFTER the connectivity score via add_pert_id_to_cs, and drugs are
+#   collapsed to one value per pert_id downstream.
+# True (IPF/ALS_NYGC pipeline): drugs were already collapsed to one signature per drug via
+#   a linear mixed model BEFORE MITHrIL and CS (see Catalano's thesis, koudjis2022).
+#   The CS drug-input signature ids ARE pert_ids already, so the output id column
+#   is written directly as 'pert_id' and add_pert_id_to_cs is skipped.
+drug_collapsed_before_cs = True # Bool [True, False]
 
 # CS functions
 
