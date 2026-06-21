@@ -127,7 +127,7 @@ def run_drugs():
         raise FileNotFoundError(f"No drug MITHrIL outputs found in: {MITH_OUT_DRUG}")
 
     for in_file, out_file in jobs:
-        if not os.path.isfile(in_file):
+        if not os.path.isfile(out_file):
             meta = convert_one_file(in_file, out_file)
     
             log_row = {

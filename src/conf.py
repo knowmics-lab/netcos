@@ -49,7 +49,7 @@ diseases_of = {'HEPG2':'LIHC',
                'HT29':'COAD',
                'all':'any'}
 
-DISEASE = diseases_of[cell_line] #"ipf"#
+DISEASE = "ipf"# diseases_of[cell_line] 
 
 disease_run_name = DISEASE + LM_flag_disease
 
@@ -157,7 +157,7 @@ mith_threads = 10
 ###############################################################################
 
 # hyperparameters
-cs_batch_threads = 1
+cs_batch_threads = 30
 cs_mith = 1 # [0,1] 1: calculate on MITHrIL data, 0: calculate on DEG data
 cs_on_LM = 0 # possible values: [0,1] 0: calculate cs on all genes list 1: calculate on only landmark genes list
 CS_METHOD ="bin_chen" #bin_chen_disease_sorted
