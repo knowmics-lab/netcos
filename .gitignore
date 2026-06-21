@@ -73,6 +73,7 @@ Thumbs.db
 /imgs/
 /paper/
 /presentations/
+/data_exploration/old_exploration_with_bugged_CS
 
 # tsr model files
 tsr/data/
@@ -88,3 +89,4 @@ kernel-netcos.json
 
 # local config files
 src/local.py
+

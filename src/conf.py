@@ -31,7 +31,7 @@ landmark_drug = False  # only select landmark genes from signature data (irrelev
 LM_flag_drug = ''
 if landmark_drug:
     LM_flag_drug = '_LM'
-cell_line = 'HT29'#'all'#
+cell_line = 'all'#'HT29'#
 cell_line_run_name = cell_line+LM_flag_drug
 mith_input_file = 'LINCS' +cell_line+LM_flag_drug+'.mi'
 

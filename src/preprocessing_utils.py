@@ -11,6 +11,7 @@ various utilities to run once before (or during) running the pipeline.
 import os
 
 import sys
+from pathlib import Path
 import numpy as np
 import pandas as pd
 # import pickle
@@ -18,6 +19,7 @@ import pyreadr
 import time
 from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE, alias_2geneid,\
     MITH_OUT_DRUG
+
 
 
 def load_unfiltered_single_drug_signature(drug, mith=False):
@@ -72,7 +74,7 @@ def get_drugs_list(mith=True):
     '''
     mith: flag. 1: PF data, 0: FC data
     '''
-    drugs_path= MITH_OUT_DRUG if mith==1 else TSR_OUT_DRUG+'LINCS'+os.sep+'metanalysis_drug_wise_filtered'+os.sep
+    drugs_path= MITH_OUT_DRUG if mith==1 else TSR_OUT_DRUG / 'LINCS' / 'metanalysis_drug_wise_filtered'
     drugs_list=os.listdir(drugs_path)
     
     drugs_list=[x.split('.')[0] for x in drugs_list]
