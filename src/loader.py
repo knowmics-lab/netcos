@@ -13,7 +13,7 @@ import pickle
 from conf import CS_DIR, TSR_OUT_DRUG, TSR_OUT_DISEASE, CS_IN_DISEASE, CS_IN_DRUG,\
     CHEMBL_INPUT_DATA_DIR, BC_DISEASE_DATA, DISEASE_SIGNATURE_SOURCE, cs_log_filename
 import conf as _conf  # for conf-default fallbacks in load_cs_run
-from preprocessing_utils import get_drugs_list
+from preprocessing_utils import get_drugs_list, get_signature_ids_list_from_cs_input
 
 
 # ---------------------------------------------------------------------------
@@ -455,7 +455,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
                 
     else:
         
-        filename=os.path.join(CS_IN_DRUG,drug+'_metanalysis')
+        filename=os.path.join(CS_IN_DRUG,drug)
         
         if not pkl:
             return pd.read_csv(filename+'.csv', sep='\t')
@@ -465,7 +465,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
             return data
            
 
-def load_drug_signatures(mith=False, pkl=True):
+def load_drug_signatures_old(mith=False, pkl=True):
     '''
     inputs:
 
@@ -491,6 +491,35 @@ def load_drug_signatures(mith=False, pkl=True):
         DEG_drug_list=[]
         for n, drug_file in enumerate(drugs_list):
             drug=drug_file.split('_')[0]
+            DEG_drug_list.append(load_single_drug_signature(drug, mith, pkl))
+    
+    print(n+1, 'drugs loaded')
+    return pd.concat(DEG_drug_list)
+
+def load_all_drug_signatures(mith=False, pkl=True):
+    '''
+    inputs:
+
+        mith: bool
+            def. False: loading DEG FC signature. if True, loading MIthRIL 
+            perturbation signature.
+    returns a pandas.Dataframe which is a concatenation by row
+    of all drug signature data. rows are genes signature for given drug 
+    (genes will appear multiple time, once for every drug)
+    '''
+    
+    print('loading all drug signatures...')
+    
+    drugs_list=get_signature_ids_list_from_cs_input(mith=mith)
+    
+    if not mith:
+        DEG_drug_list=[]
+        for n, drug in enumerate(drugs_list): 
+            DEG_drug_list.append(load_single_drug_signature(drug, mith, pkl))
+    
+    else:
+        DEG_drug_list=[]
+        for n, drug in enumerate(drugs_list):
             DEG_drug_list.append(load_single_drug_signature(drug, mith, pkl))
     
     print(n+1, 'drugs loaded')

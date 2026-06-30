@@ -18,7 +18,7 @@ import pandas as pd
 import pyreadr
 import time
 from conf import TSR_OUT_DRUG, TSR_OUT_DISEASE, TSR_OUT_CSCORE, alias_2geneid,\
-    MITH_OUT_DRUG
+    MITH_OUT_DRUG, CS_IN_DRUG
 
 
 
@@ -94,7 +94,7 @@ def get_drugs_list_from_path(drugs_path):
     return drugs_list
 
 
-def get_signature_ids_list_from_cs_input(cs_input_dir, mith=1):
+def get_signature_ids_list_from_cs_input(cs_input_dir=CS_IN_DRUG, mith=1):
     """
     Return signature/drug IDs available for the current CS-input run.
 
