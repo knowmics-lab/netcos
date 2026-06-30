@@ -53,7 +53,7 @@ from cs_batch import run_cs_batch_for_conf
 CS_METHODs        = ['bin_chen', 'bin_chen_disease_sorted']
 cs_miths          = [0, 1]          # 0 = DEG signatures, 1 = MITHrIL-propagated
 cs_on_LMs         = [0, 1]          # 1 = restrict to landmark genes
-CS_ON_PATHWAYSs   = [False]         # True needs cs_mith=1 & cs_on_LM=0
+CS_ON_PATHWAYSs   = [True, False]         # True needs cs_mith=1 & cs_on_LM=0
 landmark_diseases = [False]         # adds '_LM' to the disease run name
 rank_ons          = ['magnitude']   # {'magnitude', 'p_value'}
 
@@ -129,6 +129,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     valid, invalid = build_combos()
+    
+    
+
 
     log_df = (pd.read_csv(cs_log_filename, sep='\t')
               if cs_log_filename.exists() and cs_log_filename.stat().st_size > 0
@@ -136,7 +139,16 @@ def main(argv=None):
 
     duplicates = [] if args.run_all else [c for c in valid
                                           if already_logged(log_df, args.disease, c)]
+    
     to_run = [c for c in valid if c not in duplicates]
+
+    print("\nINVALID COMBOS:")
+    for c in invalid:
+        print(f"    - {fmt(args.disease, c)}")
+    
+    print("\nALREADY LOGGED COMBOS:")
+    for c in duplicates:
+        print(f"    - {fmt(args.disease, c)}")
 
     print(f"disease            : {args.disease}")
     print(f"drug input         : drug_signature_2025/{CELL_LINE}"
