@@ -58,7 +58,7 @@ landmark_diseases = [False]         # adds '_LM' to the disease run name
 rank_ons          = ['magnitude']   # {'magnitude', 'p_value'}
 
 # Fixed for the collapsed-drug (LMM/DEG) pipeline. Override --disease on the CLI.
-DEFAULT_DISEASE = 'als_NYGC'
+DEFAULT_DISEASE = 'ipf'
 CELL_LINE       = 'all'    # drug input dir: drug_signature_2025/all
 LANDMARK_DRUG   = False    # the 'all' DEG drug data is not landmark-only
 DRUG_COLLAPSED  = True     # signature ids ARE pert_ids (see conf.drug_collapsed_before_cs)
