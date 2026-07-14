@@ -465,7 +465,7 @@ def load_single_drug_signature(drug, mith=False, pkl=True):
             return data
            
 
-def load_drug_signatures_old(mith=False, pkl=True):
+def load_drug_signatures(mith=False, pkl=True):
     '''
     inputs:
 

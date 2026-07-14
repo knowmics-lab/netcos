@@ -11,6 +11,8 @@ conf file for main netcos pipeline
 import os
 import pickle
 from local import BASE_DIR
+BASE_DIR=str(BASE_DIR)+os.sep
+
 ####################
 # FLAGS
 ####################

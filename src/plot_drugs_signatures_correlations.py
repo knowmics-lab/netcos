@@ -65,7 +65,8 @@ def print_correlations(DEG_signature, mith_signature, \
     plots scatterplot of DEG vs Mithril signatures for given variables (default DEG Fc vs Mithril Perturbation),
     and prints corresponding pearson and spearman coefficients
     
-    Input signatures are assumed to have the same unique gene_ids
+    WARING: Input signatures are assumed to have the same unique gene_ids aligned by position.
+    Sort both by gene_id first
     '''
     
     mith_common_perturbations=mith_signature[mith_col]
