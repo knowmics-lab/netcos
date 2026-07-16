@@ -90,3 +90,9 @@ kernel-netcos.json
 # local config files
 src/local.py
 
+# Backstage ops (private — see CLAUDE.md §2 file architecture)
+# NetCoS is a computational pipeline only; the AI-agent-team wrapper
+# (Supervisor/Student/Critic/Curator/Writer scaffolding) must leave no trace here.
+CLAUDE.md
+ai-team-skills/
+

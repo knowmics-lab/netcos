@@ -45,3 +45,22 @@ Using the perturbation scores, a connectivity score is computed between the dise
 [7] B. Chen, L. Ma, H. Paik, M. Sirota, W. Wei, M.-S. Chua, S. So, and A. J. Butte, "Reversal of cancer gene expression correlates with drug efficacy and reveals therapeutic targets," *Nature Communications*, vol. 8, p. 16022, 2017.
 
 [8] A.-L. Brown, O. G. Wilkins, M. J. Keuss, S. E. Hill, M. Zanovello, W. C. Lee, A. Bampton, F. C. Y. Lee, L. Masino, Y. A. Qi et al., "TDP-43 loss and ALS-risk SNPs drive mis-splicing and depletion of UNC13A," *Nature*, vol. 603, pp. 131–137, 2022.
+
+## Tech stack
+
+- **Python** — pipeline orchestration, connectivity score, ChEMBL validation, plotting. Dependencies in `requirements.txt` (`joblib`, `matplotlib`, `numpy`, `pandas`, `pyreadr`, `requests`, `scipy`); package metadata in `setup.py` (`drug_repurposing`, v0.1.0).
+- **R** — LMM fitting, LINCS data handling, signature meta-analysis. Under `tsr/` (legacy workflows) and `new_tsr/R/` (refactored OOP version).
+- **Julia** — LMM optimization (`tsr/julia/`, `modules/drug_signature/julia/`).
+- **MITHrIL** — external Java tool, run as a subprocess (`step2_disease_run_MITHrIL.py`, `step6_drug_run_MITHrIL.py`).
+
+## Running the pipeline
+
+- **Full pipeline** — orchestrated by the numbered `step1..7` scripts in `src/`, typically invoked from `cs_batch.py`.
+- **ChEMBL validation** — `src/validations/chembl/`, starting at `Preprocess_binChen2017_TCGA_LINCS_data.py`.
+- **R workflows** — enter the relevant `tsr/<disease>/` folder; scripts assume that as the working directory.
+
+Experiments are switched by which `conf.py` is active in `src/` (there is no CLI flag) — see the config system in the pipeline reference below. Heavy R/Julia jobs can take hours.
+
+## Documentation
+
+- **[`docs/pipeline.md`](docs/pipeline.md)** — precise stage-by-stage pipeline & architecture reference: the two pipelines (TSR/LMM and BinChen2017/ChEMBL), the drug-collapse inversion, the sign convention, the CS run registry, the config system, and the repository layout.
