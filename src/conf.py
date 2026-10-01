@@ -127,6 +127,17 @@ CS_OUT=CS_DIR / 'output' / disease_run_name #Path(DISEASE+'_2025_'+pert_time)
 IMG_DIR=BASE_DIR / 'imgs'
 OOUT_DIR=BASE_DIR / 'other_outputs'
 
+# DiSignAtlas disease-signature catalogue
+DSA_DIR = DATA_DIR / 'DiSignAtlas'
+DSA_CATALOGUE = DSA_DIR / 'dis_info_datasets.csv'
+
+# repoDB drug-repurposing gold standard (approved + failed indications)
+REPODB_DIR = DATA_DIR / 'repoDB'
+REPODB_FILE = REPODB_DIR / 'full.csv'#'repoDB.csv'
+
+#CREED 
+CREED_DIR = DATA_DIR / 'CREEDS'
+
 
 ##########################################################################
 # Drug signature calculations using LINCS1000 -

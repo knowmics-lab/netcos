@@ -402,12 +402,17 @@ def load_disease_signature(disease, cs_input_dir=None, mith=False, pathway=False
             df = pd.read_csv(filename, sep=";", decimal=",", dtype={"gene_id": "str"})
             return standardize_disease_signature(df, source="tsr")
 
+        if source == "cs_in":
+            filename = cs_input_dir / f"{disease}_signature_gene_id.csv"
+            df = pd.read_csv(filename, sep=";", decimal=",", dtype={"gene_id": "str"})
+            return standardize_disease_signature(df, source="tsr")
+
         if source == "other":
             filename = cs_input_dir / f"{disease}_signature_gene_id.txt"
             df = pd.read_csv(filename, sep='\t')
             return standardize_disease_signature(df, source="binchen")
 
-    raise ValueError("source must be one of: 'tsr', 'binchen'")
+    raise ValueError("source must be one of: 'tsr', 'cs_in', 'other'")
     
 def load_disease_signature_old(DISEASE, mith=False, pathway=False):
     '''
