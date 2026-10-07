@@ -5,8 +5,10 @@ Created on Wed Nov 13 09:50:20 2024
 
 @ author: L-F-S
 
-18-11-2025 conf file for chembl valdiation pipeline.
-for HEPG cell line, LIHC disease, using landmark genes from BinChen2017 supll data
+Configuration for the miR-29 antagomiR mouse brain RNA-seq run:
+disease-side signature = antagomiR-29 vs control log2 fold changes (mouse),
+mapped to human Entrez ids through 1:1 MGI orthologs; drug side = LINCS
+signatures collapsed per drug before CS (cell_line 'all').
 """
 
 from pathlib import Path
@@ -49,7 +51,7 @@ diseases_of = {'HEPG2':'LIHC',
                'HT29':'COAD',
                'all':'any'}
 
-DISEASE = "ipf"# diseases_of[cell_line] 
+DISEASE = "mir29_antagomir"  # diseases_of[cell_line] 
 
 disease_run_name = DISEASE + LM_flag_disease
 
@@ -111,7 +113,7 @@ TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
 TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
 # Change here the data souce
-DISEASE_SIGNATURE_SOURCE = "tsr"  # options: "tsr", "other"
+DISEASE_SIGNATURE_SOURCE = "tsr"  # options: "tsr", "cs_in", "other"
 
 ############################################
 # Connectivity score directories
@@ -137,6 +139,20 @@ REPODB_FILE = REPODB_DIR / 'full.csv'#'repoDB.csv'
 
 #CREED 
 CREED_DIR = DATA_DIR / 'CREEDS'
+
+# MONDO disease ontology (JSON release, carries UMLS CUI cross-references)
+MONDO_DIR = DATA_DIR / 'MONDO'
+MONDO_FILE = MONDO_DIR / 'mondo.json'
+
+# miR-29 antagomiR mouse RNA-seq (log2 fold changes, antagomiR vs control)
+MIR29_DIR = DATA_DIR / 'Pizzoruso_mir29'
+MIR29_LFC_FILE = MIR29_DIR / 'LFC_mir29_down.txt'
+
+# MGI mouse-human homology report (HOM_MouseHumanSequence.rpt)
+MGI_HOM_FILE = DICT_DIR / 'HOM_MouseHumanSequence.rpt'
+
+# per-analysis outputs of the mouse->human mapping
+MIR29_OOUT_DIR = OOUT_DIR / 'case_studies' / 'mir29_antagomir'
 
 
 ##########################################################################

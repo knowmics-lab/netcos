@@ -1,6 +1,6 @@
 # NetCoS: Network-Enhanced Connectivity Score
 
-The network-enhanced connectivity score compares the gene signature of a specific biological process—such as transcriptomics data from patients with a particular disease—to the gene signatures of reference drugs. It leverages interactomics by projecting this data into a network space encompassing protein-protein, protein-metabolite, and protein-mRNA interactions, and propagates signals across the network. The algorithm then calculates a similarity score between each drug and the process of interest, ultimately ranking the drugs based on their similarity. A visual representation of this pipeline is shown in Figure 1.
+The network-enhanced connectivity score compares the gene signature of a specific biological process—such as transcriptomics data from patients with a particular disease—to the gene signatures of reference drugs. It leverages interactomics by projecting this data into a network space encompassing protein-protein, protein-metabolite, and protein-microRNA interactions, and propagates signals across the network. The algorithm then calculates a similarity score between each drug and the process of interest, ultimately ranking the drugs based on their similarity. A visual representation of this pipeline is shown in Figure 1.
 
 <img width="482" alt="image" src="https://github.com/user-attachments/assets/5c572c57-f9ce-46d1-8471-3dc5fff1974f" />
 
@@ -12,7 +12,7 @@ The network-enhanced connectivity score compares the gene signature of a specifi
 The algorithm requires two inputs:
 
 - **Disease Signature** – Currently implemented for transcriptomic data [1], this includes paired transcriptomic data from healthy and diseased tissues across patients.
-- **Drug Signature** – A collection of paired test-control microarray experiments for various metabolites [2]. Includes cell lines with pole-epsilon mutation.
+- **Drug Signature** – A collection of paired test-control L1000 experiments for small-molecule perturbagens across cell lines [2].
 
 Raw data undergoes preprocessing (PP), including filtering and removing duplicate gene IDs, ensuring that only unique gene identifiers are retained for further analysis.
 
@@ -20,13 +20,15 @@ Raw data undergoes preprocessing (PP), including filtering and removing duplicat
 An LMM is applied separately to drug and disease signatures [3][4]. This model extends traditional linear models by accounting for experimental variability through random effects, specifically RNA plate and cell type. The output is a log fold change representing the difference between the condition and the control data.
 
 #### (c) Meta-Analysis (MA) of Drug Data:
-A meta-analysis [5] is performed to account for multiple perturbation time points (6 and 24 hours) and produce a consolidated measurement for each drug.
+A meta-analysis [5] is performed to account for multiple perturbation time points (6 and 24 hours) and produce a consolidated measurement for each drug, per time point and pooled across both.
 
 #### (d) Signal Propagation via MITHrIL:
-The resulting fold change data from the LMM is processed using the MITHrIL pipeline [6], which propagates the signal across an extensive interaction network. This step generates a perturbation score for each network node.
+The resulting fold change data from the LMM is processed using the MITHrIL pipeline [6], which propagates the signal across an extensive interaction network. This step generates a perturbation score for each network node and an accumulated perturbation for each pathway; the connectivity score can be computed on either.
 
 #### (e) Connectivity Score Calculation:
 Using the perturbation scores, a connectivity score is computed between the disease and each drug based on the Kolmogorov-Smirnov statistic [4][7]. The drugs are then ranked according to these scores. Drugs with the most negative connectivity scores are most likely to counteract the disease effect.
+
+Step (d) is optional: the connectivity score can also be computed directly on the differential-expression signatures, which is the baseline NetCoS is compared against. See [`docs/pipeline.md`](docs/pipeline.md) for the full set of signature representations.
 
 ## References
 
@@ -48,19 +50,15 @@ Using the perturbation scores, a connectivity score is computed between the dise
 
 ## Tech stack
 
-- **Python** — pipeline orchestration, connectivity score, ChEMBL validation, plotting. Dependencies in `requirements.txt` (`joblib`, `matplotlib`, `numpy`, `pandas`, `pyreadr`, `requests`, `scipy`); package metadata in `setup.py` (`drug_repurposing`, v0.1.0).
-- **R** — LMM fitting, LINCS data handling, signature meta-analysis. Under `tsr/` (legacy workflows) and `new_tsr/R/` (refactored OOP version).
+- **Python** — pipeline orchestration, connectivity score, validations, plotting. Dependencies in `requirements.txt` (`joblib`, `matplotlib`, `numpy`, `pandas`, `pyreadr`, `requests`, `scipy`); package metadata in `setup.py` (`drug_repurposing`, v0.1.0).
+- **R** — LMM fitting, LINCS data handling, signature meta-analysis, edgeR for count-based case studies. Under `tsr/` (legacy workflows) and `new_tsr/R/` (refactored OOP version).
 - **Julia** — LMM optimization (`tsr/julia/`, `modules/drug_signature/julia/`).
 - **MITHrIL** — external Java tool, run as a subprocess (`step2_disease_run_MITHrIL.py`, `step6_drug_run_MITHrIL.py`).
 
-## Running the pipeline
+## Quickstart
 
-- **Full pipeline** — orchestrated by the numbered `step1..7` scripts in `src/`, typically invoked from `cs_batch.py`.
-- **ChEMBL validation** — `src/validations/chembl/`, starting at `Preprocess_binChen2017_TCGA_LINCS_data.py`.
-- **R workflows** — enter the relevant `tsr/<disease>/` folder; scripts assume that as the working directory.
-
-Experiments are switched by which `conf.py` is active in `src/` (there is no CLI flag) — see the config system in the pipeline reference below. Heavy R/Julia jobs can take hours.
+Experiments are switched by which `conf.py` is active in `src/` (there is no CLI flag); the CS entry point is `cs_batch.run_cs_batch_for_conf()`, and every run is logged in `logs/cs_runs.tsv`. Heavy R/Julia jobs can take hours.
 
 ## Documentation
 
-- **[`docs/pipeline.md`](docs/pipeline.md)** — precise stage-by-stage pipeline & architecture reference: the two pipelines (TSR/LMM and BinChen2017/ChEMBL), the drug-collapse inversion, the sign convention, the CS run registry, the config system, and the repository layout.
+- **[`docs/pipeline.md`](docs/pipeline.md)** — precise stage-by-stage pipeline & architecture reference: the two pipelines (TSR/LMM and BinChen2017/ChEMBL) and the drug-collapse inversion, the signature representations (DEG / MITHrIL / pathways), the numbered steps, the CS methods and sign convention, disease-signature sources, the CS run registry, the config system, the analyses built on the pipeline, the repository layout and how to run it.
