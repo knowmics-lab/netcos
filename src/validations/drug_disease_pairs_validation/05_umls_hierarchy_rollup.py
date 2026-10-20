@@ -344,8 +344,309 @@ ROLLUP_DECISIONS = {
 }
 
 # Curated decisions for "umls" level-0/1 candidates
-# ((repoDB CUI, target CUI) -> (decision, note)).
+# ((repoDB CUI, target CUI) -> (decision, note)), from manual LLM-assisted
+# inspection of each child indication vs its target; comment: names, source, level,
+# approved/not-approved pairs at the lowest threshold where the candidate occurs.
 ROLLUP_DECISIONS_UMLS = {
+    ("C0276535", "C0036220"): ("keep", "genuine subtype / clinical form of the target"),  # AIDS with Kaposi's sarcoma -> Kaposi Sarcoma [NCI p] A3N0
+    ("C0014553", "C0014544"): ("exclude_wrong", "target is a different disease or too generic"),  # Absence Epilepsy -> Epilepsy [NCI g] A10N0
+    ("C0000880", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Acanthamoeba Keratitis -> Protozoal Infection [NCI p] A1N0
+    ("C0001144", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Acne Vulgaris -> Dermatitis [NCI p] A34N1
+    ("C0271693", "C0023787"): ("keep", "NCIt level 2"),  # Acquired generalized lipodystrophy -> Lipodystrophy [NCI g] A1N0
+    ("C0220989", "C0023787"): ("keep", "NCIt level 2"),  # Acquired partial lipodystrophy -> Lipodystrophy [NCI g] A1N0
+    ("C0001261", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Actinomycosis -> Bacterial Infection [NCI g] A10N0
+    ("C0023440", "C0023467"): ("keep", "genuine subtype / clinical form of the target"),  # Acute Erythroblastic Leukemia -> Acute Myeloid Leukemia [NCI p] A1N0
+    ("C0023487", "C0023467"): ("keep", "APL is a distinct AML subtype (ATRA/arsenic); AML signature a weak proxy"),  # Acute Promyelocytic Leukemia -> Acute Myeloid Leukemia [NCI g] A7N0
+    ("C0023465", "C0023467"): ("keep", "genuine subtype / clinical form of the target"),  # Acute monocytic leukemia -> Acute Myeloid Leukemia [NCI g] A1N0
+    ("C0023479", "C0023467"): ("keep", "genuine subtype / clinical form of the target"),  # Acute myelomonocytic leukemia -> Acute Myeloid Leukemia [NCI p] A1N0
+    ("C0281361", "C0001418"): ("exclude_wrong", "target is a different disease or too generic"),  # Adenocarcinoma of pancreas -> Adenocarcinoma [NCI g] A4N2
+    ("C0023493", "C0023492"): ("keep", "genuine subtype / clinical form of the target"),  # Adult T-Cell Lymphoma/Leukemia -> Leukemia, T-Cell [MSH p] A1N0
+    ("C0023493", "C0024299"): ("exclude_wrong", "target is a different disease or too generic"),  # Adult T-Cell Lymphoma/Leukemia -> Lymphoma [NCI g] A1N0
+    ("C0041228", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # African Trypanosomiasis -> Protozoal Infection [NCI p] A4N0
+    ("C0085280", "C0008372"): ("exclude_wrong", "target is a different disease or too generic"),  # Alagille Syndrome -> Cholestasis, Intrahepatic [MSH p] A1N0
+    ("C0002351", "C0035204"): ("exclude_wrong", "target is a different disease or too generic"),  # Altitude Sickness -> Respiration Disorders [MSH p] A1N0
+    ("C0002438", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Amebiasis -> Protozoal Infection [NCI p] A5N0
+    ("C0013370", "C0009319"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Amebic colitis -> Colitis [NCI g] A2N0
+    ("C0206247", "C0002726"): ("keep", "genuine subtype / clinical form of the target"),  # Amyloid Neuropathies -> Amyloidosis [MSH p] A2N0
+    ("C0334579", "C0004114"): ("keep", "genuine subtype / clinical form of the target"),  # Anaplastic astrocytoma -> Astrocytic Tumor [NCI p] A1N0
+    ("C0158996", "C0002871"): ("exclude_wrong", "target is a different disease or too generic"),  # Anemia of prematurity -> Anemia [NCI p] A5N0
+    ("C0002888", "C0002871"): ("exclude_wrong", "target is a different disease or too generic"),  # Anemia, Megaloblastic -> Anemia [NCI g] A2N0
+    ("C0002962", "C0151744"): ("keep", "genuine subtype / clinical form of the target"),  # Angina Pectoris -> Ischemic Heart Disease [MSH p] A24N1
+    ("C0002963", "C0002965"): ("exclude_wrong", "target is a different disease or too generic"),  # Angina Pectoris, Variant -> Angina, Unstable [MSH p] A5N0
+    ("C0241961", "C0022665"): ("exclude_wrong", "target is a different disease or too generic"),  # Angiomyolipoma of kidney -> Kidney Neoplasm [NCI p] A1N0
+    ("C0241961", "C0022658"): ("exclude_wrong", "target is a different disease or too generic"),  # Angiomyolipoma of kidney -> Kidney Diseases [NCI g] A1N0
+    ("C0017605", "C0017601"): ("keep", "genuine subtype / clinical form of the target"),  # Angle Closure Glaucoma -> Glaucoma [NCI p] A4N0
+    ("C0038013", "C0003864"): ("exclude_wrong", "target is a different disease or too generic"),  # Ankylosing spondylitis -> Arthritis [NCI g] A27N0
+    ("C0042165", "C0042164"): ("keep", "genuine subtype / clinical form of the target"),  # Anterior uveitis -> Uveitis [NCI p] A4N0
+    ("C0003175", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Anthrax disease -> Bacterial Infection [NCI p] A13N0
+    ("C0003872", "C0033860"): ("exclude_wrong", "target is a different disease or too generic"),  # Arthritis, Psoriatic -> Psoriasis [MSH p] A19N0
+    ("C0003872", "C0003864"): ("exclude_wrong", "target is a different disease or too generic"),  # Arthritis, Psoriatic -> Arthritis [NCI p] A19N0
+    ("C0004031", "C0004030"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Aspergillosis, Allergic Bronchopulmonary -> Aspergillosis [NCI p] A1N0
+    ("C4038730", "C0004096"): ("keep", "genuine subtype / clinical form of the target"),  # Asthma-Chronic Obstructive Pulmonary Disea -> Asthma [MSH p] A3N0
+    ("C0270846", "C0036572"): ("exclude_wrong", "target is a different disease or too generic"),  # Atonic seizure -> Seizure [MSH p] A2N0
+    ("C0004352", "C1510586"): ("keep", "genuine subtype / clinical form of the target"),  # Autistic Disorder -> Autism Spectrum Disorder [NCI p] A2N0
+    ("C0241910", "C0019189"): ("exclude_wrong", "target is a different disease or too generic"),  # Autoimmune Chronic Hepatitis -> Chronic Hepatitis [MSH p] A0N4
+    ("C0079731", "C0024299"): ("exclude_wrong", "target is a different disease or too generic"),  # B-Cell Lymphomas -> Lymphoma [NCI g] A1N0
+    ("C0085166", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Bacterial Vaginosis -> Bacterial Infection [MSH p] A3N1
+    ("C0004771", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Bartonella Infections -> Bacterial Infection [NCI p] A3N0
+    ("C0005138", "C0206062"): ("exclude_wrong", "target is a different disease or too generic"),  # Berylliosis -> Interstitial Lung Disease [NCI g] A10N1
+    ("C0005699", "C0007621"): ("exclude_wrong", "target is a different disease or too generic"),  # Blast Phase -> Cell Transformation, Neoplastic [MSH p] A3N0
+    ("C1301363", "C0024299"): ("exclude_wrong", "target is a different disease or too generic"),  # Blastic plasmacytoid dendritic cell neopla -> Lymphoma [MSH p] A1N0
+    ("C0006057", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Botulism -> Bacterial Infection [NCI p] A1N0
+    ("C0349543", "C1621958"): ("keep", "genuine subtype / clinical form of the target"),  # Brain Glioblastoma -> Glioblastoma [NCI p] A2N0
+    ("C0006267", "C0024117"): ("exclude_wrong", "target is a different disease or too generic"),  # Bronchiectasis -> Chronic Obstructive Pulmonary Disease [NCI p] A6N2
+    ("C0006277", "C0024115"): ("exclude_wrong", "target is a different disease or too generic"),  # Bronchitis -> Lung Diseases [NCI g] A30N0
+    ("C0008677", "C0024117"): ("keep", "genuine subtype / clinical form of the target"),  # Bronchitis, Chronic -> Chronic Obstructive Pulmonary Disease [NCI p] A9N1
+    ("C0006266", "C0024115"): ("exclude_wrong", "target is a different disease or too generic"),  # Bronchospasm -> Lung Diseases [NCI g] A6N0
+    ("C0006413", "C0149678"): ("exclude_wrong", "MeSH places Burkitt under EBV infections; target is an infection"),  # Burkitt Lymphoma -> EBV Infection [MSH p] A4N4
+    ("C5203670", "C0042769"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # COVID19 (disease) -> Viral Infection [NCI g] A11N51
+    ("C0153254", "C1541923"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Candidal endocarditis -> Infective Endocarditis [NCI p] A1N0
+    ("C0700345", "C0006840"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Candidiasis, Vulvovaginal -> Candidiasis [NCI p] A11N0
+    ("C0007138", "C0334265"): ("keep", "genuine subtype / clinical form of the target"),  # Carcinoma, Transitional Cell -> Transitional Cell Neoplasm [NCI p] A3N3
+    ("C0003811", "C0007222"): ("exclude_wrong", "target is a different disease or too generic"),  # Cardiac Arrhythmia -> Cardiovascular Diseases [NCI g] A1N0
+    ("C0302592", "C0007873"): ("keep", "genuine subtype / clinical form of the target"),  # Cervix carcinoma -> Cervical Neoplasm [NCI g] A1N0
+    ("C0008149", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Chlamydia Infections -> Bacterial Infection [NCI p] A2N0
+    ("C0339959", "C0004626"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Chlamydial pneumonia -> Bacterial Pneumonia [MSH p] A13N0
+    ("C0206698", "C0001418"): ("exclude_wrong", "target is a different disease or too generic"),  # Cholangiocarcinoma -> Adenocarcinoma [MSH p] A1N0
+    ("C0008513", "C0042164"): ("exclude_wrong", "target is a different disease or too generic"),  # Chorioretinitis -> Uveitis [NCI p] A1N0
+    ("C0008526", "C0042164"): ("exclude_wrong", "target is a different disease or too generic"),  # Choroiditis -> Uveitis [NCI g] A2N0
+    ("C0409818", "C2316212"): ("keep", "genuine subtype / clinical form of the target"),  # Chronic Infantile Neurological, Cutaneous, -> Cryopyrin-Associated Periodic Syndrome [MSH p] A1N0
+    ("C1561643", "C0022658"): ("exclude_wrong", "target is a different disease or too generic"),  # Chronic Kidney Diseases -> Kidney Diseases [NCI g] A1N9
+    ("C0346421", "C0023418"): ("exclude_wrong", "target is a different disease or too generic"),  # Chronic eosinophilic leukemia -> Leukemia [NCI g] A1N1
+    ("C0085695", "C0017152"): ("keep", "genuine subtype / clinical form of the target"),  # Chronic gastritis -> Gastritis [NCI p] A1N0
+    ("C0600040", "C0282488"): ("keep", "genuine subtype / clinical form of the target"),  # Chronic interstitial cystitis -> Cystitis, Interstitial [MSH p] A1N0
+    ("C0221765", "C0036341"): ("keep", "genuine subtype / clinical form of the target"),  # Chronic schizophrenia -> Schizophrenia [NCI p] A3N1
+    ("C2363973", "C0020542"): ("keep", "genuine subtype / clinical form of the target"),  # Chronic thromboembolic pulmonary hypertens -> Hypertension, Pulmonary [NCI p] A2N0
+    ("C1333064", "C0024299"): ("exclude_wrong", "target is a different disease or too generic"),  # Classical Hodgkin's Lymphoma -> Lymphoma [NCI g] A2N0
+    ("C0343386", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Clostridium difficile infection -> Bacterial Infection [NCI p] A1N3
+    ("C0342257", "C0011849"): ("exclude_wrong", "target is a different disease or too generic"),  # Complications of Diabetes Mellitus -> Diabetes Mellitus [MSH p] A1N0
+    ("C0010308", "C0020676"): ("keep", "genuine subtype / clinical form of the target"),  # Congenital Hypothyroidism -> Hypothyroidism [NCI p] A2N0
+    ("C0018802", "C0018801"): ("keep", "genuine subtype / clinical form of the target"),  # Congestive heart failure -> Heart Failure [NCI p] A6N8
+    ("C0011616", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Contact Dermatitis -> Dermatitis [NCI g] A33N0
+    ("C0011616", "C0013595"): ("keep", "genuine subtype / clinical form of the target"),  # Contact Dermatitis -> Eczema [NCI p] A33N0
+    ("C0010200", "C0035204"): ("exclude_wrong", "target is a different disease or too generic"),  # Coughing -> Respiration Disorders [MSH p] A34N7
+    ("C0010418", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Cryptosporidiosis -> Protozoal Infection [NCI p] A1N0
+    ("C0948245", "C0242966"): ("exclude_wrong", "target is a different disease or too generic"),  # Cytokine Release Syndrome -> Systemic Inflammatory Response Syndrome [MSH p] A1N0
+    ("C0029408", "C0003864"): ("exclude_wrong", "target is a different disease or too generic"),  # Degenerative polyarthritis -> Arthritis [NCI p] A36N7
+    ("C0005587", "C0005586"): ("keep", "genuine subtype / clinical form of the target"),  # Depression, Bipolar -> Bipolar Disorder [NCI p] A5N0
+    ("C0221074", "C0011581"): ("keep", "genuine subtype / clinical form of the target"),  # Depression, Postpartum -> Depressive Disorder [MSH p] A1N2
+    ("C0011608", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Dermatitis Herpetiformis -> Dermatitis [NCI p] A12N0
+    ("C0011636", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Dermatophytosis -> Dermatitis [NCI p] A1N0
+    ("C0011881", "C0022658"): ("exclude_wrong", "target is a different disease or too generic"),  # Diabetic Nephropathy -> Kidney Diseases [MSH p] A3N0
+    ("C0011974", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Diaper Rash -> Dermatitis [NCI p] A11N0
+    ("C0855112", "C0079744"): ("keep", "genuine subtype / clinical form of the target"),  # Diffuse large B-cell lymphoma refractory -> Diffuse Large B-Cell Lymphoma [NCI p] A2N1
+    ("C0012546", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Diphtheria -> Bacterial Infection [NCI p] A3N0
+    ("C0013404", "C0035204"): ("exclude_wrong", "target is a different disease or too generic"),  # Dyspnea -> Respiration Disorders [MSH p] A1N5
+    ("C0013595", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Eczema -> Dermatitis [NCI p] A2N0
+    ("C0014013", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Empyema, Pleural -> Bacterial Infection [NCI g] A2N0
+    ("C0041472", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Endemic Flea-Borne Typhus -> Bacterial Infection [NCI g] A2N0
+    ("C0476089", "C0014170"): ("keep", "genuine subtype / clinical form of the target"),  # Endometrial Carcinoma -> Endometrial Neoplasm [NCI g] A3N1
+    ("C0275982", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Enteric campylobacteriosis -> Bacterial Infection [NCI p] A3N0
+    ("C0014488", "C1568272"): ("keep", "genuine subtype / clinical form of the target"),  # Epicondylitis -> Tendinopathy [MSH p] A7N0
+    ("C0014547", "C0014544"): ("keep", "genuine subtype / clinical form of the target"),  # Epilepsies, Partial -> Epilepsy [NCI p] A5N0
+    ("C0085580", "C0020538"): ("keep", "genuine subtype / clinical form of the target"),  # Essential Hypertension -> Hypertension [NCI p] A4N0
+    ("C0011606", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Exfoliative dermatitis -> Dermatitis [MSH p] A10N0
+    ("C1827301", "C0041296"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Extensively Drug-Resistant Tuberculosis -> Tuberculosis [NCI p] A1N0
+    ("C0002390", "C0206062"): ("keep", "genuine subtype / clinical form of the target"),  # Extrinsic allergic alveolitis -> Interstitial Lung Disease [MSH p] A1N0
+    ("C0221032", "C0023787"): ("keep", "genuine subtype / clinical form of the target"),  # Familial generalized lipodystrophy -> Lipodystrophy [NCI p] A1N0
+    ("C1318543", "C1568272"): ("exclude_wrong", "target is a different disease or too generic"),  # Fibrous histiocytoma of tendon sheath -> Tendinopathy [MSH p] A1N0
+    ("C1318543", "C0017525"): ("exclude_wrong", "target is a different disease or too generic"),  # Fibrous histiocytoma of tendon sheath -> Giant Cell Neoplasm [NCI p] A1N0
+    ("C0206682", "C0001418"): ("exclude_wrong", "target is a different disease or too generic"),  # Follicular thyroid carcinoma -> Adenocarcinoma [MSH p] A1N0
+    ("C0278701", "C0699791"): ("keep", "genuine subtype / clinical form of the target"),  # Gastric Adenocarcinoma -> Gastric Carcinoma [NCI p] A1N0
+    ("C1961835", "C0017205"): ("keep", "genuine subtype / clinical form of the target"),  # Gaucher Disease, Type 1 -> Gaucher Disease [MSH p] A3N0
+    ("C0343055", "C0033860"): ("keep", "genuine subtype / clinical form of the target"),  # Generalized pustular psoriasis -> Psoriasis [NCI p] A1N0
+    ("C0017536", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Giardiasis -> Protozoal Infection [MSH p] A6N0
+    ("C0017609", "C0017601"): ("exclude_wrong", "target is a different disease or too generic"),  # Glaucoma, Neovascular -> Glaucoma [MSH p] A1N1
+    ("C0017612", "C0017601"): ("keep", "genuine subtype / clinical form of the target"),  # Glaucoma, Open-Angle -> Glaucoma [NCI p] A28N2
+    ("C1621958", "C0004114"): ("exclude_wrong", "GBM rolled onto broader astrocytic tumour class"),  # Glioblastoma Multiforme -> Astrocytic Tumor [NCI g] A0N24
+    ("C0018081", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Gonorrhea -> Bacterial Infection [NCI p] A23N0
+    ("C0018099", "C0003864"): ("exclude_wrong", "target is a different disease or too generic"),  # Gout -> Arthritis [NCI p] A9N0
+    ("C0018190", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Granuloma Inguinale -> Bacterial Infection [NCI p] A10N0
+    ("C3495801", "C0206062"): ("exclude_wrong", "target is a different disease or too generic"),  # Granulomatosis with polyangiitis -> Interstitial Lung Disease [MSH p] A2N0
+    ("C1960398", "C0858252"): ("keep", "NCIt level 2"),  # HER2-positive carcinoma of breast -> Breast Adenocarcinoma [NCI g] A5N0
+    ("C0023443", "C0023418"): ("exclude_wrong", "target is a different disease or too generic"),  # Hairy Cell Leukemia -> Leukemia [NCI g] A5N0
+    ("C0018621", "C2607914"): ("keep", "genuine subtype / clinical form of the target"),  # Hay fever -> Allergic Rhinitis [NCI p] A35N0
+    ("C0018671", "C0027651"): ("exclude_wrong", "target is a different disease or too generic"),  # Head and Neck Neoplasms -> Neoplasm [NCI g] A1N0
+    ("C0238425", "C0002895"): ("keep", "genuine subtype / clinical form of the target"),  # Hemoglobin SS disease with crisis -> Anemia, Sickle Cell [NCI p] A1N5
+    ("C0019147", "C0019151"): ("keep", "genuine subtype / clinical form of the target"),  # Hepatic Coma -> Hepatic Encephalopathy [MSH p] A3N0
+    ("C0019156", "C0023895"): ("exclude_wrong", "target is a different disease or too generic"),  # Hepatic Veno-Occlusive Disease -> Liver Diseases [NCI g] A1N0
+    ("C0524910", "C0019196"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Hepatitis C, Chronic -> Hepatitis C [NCI p] A23N5
+    ("C0019202", "C0023895"): ("exclude_wrong", "target is a different disease or too generic"),  # Hepatolenticular Degeneration -> Liver Diseases [MSH p] A3N0
+    ("C0019212", "C0022658"): ("exclude_wrong", "target is a different disease or too generic"),  # Hepatorenal Syndrome -> Kidney Diseases [MSH p] A0N2
+    ("C0019348", "C0042769"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Herpes simplex infection -> Viral Infection [NCI g] A1N1
+    ("C0019829", "C0024299"): ("exclude_wrong", "target is a different disease or too generic"),  # Hodgkin Disease -> Lymphoma [NCI p] A22N3
+    ("C0342881", "C0020445"): ("keep", "genuine subtype / clinical form of the target"),  # Homozygous Familial Hypercholesterolemia -> Hyperlipoproteinemia Type II [MSH p] A7N0
+    ("C1328504", "C0600139"): ("keep", "genuine subtype / clinical form of the target"),  # Hormone refractory prostate cancer -> Prostate Carcinoma [NCI g] A0N2
+    ("C0949083", "C0032285"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Hospital acquired pneumonia -> Pneumonia [NCI p] A8N5
+    ("C0020473", "C0242339"): ("keep", "genuine subtype / clinical form of the target"),  # Hyperlipidemia -> Dyslipidemia [MSH p] A14N9
+    ("C0178416", "C0002874"): ("keep", "genuine subtype / clinical form of the target"),  # Hypoplastic anemia -> Anemia, Aplastic [MSH p] A1N0
+    ("C0021099", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Impetigo -> Bacterial Infection [NCI p] A3N0
+    ("C0000810", "C0000786"): ("keep", "subtype; drugs act on uterus"),  # Incomplete spontaneous abortion -> Abortion, Spontaneous [MSH p] A4N0
+    ("C0751122", "C0014544"): ("exclude_wrong", "target is a different disease or too generic"),  # Infantile Severe Myoclonic Epilepsy -> Epilepsy [NCI p] A2N0
+    ("C0850666", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Infection caused by Helicobacter pylori -> Bacterial Infection [NCI p] A3N0
+    ("C0345905", "C0206698"): ("keep", "genuine subtype / clinical form of the target"),  # Intrahepatic Cholangiocarcinoma -> Cholangiocarcinoma [NCI p] A1N2
+    ("C0276653", "C0004030"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Invasive Pulmonary Aspergillosis -> Aspergillosis [NCI p] A1N1
+    ("C0022073", "C0042164"): ("keep", "NCIt level 2"),  # Iridocyclitis -> Uveitis [NCI g] A12N0
+    ("C0162316", "C0002871"): ("exclude_wrong", "target is a different disease or too generic"),  # Iron deficiency anemia -> Anemia [NCI g] A15N0
+    ("C3495559", "C0003864"): ("exclude_wrong", "target is a different disease or too generic"),  # Juvenile arthritis -> Arthritis [NCI p] A21N3
+    ("C0022575", "C0013238"): ("keep", "genuine subtype / clinical form of the target"),  # Keratoconjunctivitis Sicca -> Dry Eye Syndrome [MSH p] A1N0
+    ("C0022972", "C0026896"): ("exclude_wrong", "target is a different disease or too generic"),  # Lambert-Eaton Myasthenic Syndrome -> Myasthenia Gravis [MSH p] A2N0
+    ("C0280324", "C1168401"): ("keep", "genuine subtype / clinical form of the target"),  # Laryngeal Squamous Cell Carcinoma -> Head and Neck Squamous Cell Carcinoma [NCI g] A1N0
+    ("C0022340", "C0027877"): ("keep", "genuine subtype / clinical form of the target"),  # Late-Infantile Neuronal Ceroid Lipfuscinos -> Neuronal Ceroid Lipofuscinosis [MSH p] A1N0
+    ("C0238111", "C0014544"): ("exclude_wrong", "target is a different disease or too generic"),  # Lennox-Gastaut syndrome -> Epilepsy [NCI p] A11N0
+    ("C0023381", "C0019621"): ("keep", "genuine subtype / clinical form of the target"),  # Letterer-Siwe Disease -> Histiocytosis, Langerhans-Cell [NCI g] A1N0
+    ("C0023461", "C0023467"): ("exclude_wrong", "target is a different disease or too generic"),  # Leukemia, Mast-Cell -> Acute Myeloid Leukemia [MSH p] A1N1
+    ("C0023474", "C0023418"): ("exclude_wrong", "target is a different disease or too generic"),  # Leukemia, Myeloid, Chronic-Phase -> Leukemia [NCI g] A3N0
+    ("C0023480", "C0023418"): ("exclude_wrong", "target is a different disease or too generic"),  # Leukemia, Myelomonocytic, Chronic -> Leukemia [NCI g] A1N13
+    ("C0752347", "C0497327"): ("exclude_wrong", "target is a different disease or too generic"),  # Lewy Body Disease -> Dementia [NCI p] A1N0
+    ("C0023646", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Lichen Planus -> Dermatitis [NCI p] A1N2
+    ("C0348868", "C1541923"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Listerial endocarditis -> Infective Endocarditis [NCI g] A1N0
+    ("C0023885", "C0023895"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Liver Abscess -> Liver Diseases [MSH p] A4N0
+    ("C0085605", "C0023895"): ("exclude_wrong", "target is a different disease or too generic"),  # Liver Failure -> Liver Diseases [NCI g] A1N0
+    ("C0024143", "C0024141"): ("keep", "genuine subtype / clinical form of the target"),  # Lupus Nephritis -> Lupus Erythematosus, Systemic [MSH p] A1N13
+    ("C0024286", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Lymphogranuloma Venereum -> Bacterial Infection [NCI g] A9N0
+    ("C0024305", "C0024299"): ("exclude_wrong", "target is a different disease or too generic"),  # Lymphoma, Non-Hodgkin -> Lymphoma [NCI p] A1N0
+    ("C0079773", "C0079772"): ("keep", "single target dataset (GSE45712)"),  # Lymphoma, T-Cell, Cutaneous -> Lymphoma, T-Cell [NCI g] A34N0
+    ("C0555198", "C0017638"): ("keep", "genuine subtype / clinical form of the target"),  # Malignant Glioma -> Glioma [NCI p] A1N0
+    ("C0278996", "C0018671"): ("keep", "genuine subtype / clinical form of the target"),  # Malignant Head and Neck Neoplasm -> Head and Neck Neoplasm [NCI p] A5N0
+    ("C0024588", "C0020538"): ("keep", "NCIt level 2"),  # Malignant essential hypertension -> Hypertension [NCI g] A2N0
+    ("C0153633", "C0006118"): ("keep", "genuine subtype / clinical form of the target"),  # Malignant neoplasm of brain -> Brain Neoplasm [NCI p] A1N0
+    ("C0220636", "C0018671"): ("exclude_wrong", "target is a different disease or too generic"),  # Malignant neoplasm of salivary gland -> Head and Neck Neoplasm [NCI g] A1N0
+    ("C0024623", "C0038356"): ("keep", "genuine subtype / clinical form of the target"),  # Malignant neoplasm of stomach -> Gastric Neoplasm [NCI p] A10N0
+    ("C0007115", "C0040136"): ("keep", "genuine subtype / clinical form of the target"),  # Malignant neoplasm of thyroid -> Thyroid Gland Neoplasm [NCI p] A3N0
+    ("C0007847", "C0007873"): ("keep", "genuine subtype / clinical form of the target"),  # Malignant tumor of cervix -> Cervical Neoplasm [NCI p] A2N0
+    ("C0007102", "C0009375"): ("keep", "genuine subtype / clinical form of the target"),  # Malignant tumor of colon -> Colon Neoplasm [NCI p] A5N0
+    ("C0238462", "C0549473"): ("exclude_wrong", "medullary (C-cell) carcinoma differs from follicular-derived thyroid carcinoma"),  # Medullary carcinoma of thyroid -> Thyroid Gland Carcinoma [NCI p] A3N2
+    ("C0085436", "C0025289"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Meningitis, Cryptococcal -> Meningitis [NCI g] A1N0
+    ("C0085438", "C0025289"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Meningitis, Fungal -> Meningitis [MSH p] A1N0
+    ("C0025293", "C0085437"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Meningitis, Listeria -> Bacterial Meningitis [MSH p] A1N0
+    ("C0025295", "C0085437"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Meningitis, Pneumococcal -> Bacterial Meningitis [MSH p] A4N0
+    ("C0025295", "C0042769"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Meningitis, Pneumococcal -> Viral Infection [NCI g] A4N0
+    ("C0346974", "C0009375"): ("exclude_wrong", "target is a different disease or too generic"),  # Metastatic malignant neoplasm to colon -> Colon Neoplasm [NCI g] A2N0
+    ("C0346974", "C0007102"): ("exclude_wrong", "target is a different disease or too generic"),  # Metastatic malignant neoplasm to colon -> Malignant Colon Neoplasm [NCI p] A2N0
+    ("C0153685", "C0022665"): ("exclude_wrong", "target is a different disease or too generic"),  # Metastatic malignant neoplasm to kidney -> Kidney Neoplasm [NCI g] A2N0
+    ("C0346976", "C0030297"): ("exclude_wrong", "target is a different disease or too generic"),  # Metastatic malignant neoplasm to pancreas -> Pancreatic Neoplasm [NCI g] A2N0
+    ("C0686068", "C0038356"): ("exclude_wrong", "target is a different disease or too generic"),  # Metastatic malignant neoplasm to stomach -> Gastric Neoplasm [NCI g] A2N0
+    ("C0686068", "C0024623"): ("exclude_wrong", "target is a different disease or too generic"),  # Metastatic malignant neoplasm to stomach -> Malignant Gastric Neoplasm [NCI p] A2N0
+    ("C0278987", "C0007131"): ("keep", "NCIt level 2: stage subtype of NSCLC"),  # Metastatic non-small cell lung cancer -> Carcinoma, Non-Small-Cell Lung [NCI g] A5N3
+    ("C4288754", "C2145472"): ("keep", "genuine subtype / clinical form of the target"),  # Metastatic urothelial carcinoma -> Urothelial Carcinoma [NCI p] A2N7
+    ("C2347126", "C0042384"): ("exclude_wrong", "target is a different disease or too generic"),  # Microscopic Polyarteritis -> Vasculitis [NCI g] A2N3
+    ("C0276180", "C0042769"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Monkeypox disease -> Viral Infection [NCI p] A1N0
+    ("C1527383", "C0036420"): ("keep", "genuine subtype / clinical form of the target"),  # Morphea -> Localized Scleroderma [MSH p] A2N1
+    ("C0006848", "C0006840"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Mucocutaneous candidiasis -> Candidiasis [NCI p] A2N0
+    ("C0027662", "C0014132"): ("exclude_wrong", "target is a different disease or too generic"),  # Multiple Endocrine Neoplasia -> Endocrine Gland Neoplasms [NCI p] A3N0
+    ("C0393664", "C0751967"): ("keep", "genuine subtype / clinical form of the target"),  # Multiple Sclerosis, Acute Relapsing -> Multiple Sclerosis, Relapsing-Remitting [MSH p] A2N3
+    ("C0751967", "C0026769"): ("keep", "genuine subtype / clinical form of the target"),  # Multiple Sclerosis, Relapsing-Remitting -> Multiple Sclerosis [NCI p] A11N3
+    ("C0026838", "C0026848"): ("exclude_wrong", "target is a different disease or too generic"),  # Muscle Spasticity -> Muscular Diseases [MSH p] A14N1
+    ("C0231528", "C0026848"): ("exclude_wrong", "target is a different disease or too generic"),  # Myalgia -> Muscular Diseases [MSH p] A1N0
+    ("C0027145", "C0020676"): ("keep", "genuine subtype / clinical form of the target"),  # Myxedema -> Hypothyroidism [NCI p] A2N0
+    ("C0751362", "C0027404"): ("keep", "genuine subtype / clinical form of the target"),  # Narcolepsy-Cataplexy Syndrome -> Narcolepsy [MSH p] A3N0
+    ("C0027726", "C0022658"): ("exclude_wrong", "target is a different disease or too generic"),  # Nephrotic Syndrome -> Kidney Diseases [NCI g] A11N2
+    ("C0206754", "C0014132"): ("exclude_wrong", "target is a different disease or too generic"),  # Neuroendocrine Tumors -> Endocrine Gland Neoplasms [NCI p] A1N7
+    ("C0027873", "C0029134"): ("exclude_wrong", "target is a different disease or too generic"),  # Neuromyelitis Optica -> Optic Neuritis [MSH p] A3N4
+    ("C0268242", "C0028064"): ("keep", "genuine subtype / clinical form of the target"),  # Niemann-Pick Disease, Type A -> Niemann-Pick Disease [NCI p] A1N0
+    ("C0268243", "C0028064"): ("keep", "genuine subtype / clinical form of the target"),  # Niemann-Pick Disease, Type B -> Niemann-Pick Disease [NCI p] A1N0
+    ("C0220756", "C0028064"): ("exclude_wrong", "NPC is a distinct disease (NPC1/2) from Niemann-Pick A/B"),  # Niemann-Pick Disease, Type C -> Niemann-Pick Disease [NCI p] A1N3
+    ("C0028242", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Nocardia Infections -> Bacterial Infection [NCI p] A2N0
+    ("C0028840", "C0020538"): ("exclude_wrong", "ocular hypertension is not systemic hypertension"),  # Ocular Hypertension -> Hypertension [NCI p] A16N4
+    ("C0406486", "C0035854"): ("keep", "genuine subtype / clinical form of the target"),  # Ocular Rosacea -> Rosacea [MSH p] A3N0
+    ("C0917796", "C0029125"): ("keep", "genuine subtype / clinical form of the target"),  # Optic Atrophy, Hereditary, Leber -> Hereditary Optic Atrophy [NCI p] A1N0
+    ("C0585442", "C0029463"): ("keep", "genuine subtype / clinical form of the target"),  # Osteosarcoma of bone -> Osteosarcoma [NCI p] A3N0
+    ("C0030528", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Paratyphoid Fever -> Bacterial Infection [NCI p] A2N0
+    ("C0235480", "C0004238"): ("keep", "genuine subtype / clinical form of the target"),  # Paroxysmal atrial fibrillation -> Atrial Fibrillation [NCI p] A3N0
+    ("C0221154", "C0020538"): ("exclude_wrong", "target is a different disease or too generic"),  # Paroxysmal hypertension -> Hypertension [NCI p] A1N0
+    ("C0013274", "C0007222"): ("exclude_wrong", "target is a different disease or too generic"),  # Patent ductus arteriosus -> Cardiovascular Diseases [NCI g] A0N1
+    ("C0030809", "C0030807"): ("keep", "genuine subtype / clinical form of the target"),  # Pemphigus Vulgaris -> Pemphigus [NCI p] A2N2
+    ("C0014869", "C0014868"): ("keep", "genuine subtype / clinical form of the target"),  # Peptic Esophagitis -> Esophagitis [MSH p] A5N0
+    ("C0031190", "C0020542"): ("exclude_wrong", "target is a different disease or too generic"),  # Persistent Fetal Circulation Syndrome -> Hypertension, Pulmonary [MSH p] A3N2
+    ("C0279543", "C0027022"): ("exclude_wrong", "target is a different disease or too generic"),  # Philadelphia chromosome positive chronic m -> Myeloproliferative Disorders [MSH p] A4N0
+    ("C0031946", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Pinta -> Bacterial Infection [NCI g] A2N0
+    ("C0032019", "C0006118"): ("exclude_wrong", "target is a different disease or too generic"),  # Pituitary Neoplasms -> Brain Neoplasm [NCI g] A1N0
+    ("C0032064", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Plague -> Bacterial Infection [NCI p] A2N0
+    ("C0264515", "C0032285"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Pneumonia, Necrotizing -> Pneumonia [MSH p] A1N0
+    ("C0031036", "C0042384"): ("exclude_wrong", "target is a different disease or too generic"),  # Polyarteritis Nodosa -> Vasculitis [NCI g] A1N0
+    ("C0032463", "C0032461"): ("exclude_wrong", "target signature is Chuvash polycythemia (congenital VHL), not clonal PV"),  # Polycythemia Vera -> Polycythemia [NCI p] A5N9
+    ("C0032533", "C0026848"): ("exclude_wrong", "target is a different disease or too generic"),  # Polymyalgia Rheumatica -> Muscular Diseases [MSH p] A1N2
+    ("C0162533", "C0023895"): ("exclude_wrong", "target is a different disease or too generic"),  # Porphyrias, Hepatic -> Liver Diseases [MSH p] A1N0
+    ("C3805233", "C0026987"): ("keep", "genuine subtype / clinical form of the target"),  # Post-essential thrombocythemia myelofibros -> Myelofibrosis [NCI g] A1N0
+    ("C3805232", "C0032461"): ("exclude_wrong", "target is a different disease or too generic"),  # Post-polycythemia vera myelofibrosis -> Polycythemia [NCI g] A1N0
+    ("C3805232", "C0032463"): ("exclude_wrong", "target is a different disease or too generic"),  # Post-polycythemia vera myelofibrosis -> Polycythemia Vera [NCI p] A1N0
+    ("C0032897", "C0028754"): ("exclude_wrong", "target is a different disease or too generic"),  # Prader-Willi Syndrome -> Obese [MSH p] A2N5
+    ("C1292758", "C0079772"): ("exclude_wrong", "target is a different disease or too generic"),  # Precursor T-cell lymphoblastic lymphoma -> Lymphoma, T-Cell [NCI g] A1N0
+    ("C0520676", "C0011581"): ("exclude_wrong", "target is a different disease or too generic"),  # Premenstrual Dysphoric Disorder -> Depressive Disorder [MSH p] A5N1
+    ("C0001815", "C0027022"): ("exclude_wrong", "target is a different disease or too generic"),  # Primary Myelofibrosis -> Myeloproliferative Disorders [MSH p] A1N15
+    ("C0750979", "C0006118"): ("keep", "genuine subtype / clinical form of the target"),  # Primary malignant neoplasm of brain -> Brain Neoplasm [MSH p] A1N0
+    ("C0029291", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Psittacosis -> Bacterial Infection [NCI g] A9N0
+    ("C0392164", "C0010674"): ("keep", "genuine subtype / clinical form of the target"),  # Pulmonary Cystic Fibrosis -> Cystic Fibrosis [MSH p] A7N0
+    ("C0034063", "C0024115"): ("exclude_wrong", "target is a different disease or too generic"),  # Pulmonary Edema -> Lung Diseases [MSH p] A1N1
+    ("C0034065", "C0024115"): ("exclude_wrong", "target is a different disease or too generic"),  # Pulmonary Embolism -> Lung Diseases [MSH p] A1N0
+    ("C0034067", "C0024117"): ("keep", "genuine subtype / clinical form of the target"),  # Pulmonary Emphysema -> Chronic Obstructive Pulmonary Disease [NCI p] A20N0
+    ("C0034069", "C0206062"): ("keep", "genuine subtype / clinical form of the target"),  # Pulmonary Fibrosis -> Interstitial Lung Disease [MSH p] A1N0
+    ("C0276688", "C0032285"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Pulmonary cryptococcosis -> Pneumonia [NCI p] A1N0
+    ("C0349649", "C0751674"): ("keep", "genuine subtype / clinical form of the target"),  # Pulmonary lymphangioleiomyomatosis -> Lymphangioleiomyomatosis [NCI p] A1N0
+    ("C0030246", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Pustulosis of Palms and Soles -> Dermatitis [NCI p] A1N0
+    ("C0030246", "C0033860"): ("keep", "genuine subtype / clinical form of the target"),  # Pustulosis of Palms and Soles -> Psoriasis [MSH p] A1N0
+    ("C0034186", "C0022658"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Pyelonephritis -> Kidney Diseases [NCI g] A7N3
+    ("C0854802", "C0023434"): ("keep", "genuine subtype / clinical form of the target"),  # Recurrent Chronic Lymphoid Leukemia -> Chronic Lymphocytic Leukemia [NCI p] A1N4
+    ("C4528668", "C0023467"): ("keep", "genuine subtype / clinical form of the target"),  # Refractory acute myeloid leukemia -> Acute Myeloid Leukemia [NCI p] A1N16
+    ("C2981142", "C3463824"): ("keep", "genuine subtype / clinical form of the target"),  # Refractory anemia, without ringed siderobl -> Myelodysplastic Syndrome [NCI p] A1N0
+    ("C0238217", "C0022658"): ("exclude_wrong", "target is a different disease or too generic"),  # Renal transplant rejection -> Kidney Diseases [NCI p] A5N1
+    ("C0035436", "C0003864"): ("exclude_wrong", "target is a different disease or too generic"),  # Rheumatic Fever -> Arthritis [MSH p] A1N0
+    ("C0035436", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Rheumatic Fever -> Bacterial Infection [NCI p] A1N0
+    ("C0035457", "C2607914"): ("keep", "genuine subtype / clinical form of the target"),  # Rhinitis, Allergic, Perennial -> Allergic Rhinitis [NCI p] A2N0
+    ("C0035460", "C0035455"): ("exclude_wrong", "target is a different disease or too generic"),  # Rhinitis, Vasomotor -> Rhinitis [NCI p] A41N0
+    ("C0035793", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Rocky Mountain Spotted Fever -> Bacterial Infection [NCI g] A9N0
+    ("C0152486", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Salmonella sepsis -> Bacterial Infection [NCI p] A2N0
+    ("C0036285", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Scarlet Fever -> Bacterial Infection [NCI g] A3N0
+    ("C0085159", "C0011581"): ("keep", "genuine subtype / clinical form of the target"),  # Seasonal Affective Disorder -> Depressive Disorder [MSH p] A1N0
+    ("C0036508", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Seborrheic dermatitis -> Dermatitis [NCI g] A44N0
+    ("C0036508", "C0013595"): ("exclude_wrong", "target is a different disease or too generic"),  # Seborrheic dermatitis -> Eczema [NCI p] A44N0
+    ("C0268407", "C0002726"): ("keep", "genuine subtype / clinical form of the target"),  # Senile cardiac amyloidosis -> Amyloidosis [NCI p] A2N0
+    ("C0011268", "C0497327"): ("keep", "genuine subtype / clinical form of the target"),  # Senile dementia -> Dementia [NCI p] A4N0
+    ("C0456103", "C0243026"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Sepsis of the newborn -> Sepsis [MSH p] A7N0
+    ("C0341950", "C0032914"): ("keep", "genuine subtype / clinical form of the target"),  # Severe pre-eclampsia -> Pre-Eclampsia [NCI p] A1N0
+    ("C0013371", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Shigella Infections -> Bacterial Infection [NCI p] A7N0
+    ("C0036980", "C0027051"): ("exclude_wrong", "target is a different disease or too generic"),  # Shock, Cardiogenic -> Myocardial Infarction [MSH p] A1N1
+    ("C1527336", "C0003873"): ("exclude_wrong", "target is a different disease or too generic"),  # Sjogren's Syndrome -> Arthritis, Rheumatoid [MSH p] A1N1
+    ("C0162627", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Skin Diseases, Bacterial -> Bacterial Infection [MSH p] A11N0
+    ("C0152030", "C0021368"): ("exclude_wrong", "target is a different disease or too generic"),  # Skin irritation -> Inflammation [NCI g] A21N0
+    ("C0855095", "C0079731"): ("exclude_wrong", "target is a different disease or too generic"),  # Small Lymphocytic Lymphoma -> B-Cell Non-Hodgkin Lymphoma [NCI g] A4N0
+    ("C0149925", "C0684249"): ("exclude_wrong", "SCLC is a distinct lung cancer; lung carcinoma signature a poor proxy"),  # Small cell carcinoma of lung -> Lung Carcinoma [NCI g] A5N0
+    ("C0037354", "C0042769"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Smallpox -> Viral Infection [NCI p] A1N0
+    ("C0242429", "C0031350"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Sore Throat -> Pharyngitis [MSH p] A5N0
+    ("C0026847", "C0037928"): ("exclude_wrong", "target is a different disease or too generic"),  # Spinal Muscular Atrophy -> Spinal Cord Diseases [MSH p] A3N0
+    ("C0149782", "C0684249"): ("keep", "genuine subtype / clinical form of the target"),  # Squamous cell carcinoma of lung -> Lung Carcinoma [NCI p] A1N0
+    ("C1319317", "C0747548"): ("keep", "genuine subtype / clinical form of the target"),  # Squamous cell carcinoma of pharynx -> Pharyngeal Carcinoma [NCI p] A1N0
+    ("C1319317", "C1168401"): ("keep", "genuine subtype / clinical form of the target"),  # Squamous cell carcinoma of pharynx -> Head and Neck Squamous Cell Carcinoma [NCI g] A1N0
+    ("C4509816", "C0007131"): ("keep", "genuine subtype / clinical form of the target"),  # Squamous non-small cell lung cancer -> Carcinoma, Non-Small-Cell Lung [NCI p] A1N4
+    ("C0038157", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Staphylococcal enterocolitis -> Bacterial Infection [NCI g] A1N0
+    ("C1318973", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Staphylococcus aureus infection -> Bacterial Infection [NCI g] A49N0
+    ("C0271093", "C0024437"): ("exclude_wrong", "target is a different disease or too generic"),  # Stargardt's disease -> Macular Degeneration [NCI p] A1N0
+    ("C0038220", "C0036572"): ("exclude_wrong", "target is a different disease or too generic"),  # Status Epilepticus -> Seizure [MSH p] A6N6
+    ("C0038395", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Streptococcal Infections -> Bacterial Infection [NCI p] A4N0
+    ("C0862889", "C0007117"): ("keep", "genuine subtype / clinical form of the target"),  # Superficial basal cell carcinoma -> Basal Cell Carcinoma [NCI g] A2N0
+    ("C0039128", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Syphilis -> Bacterial Infection [NCI g] A12N0
+    ("C0036421", "C0011644"): ("keep", "genuine subtype / clinical form of the target"),  # Systemic Scleroderma -> Scleroderma [NCI p] A3N9
+    ("C0039520", "C1568272"): ("keep", "genuine subtype / clinical form of the target"),  # Tenosynovitis -> Tendinopathy [MSH p] A10N1
+    ("C0039614", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Tetanus -> Bacterial Infection [NCI p] A2N0
+    ("C0040021", "C0042384"): ("exclude_wrong", "target is a different disease or too generic"),  # Thromboangiitis Obliterans -> Vasculitis [MSH p] A1N0
+    ("C0494475", "C0036572"): ("exclude_wrong", "target is a different disease or too generic"),  # Tonic - clonic seizures -> Seizure [NCI g] A5N0
+    ("C0014549", "C0014544"): ("exclude_wrong", "target is a different disease or too generic"),  # Tonic-Clonic Epilepsy -> Epilepsy [NCI g] A8N0
+    ("C0040425", "C0031350"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Tonsillitis -> Pharyngitis [MSH p] A9N1
+    ("C0040558", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Toxoplasmosis -> Protozoal Infection [NCI p] A3N0
+    ("C0040560", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Toxoplasmosis, Congenital -> Protozoal Infection [NCI g] A1N0
+    ("C0040921", "C0033740"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Trichomonas Infections -> Protozoal Infection [NCI p] A6N0
+    ("C3539878", "C1458155"): ("exclude_wrong", "target is a different disease or too generic"),  # Triple Negative Breast Neoplasms -> Breast Neoplasm [MSH p] A2N4
+    ("C0041318", "C0041296"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Tuberculosis, Meningeal -> Tuberculosis [NCI p] A1N0
+    ("C0041351", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Tularemia -> Bacterial Infection [NCI p] A4N0
+    ("C0041466", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Typhoid Fever -> Bacterial Infection [NCI p] A5N0
+    ("C0041473", "C0004623"): ("exclude_infection", "infectious indication: the drug acts on the pathogen"),  # Typhus, Epidemic Louse-Borne -> Bacterial Infection [NCI g] A2N0
+    ("C0042109", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Urticaria -> Dermatitis [NCI p] A28N2
+    ("C0042373", "C0007222"): ("exclude_wrong", "target is a different disease or too generic"),  # Vascular Diseases -> Cardiovascular Diseases [NCI p] A3N0
+    ("C0042571", "C0042594"): ("exclude_wrong", "target is a different disease or too generic"),  # Vertigo -> Vestibular Diseases [MSH p] A4N1
+    ("C0042900", "C0011603"): ("exclude_wrong", "target is a different disease or too generic"),  # Vitiligo -> Dermatitis [NCI p] A2N2
+    ("C0043515", "C0017185"): ("exclude_wrong", "target is a different disease or too generic"),  # Zollinger-Ellison syndrome -> Digestive System Neoplasm [MSH p] A10N0
+    ("C0005283", "C0039730"): ("keep", "genuine subtype / clinical form of the target"),  # beta Thalassemia -> Thalassemia [NCI p] A3N0
 }
 
 C_APPROVED = S04.C_APPROVED
