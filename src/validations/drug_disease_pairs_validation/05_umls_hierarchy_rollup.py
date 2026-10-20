@@ -651,13 +651,16 @@ def drug_leg(rp_keep, exact_lp, dm, names_by_pair):
 def summarise(exact_lp, rp, lp, removed, version):
     """One row per threshold x; every column refers to that x."""
     rows = []
-    for x in sorted(lp["min_psamples"].unique()):
+    for x in sorted(rp["min_psamples"].unique()):
         row = {"min_psamples": x, "hierarchy": ROLLUP_HIERARCHY,
                "hierarchy_version": version}
         e = exact_lp[(exact_lp["max_psamples"] >= x) & (exact_lp["label"] != "conflict")]
         r = rp[rp["min_psamples"] == x]
-        k = lp[lp["min_psamples"] == x]
-        d = removed[removed["min_psamples"] == x]
+        k = lp[lp["min_psamples"] == x] if len(lp) else lp.reindex(
+            columns=["label", "child_ind_name", "child_ind_id", "ind_id",
+                     "own_signature_below_x", "min_psamples"])
+        d = (removed[removed["min_psamples"] == x] if len(removed)
+             else pd.DataFrame(columns=["removed_because"]))
         for lab in LABELS:
             row[f"exact_{lab}_lincs"] = int((e["label"] == lab).sum())
             for dec in DECISION_CLASSES:
@@ -839,7 +842,8 @@ def main():
                    "target_source", "target_node_label",
                    "n_approved_pairs", "n_not_approved_pairs"]].to_string(index=False))
     print("\nremoved in the drug leg (all x):",
-          removed.groupby(["min_psamples", "removed_because"]).size().to_dict())
+          removed.groupby(["min_psamples", "removed_because"]).size().to_dict()
+          if len(removed) else {})
     with pd.option_context("display.width", 200):
         print(summary.T.to_string(header=False))
 
