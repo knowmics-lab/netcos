@@ -15,7 +15,12 @@ vocabularies, not in the CUI. ROLLUP_HIERARCHY (conf) selects the hierarchy:
 - "umls"  : the source-vocabulary hierarchies distributed in UMLS, read through
             the UTS REST API (version UMLS_VERSION). Each CUI is mapped to its
             NCIt and MeSH codes (atoms of the CUI); each code is climbed
-            through its `parents` in the same source. Sources are tried in
+            through its `parents` in the same source. A CUI marks a node as a
+            target only when it is the node's preferred term (UMLS_PREFERRED_TTY,
+            e.g. MeSH MH/NM, NCIt PT): a MeSH entry term carries the code of
+            the broader descriptor that contains it. A child reached through
+            a non-preferred atom starts one level up (the containing node is
+            level 1). Sources are tried in
             UMLS_SOURCES order: the first source in which the CUI reaches a
             signature CUI gives the target; the others are not used for that
             CUI. API responses are cached on disk (UMLS_CACHE_FILE).
@@ -46,7 +51,10 @@ entries of ROLLUP_DECISIONS apply to the child whatever its target:
                       not by reversing the host transcriptional response.
 - exclude_wrong     : the target is a different disease or a class too
                       generic to stand for the child.
-Level-2 candidates are excluded by rule (EXCLUDE_LEVEL2); candidates without a
+Level-2 candidates are excluded by rule for the sources in
+EXCLUDE_LEVEL2_SOURCES; level-2 candidates of the other sources (NCIt, whose
+stage and marker subtypes sit two steps below their histological type) are
+curated like level 0/1. Candidates without a
 curated decision are excluded and listed as `uncurated`. CUIs whose target
 changes across thresholds are printed for checking the curated note.
 
@@ -114,7 +122,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from conf import (IMG_DIR, MONDO_FILE, OOUT_DIR, ROLLUP_HIERARCHY,
-                  UMLS_CACHE_FILE, UMLS_SOURCES, UMLS_VERSION)
+                  UMLS_CACHE_FILE, UMLS_PREFERRED_TTY, UMLS_SOURCES,
+                  UMLS_VERSION)
 
 # --------------------------------------------------------------------------- #
 # Sibling stages (03_ disease leg, 04_ drug leg) reused as modules
@@ -150,7 +159,7 @@ BY_TARGET_TSV = OUT_DIR / f"umls_rollup_by_target{_SFX}.tsv"
 # Parameters
 # --------------------------------------------------------------------------- #
 MAX_LEVELS = 2                 # parent steps climbed (candidates reported)
-EXCLUDE_LEVEL2 = True          # grandparent targets are never used
+EXCLUDE_LEVEL2_SOURCES = ("MSH", "MONDO")  # grandparent targets never used for these
 SELECTED_PSAMPLES = S04.SELECTED_PSAMPLES
 PANEL_PNG = IMG_OUT_DIR / f"umls_rollup_panel_ge{SELECTED_PSAMPLES}Psamples{_SFX}.png"
 UTS_BASE = "https://uts-ws.nlm.nih.gov/rest"
@@ -407,26 +416,32 @@ def _uts_get(session, path, api_key):
 
 def load_umls(cuis, max_levels=MAX_LEVELS):
     """
-    (cui -> set of nodes, node -> label, child node -> set of parent nodes,
-    version) for the given CUIs, nodes being "SAB:code" in UMLS_SOURCES.
-    Parents are fetched up to max_levels steps above the CUIs' own codes.
+    (cui -> {node: offset}, node -> label, child node -> set of parent
+    nodes, version) for the given CUIs, nodes being "SAB:code" in
+    UMLS_SOURCES. offset is 0 when the CUI holds the node's preferred term
+    (UMLS_PREFERRED_TTY), 1 otherwise. Node labels come from preferred atoms
+    and from the parents endpoint. Parents are fetched up to max_levels steps
+    above the CUIs' own codes.
     """
     import requests
     from local import UMLS_API_KEY
 
-    cache = {"version": UMLS_VERSION, "atoms": {}, "parents": {}}
+    cache = {"version": UMLS_VERSION, "atoms_tty": {}, "parents": {}}
     if UMLS_CACHE_FILE.exists():
         with open(UMLS_CACHE_FILE, encoding="utf-8") as fh:
             cache = json.load(fh)
+    cache.pop("atoms", None)                 # older cache layout, without term types
+    cache.setdefault("atoms_tty", {})
     sabs = ",".join(UMLS_SOURCES)
     session = requests.Session()
     n_calls = 0
 
-    todo = sorted(c for c in cuis if c not in cache["atoms"])
+    todo = sorted(c for c in cuis if c not in cache["atoms_tty"])
     for i, cui in enumerate(todo, 1):
         atoms = _uts_get_atoms(session, cui, sabs, UMLS_API_KEY)
-        cache["atoms"][cui] = sorted({(a["rootSource"], a["code"].rsplit("/", 1)[1], a["name"])
-                                      for a in atoms if a.get("rootSource") in UMLS_SOURCES})
+        cache["atoms_tty"][cui] = sorted({(a["rootSource"], a["code"].rsplit("/", 1)[1],
+                                           a.get("termType", ""), a["name"])
+                                          for a in atoms if a.get("rootSource") in UMLS_SOURCES})
         n_calls += 1
         if i % 200 == 0:
             print(f"UTS atoms: {i}/{len(todo)}")
@@ -434,12 +449,15 @@ def load_umls(cuis, max_levels=MAX_LEVELS):
 
     cui2n, label = {}, {}
     for cui in cuis:
-        for sab, code, name in cache["atoms"].get(cui, []):
+        for sab, code, tty, name in cache["atoms_tty"].get(cui, []):
             n = f"{sab}:{code}"
-            cui2n.setdefault(cui, set()).add(n)
-            label.setdefault(n, name)
+            off = 0 if tty in UMLS_PREFERRED_TTY.get(sab, ()) else 1
+            nodes = cui2n.setdefault(cui, {})
+            nodes[n] = min(off, nodes.get(n, 1))
+            if off == 0:
+                label[n] = name
 
-    parents, frontier = {}, set().union(*cui2n.values()) if cui2n else set()
+    parents, frontier = {}, set().union(*(set(v) for v in cui2n.values()))
     for _ in range(max_levels):
         nxt = set()
         for n in sorted(frontier):
@@ -455,7 +473,8 @@ def load_umls(cuis, max_levels=MAX_LEVELS):
             for sab, ui, name in cache["parents"][n]:
                 p = f"{sab}:{ui}"
                 parents.setdefault(n, set()).add(p)
-                label.setdefault(p, name)
+                if name:
+                    label.setdefault(p, name)
                 nxt.add(p)
         frontier = nxt
     if n_calls:
@@ -487,6 +506,12 @@ def _save_cache(cache):
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(cache, fh)
     tmp.replace(UMLS_CACHE_FILE)
+
+
+def _nodes(cui2m, cui):
+    """{node: offset} of a CUI; MONDO nodes (sets) all have offset 0."""
+    v = cui2m.get(cui, {})
+    return v if isinstance(v, dict) else {n: 0 for n in v}
 
 
 def _source(node):
@@ -530,16 +555,19 @@ def find_candidates(pairs, max_ps, x, ind_names, hier):
     sig = {c for c, v in max_ps.items() if v >= x}
     sig_by_m = {}
     for cui in sig:
-        for m in cui2m.get(cui, ()):
-            sig_by_m.setdefault(m, set()).add(cui)
+        for m, off in _nodes(cui2m, cui).items():
+            if off == 0:                           # preferred term of the node only
+                sig_by_m.setdefault(m, set()).add(cui)
 
     rows = []
     for cui in sorted(set(pairs["ind_id"]) - sig):
         hits = {}                                   # target CUI -> (level, node)
         for src in order:
-            for m in (n for n in cui2m.get(cui, ()) if _source(n) == src):
-                reach = {m: 0, **ancestors(m, parents, MAX_LEVELS)}
-                for a, d in reach.items():
+            for m, off in _nodes(cui2m, cui).items():
+                if _source(m) != src:
+                    continue
+                reach = {m: 0, **ancestors(m, parents, MAX_LEVELS - off)}
+                for a, d in ((a, d + off) for a, d in reach.items()):
                     for t in sig_by_m.get(a, ()):
                         if t != cui and (t not in hits or d < hits[t][0]):
                             hits[t] = (d, a)
@@ -552,7 +580,7 @@ def find_candidates(pairs, max_ps, x, ind_names, hier):
                       key=lambda t: (-max_ps[t], t))
         target = tied[0]
         dec, note = _decision(cui, target)
-        if level == 2 and EXCLUDE_LEVEL2:
+        if level == 2 and _source(hits[target][1]) in EXCLUDE_LEVEL2_SOURCES:
             dec, note = "exclude_level2", "grandparent target"
         cnt = pairs[pairs["ind_id"] == cui]["label"].value_counts()
         rows.append({
@@ -564,9 +592,12 @@ def find_candidates(pairs, max_ps, x, ind_names, hier):
             "target_source": _source(hits[target][1]),
             "target_node": hits[target][1],
             "target_node_label": label.get(hits[target][1], ""),
+            "target_cui_preferred_labels": "|".join(sorted(
+                label.get(n, "") for n, o in _nodes(cui2m, target).items() if o == 0)),
             "tied_target_cuis": "|".join(tied),
             "target_max_psamples": max_ps[target],
-            "child_nodes": "|".join(sorted(cui2m[cui])),
+            "child_nodes": "|".join(sorted(f"{n}{'' if o == 0 else '(non-preferred)'}"
+                                           for n, o in _nodes(cui2m, cui).items())),
             "decision": dec, "decision_note": note,
             "n_approved_pairs": int(cnt.get("approved", 0)),
             "n_not_approved_pairs": int(cnt.get("not_approved", 0)),

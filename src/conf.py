@@ -150,6 +150,7 @@ ROLLUP_HIERARCHY = "umls"
 UMLS_DIR = DATA_DIR / 'UMLS'
 UMLS_VERSION = "current" # UTS release used by the REST calls ("current" or e.g. "2026AA")
 UMLS_SOURCES = ("NCI", "MSH") # source vocabularies, in priority order
+UMLS_PREFERRED_TTY = {"NCI": ("PT",), "MSH": ("MH", "NM")} # term types that make a CUI the node itself
 UMLS_CACHE_FILE = UMLS_DIR / f'uts_rest_cache_{UMLS_VERSION}.json'
 
 # miR-29 antagomiR mouse RNA-seq (log2 fold changes, antagomiR vs control)
