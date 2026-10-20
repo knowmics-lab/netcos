@@ -144,6 +144,14 @@ CREED_DIR = DATA_DIR / 'CREEDS'
 MONDO_DIR = DATA_DIR / 'MONDO'
 MONDO_FILE = MONDO_DIR / 'mondo.json'
 
+# UMLS (UTS REST API; key UMLS_API_KEY in local.py). Hierarchy used by the
+# drug_disease_pairs_validation roll-up (05_): "umls" (NCIt/MeSH via UTS) or "mondo"
+ROLLUP_HIERARCHY = "umls"
+UMLS_DIR = DATA_DIR / 'UMLS'
+UMLS_VERSION = "current" # UTS release used by the REST calls ("current" or e.g. "2026AA")
+UMLS_SOURCES = ("NCI", "MSH") # source vocabularies, in priority order
+UMLS_CACHE_FILE = UMLS_DIR / f'uts_rest_cache_{UMLS_VERSION}.json'
+
 # miR-29 antagomiR mouse RNA-seq (log2 fold changes, antagomiR vs control)
 MIR29_DIR = DATA_DIR / 'Pizzoruso_mir29'
 MIR29_LFC_FILE = MIR29_DIR / 'LFC_mir29_down.txt'

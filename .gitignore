@@ -54,6 +54,7 @@ src/other/
 /other_outputs/
 /connectivity_score/input/
 /connectivity_score/output/
+/Claude outputs/
 validations/SAveRUNNER/
 validations/octad tests/
 data.zip
@@ -74,6 +75,7 @@ Thumbs.db
 /paper/
 /presentations/
 /data_exploration/old_exploration_with_bugged_CS
+/Van Vactor Colab/
 
 # tsr model files
 tsr/data/
@@ -90,9 +92,9 @@ kernel-netcos.json
 # local config files
 src/local.py
 
-# Backstage ops (private — see CLAUDE.md §2 file architecture)
-# NetCoS is a computational pipeline only; the AI-agent-team wrapper
-# (Supervisor/Student/Critic/Curator/Writer scaffolding) must leave no trace here.
+# Backstage and AI management
+# NetCoS is a computational pipeline only
 CLAUDE.md
 ai-team-skills/
+admin/
 

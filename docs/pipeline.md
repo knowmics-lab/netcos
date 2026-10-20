@@ -130,7 +130,7 @@ Each analysis has one slug, mirrored across `src/`, `imgs/` and `other_outputs/`
   - `02_` repoDB structure;
   - `03_` repoDB × disease signatures, joined on UMLS CUI;
   - `04_` repoDB drugs → LINCS L1000;
-  - `05_` UMLS → MONDO hierarchy roll-up for CUIs without their own signature.
+  - `05_` hierarchy roll-up for CUIs without their own signature, through the UMLS source vocabularies (NCIt, MeSH; UTS REST API).
 - `src/case_studies/` — single-dataset applications that produce new disease-side inputs:
   - `stan_als_tdp43/` — TDP-43 iPSC motor-neuron bulk RNA-seq: `01_` edgeR QLF + QC from counts, `02_` contrast → DEG CS input (`"cs_in"`) and MITHrIL `.mi`, one disease run per contrast.
   - `mir29_antagomir/` — mouse miR-29 antagomiR log2FC signature: `01_` mouse → human 1:1 orthologs (MGI homology report) → DEG CS input and MITHrIL `.mi`. No p-values in the input (`adj.p.value` = NaN). Mimicking study: read the most positive CS.
@@ -165,7 +165,7 @@ data_exploration/           CS/ranking + EDA notebooks (IPF, ALS_NYGC, ChEMBL)
 imgs/                       Every image the project produces, one folder per analysis slug
 other_outputs/              Every non-image result (tables, summaries), one folder per analysis slug
 paper/                      NetCoS methods paper draft + bib tooling
-data/                       Reference + test datasets (BinChen2017, LINCS, repoDB, DiSignAtlas, CREEDS, MONDO, dictionaries) — gitignored
+data/                       Reference + test datasets (BinChen2017, LINCS, repoDB, DiSignAtlas, CREEDS, UMLS cache, dictionaries) — gitignored
 logs/                       cs_runs.tsv = registry of every CS run; per-step run logs; grid-search TSVs
 ```
 
