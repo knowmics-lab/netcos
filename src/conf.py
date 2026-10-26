@@ -163,6 +163,21 @@ MGI_HOM_FILE = DICT_DIR / 'HOM_MouseHumanSequence.rpt'
 # per-analysis outputs of the mouse->human mapping
 MIR29_OOUT_DIR = OOUT_DIR / 'case_studies' / 'mir29_antagomir'
 
+# Case studies: standard locations derived from the slug (= folder name in
+# src/case_studies/). Dataset-specific file names live in
+# src/case_studies/<slug>/case_conf.py; the data folder is DATA_DIR / <slug>.
+from types import SimpleNamespace
+
+def case_study_paths(slug):
+    """Standard locations of a case study, all derived from its slug."""
+    return SimpleNamespace(
+        slug=slug,
+        data_dir=DATA_DIR / slug,
+        oout_dir=OOUT_DIR / 'case_studies' / slug,
+        img_dir=IMG_DIR / 'case_studies' / slug,
+        cs_in_disease=CS_DIR / 'input' / 'disease_signature_2025' / slug,
+    )
+
 
 ##########################################################################
 # Drug signature calculations using LINCS1000 -
