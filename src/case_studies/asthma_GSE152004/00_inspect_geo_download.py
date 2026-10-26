@@ -8,25 +8,23 @@ signature workflow.
 Design
 ------
 - Files: name and size of every file in P.data_dir.
-- Count matrices: for the NCBI-recomputed counts (case_conf.NCBI_COUNTS,
-  rows = NCBI GeneID, columns = GSM) and the submitter counts
-  (case_conf.AUTHOR_COUNTS, rows = gene symbols, header without a name for
-  the gene column): number of genes and samples, whether every value is a
-  non-negative integer, number of all-zero genes, first gene ids.
+- Count matrix: the NCBI-recomputed counts (case_conf.NCBI_COUNTS, rows =
+  NCBI GeneID, columns = GSM): number of genes and samples, whether every
+  value is a non-negative integer, number of all-zero genes, first gene ids,
+  library sizes.
 - Sample metadata from the series matrix: '!Sample_geo_accession',
   '!Sample_title' and every '!Sample_characteristics_ch1' field, split on
   the first ':' into covariate name and level.
 - Alignment: every GSM column of the NCBI counts must appear exactly once in
-  the series matrix, and every submitter count column must match a
-  '!Sample_title'; the script stops otherwise.
+  the series matrix; the script stops otherwise. Series-matrix samples with
+  no column in the counts are listed.
 - Group map: one character per GSM column of the NCBI counts, in column
   order, '0' = asthmatic (disease) and '1' = healthy control, the coding of
   modules/disease_signature/DiseaseControlGroupsFactor.R.
 
 Inputs (paths from case_conf.py)
 --------------------------------
-- P.data_dir (= DATA_DIR / asthma_GSE152004), NCBI_COUNTS, AUTHOR_COUNTS,
-  SERIES_MATRIX.
+- P.data_dir (= DATA_DIR / asthma_GSE152004), NCBI_COUNTS, SERIES_MATRIX.
 
 Outputs
 -------
@@ -53,7 +51,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from case_conf import P, NCBI_COUNTS, AUTHOR_COUNTS, SERIES_MATRIX
+from case_conf import P, NCBI_COUNTS, SERIES_MATRIX
 
 
 GROUP_CODE = {'asthmatic': '0', 'healthy control': '1'}
@@ -110,14 +108,14 @@ if __name__ == '__main__':
         log('files', p.name, f'{p.stat().st_size / 2**20:.1f} MB')
 
     ncbi = inspect_counts(NCBI_COUNTS, 'NCBI counts', 'GeneID')
-    author = inspect_counts(AUTHOR_COUNTS, 'submitter counts', 0)
     s = read_series_matrix()
 
     miss_gsm = sorted(set(ncbi.columns) - set(s['GSM']))
-    miss_title = sorted(set(author.columns) - set(s['title']))
     log('alignment', 'NCBI GSM columns not in series matrix', len(miss_gsm))
-    log('alignment', 'submitter columns not matching a title', len(miss_title))
-    assert not miss_gsm and not miss_title
+    assert not miss_gsm
+    absent = s[~s['GSM'].isin(ncbi.columns)]
+    log('alignment', 'series-matrix samples without a column in the NCBI counts',
+        '; '.join(f"{g} ({t}, {a})" for g, t, a in zip(absent['GSM'], absent['title'], absent['asthma status'])) or 'none')
 
     s = s.set_index('GSM').loc[list(ncbi.columns)].rename_axis('GSM').reset_index()
     s.insert(0, 'column_index', range(1, len(s) + 1))
@@ -127,13 +125,6 @@ if __name__ == '__main__':
     log('group map', 'length', len(groups_map))
     log('group map', "'0' asthmatic / '1' healthy control",
         f"{groups_map.count('0')} / {groups_map.count('1')}")
-
-    # same samples in both count files: library sizes, linked through the title
-    lib_ncbi = ncbi.sum(axis=0).rename('lib_ncbi')
-    lib_author = author.sum(axis=0).rename('lib_author')
-    j = s[['GSM', 'title']].join(lib_ncbi, on='GSM').join(lib_author, on='title')
-    log('alignment', 'Spearman of library sizes NCBI vs submitter (same sample)',
-        round(j['lib_ncbi'].corr(j['lib_author'], method='spearman'), 4))
 
     pd.DataFrame(rows, columns=['section', 'item', 'value']).to_csv(
         P.oout_dir / f'{P.slug}_download_inspection.tsv', sep='\t', index=False)
