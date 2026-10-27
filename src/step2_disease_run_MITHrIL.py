@@ -105,8 +105,16 @@ def run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE,
 if __name__=="__main__":
     from sys import argv
     from conf import disease_run_name
-    # insert disease_run_name name 
-    # python step2_disease_run_MITHrIL.py disease_run_name
+    # python step2_disease_run_MITHrIL.py [disease_run_name] [run]
+    #   no 'run': print the MITHrIL command only; 'run': execute it
     if len(argv)>1:
         disease_run_name = argv[1]
-    run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE, n_thread=mith_threads,  printc=True)
+    execute = len(argv)>2 and argv[2] == "run"
+    if execute and not Path(MITH_APP).exists():
+        raise SystemExit(f"MITHrIL jar not found at {MITH_APP}: cannot run on this machine")
+    if not execute:
+        run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE, n_thread=mith_threads, printc=True)
+        print(f"\nTo run it: copy-paste the command above (no entry in mithril_disease_runs.tsv), or\n"
+              f"    python step2_disease_run_MITHrIL.py {disease_run_name} run")
+    else:
+        run_mithril(disease_run_name, MITH_APP, MITH_IN_DISEASE, MITH_OUT_DISEASE, n_thread=mith_threads, printc=False)
