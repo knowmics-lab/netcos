@@ -50,7 +50,7 @@ from cs_batch import run_cs_batch_for_conf
 # Pre-MITHrIL / pre-CS hyperparameters to sweep. Edit freely.
 # Combos that violate conf.validate_hyperparameters are dropped automatically
 # (cs_mith=0 forbids pathways; cs_on_LM=1 forbids pathways).
-CS_METHODs        = ['bin_chen', 'bin_chen_disease_sorted']
+CS_METHODs        = ['bin_chen']  # bin_chen_disease_sorted: wrong implementation, not used
 cs_miths          = [0, 1]          # 0 = DEG signatures, 1 = MITHrIL-propagated
 cs_on_LMs         = [0, 1]          # 1 = restrict to landmark genes
 CS_ON_PATHWAYSs   = [True, False]         # True needs cs_mith=1 & cs_on_LM=0
