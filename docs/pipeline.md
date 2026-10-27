@@ -57,8 +57,8 @@ Not allowed: `cs_mith=0` with `CS_ON_PATHWAYS=True` (pathways exist only after M
 
 Disease side:
 
-- `step1_disease_gene_name_to_id_map.py` — maps the disease signature from gene symbols to Entrez ids, removes duplicates, writes the MITHrIL input (`.mi`).
-- `step2_disease_run_MITHrIL.py` — runs MITHrIL (Java, subprocess) on the disease input.
+- `step1_disease_gene_name_to_id_map.py` — maps the disease signature from gene symbols to Entrez ids, removes duplicates, writes the MITHrIL input (`.mi`). Used by the `tsr/` workflows (ALS, IPF); case studies write the `.mi` themselves (see "Running a new disease").
+- `step2_disease_run_MITHrIL.py` — runs MITHrIL (Java, subprocess) on the disease input of `conf.disease_run_name`. Without arguments it prints the command; `python step2_disease_run_MITHrIL.py run` executes it (only where `MITH_APP` exists) and appends a row to `logs/mithril_disease_runs.tsv`. The p-values use MITHrIL's default `-number-of-iterations` (2001).
 - `step3_mith_out_to_cs_in_disease.py` — gene-level MITHrIL perturbations → disease CS input.
 
 Drug side:
@@ -101,7 +101,7 @@ For DEG-level runs, `loader.load_disease_signature()` reads the disease signatur
 | Source | File | Used by |
 |---|---|---|
 | `"tsr"` | `tsr/output/disease_signature/<DISEASE>/<DISEASE>_signature_gene_id.csv` | R TSR workflows (ALS, IPF); `mir29_antagomir` |
-| `"cs_in"` | `connectivity_score/input/disease_signature_2025/<run>/<run>_signature_gene_id.csv` | signatures produced outside `tsr/`, e.g. `stan_als_tdp43` |
+| `"cs_in"` | `connectivity_score/input/disease_signature_2025/<run>/<run>_signature_gene_id.csv` | signatures produced outside `tsr/`: `stan_als_tdp43`, `asthma_GSE152004` |
 | `"other"` | `connectivity_score/input/disease_signature_2025/<run>/<run>_signature_gene_id.txt` | BinChen2017 disease signatures |
 
 All three are standardised to `gene_id, DE_log2_FC, adj.p.value`. For `"other"` the column mapping (`id`, `logFC`, `adj_p_value`) is provisional in the code. The inline comment in `conf.py` still lists only `"tsr"` and `"other"`; `"cs_in"` is accepted by the loader. MITHrIL-level runs always read from `connectivity_score/input/disease_signature_2025/<run>/`.
@@ -134,6 +134,7 @@ Each analysis has one slug, mirrored across `src/`, `imgs/` and `other_outputs/`
 - `src/case_studies/` — single-dataset applications that produce new disease-side inputs:
   - `stan_als_tdp43/` — TDP-43 iPSC motor-neuron bulk RNA-seq: `01_` edgeR QLF + QC from counts, `02_` contrast → DEG CS input (`"cs_in"`) and MITHrIL `.mi`, one disease run per contrast.
   - `mir29_antagomir/` — mouse miR-29 antagomiR log2FC signature: `01_` mouse → human 1:1 orthologs (MGI homology report) → DEG CS input and MITHrIL `.mi`. No p-values in the input (`adj.p.value` = NaN). Mimicking study: read the most positive CS.
+  - `asthma_GSE152004/` — asthmatic vs healthy-control nasal airway epithelium RNA-seq (GSE152004, 440 vs 254), a disease of the labelled pair benchmark: `00_` inspection of the GEO download and sample-group map, `01_` disease signature with the `modules/disease_signature/` R classes on NCBI GeneIDs → DEG CS input (`"cs_in"`) and MITHrIL `.mi`.
 
 ## Repository layout
 
@@ -153,7 +154,8 @@ src/                        Python pipeline — code only, no outputs
   validations/binchen2017/  BinChen2017 RGES/sRGES replication (upstream ground-truth check)
   validations/known_drug_benchmark/       Known-drug positioning across representations
   validations/drug_disease_pairs_validation/   Labelled pair benchmark construction (01_–05_)
-  case_studies/             Single-dataset applications (stan_als_tdp43, mir29_antagomir)
+  case_studies/             Single-dataset applications (stan_als_tdp43, mir29_antagomir, asthma_GSE152004)
+  run_disease_pipeline.sh   Disease side + CS grid for the disease set in conf.py
 modules/                    R algorithm modules (connectivity_score, disease_signature, drug_signature) — abstract-class architecture
 tsr/                        R workflows per disease (als_1, als_2, als_NYGC, ipf, colon_tumor)
 new_tsr/R/                  Refactored R modules (modern OOP)
@@ -161,13 +163,38 @@ MITHrIL/                    MITHrIL inputs and outputs (input/, output/ per dise
 connectivity_score/         CS inputs (input/disease_signature_2025/, input/drug_signature_2025/) and outputs (output/<disease_run>/)
 configs/                    Frozen snapshots/backups of past pipeline runs (see "Config system")
 notebooks/                  NetCos_Pipeline.ipynb, ChEMBL validation notebooks
-data_exploration/           CS/ranking + EDA notebooks (IPF, ALS_NYGC, ChEMBL)
+data_exploration/           CS/ranking + EDA notebooks (IPF, ALS_NYGC, asthma_GSE152004, ChEMBL)
 imgs/                       Every image the project produces, one folder per analysis slug
 other_outputs/              Every non-image result (tables, summaries), one folder per analysis slug
 paper/                      NetCoS methods paper draft + bib tooling
 data/                       Reference + test datasets (BinChen2017, LINCS, repoDB, DiSignAtlas, CREEDS, UMLS cache, dictionaries) — gitignored
 logs/                       cs_runs.tsv = registry of every CS run; per-step run logs; grid-search TSVs
 ```
+
+## Running a new disease (case study)
+
+A new disease from a public RNA-seq dataset is run as a case study, with the drug side already
+computed (`connectivity_score/input/drug_signature_2025/all`, drugs collapsed before CS).
+
+1. **Locations.** The slug is the folder name `src/case_studies/<slug>/`. `conf.case_study_paths(slug)`
+   derives the standard locations: data in `data/<slug>/`, outputs in `other_outputs/case_studies/<slug>/`
+   and `imgs/case_studies/<slug>/`, DEG CS input in `connectivity_score/input/disease_signature_2025/<slug>/`.
+   `src/case_studies/<slug>/case_conf.py` adds only the dataset's file names; no case-study variables
+   go into `conf.py`.
+2. **Download** the counts (for GEO RNA-seq, the NCBI-recomputed `<GSE>_raw_counts_GRCh38.p13_NCBI.tsv.gz`,
+   rows = NCBI GeneID) and the series matrix into `data/<slug>/`.
+3. **`00_`** inspects the download (dimensions, integer counts, covariates, sample alignment) and writes
+   the sample-group map; **`01_`** computes the disease signature with the R classes of
+   `modules/disease_signature/` (`LogarithmGeneFilter`, upper-quartile normalisation, voom / limma,
+   `topTable(coef = 2)`, as for IPF) keeping NCBI GeneIDs, and writes the DEG CS input and the MITHrIL `.mi`.
+   This replaces `tsr/<disease>/` + `step1`.
+4. **`conf.py`:** `DISEASE = "<slug>"`, `DISEASE_SIGNATURE_SOURCE = "cs_in"`.
+5. **MITHrIL and CS:** `bash src/run_disease_pipeline.sh` runs the case-study scripts, `step2 run`, `step3`,
+   `step2b_7b` and `run_cs_batch_grid.py --disease <disease_run_name>`; a stage name as argument
+   restarts from that stage, `DRY_RUN=1` prints the stages only.
+6. **Exploration:** `data_exploration/data_exploration_<slug>_CS_and_rankings.ipynb`, on the model of the
+   IPF / ALS notebooks (section 0: the three disease inputs before CS; then CS distributions, rankings,
+   agreement between representations).
 
 ## Running the pipeline
 
