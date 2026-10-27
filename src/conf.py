@@ -51,7 +51,7 @@ diseases_of = {'HEPG2':'LIHC',
                'HT29':'COAD',
                'all':'any'}
 
-DISEASE = "mir29_antagomir"  # diseases_of[cell_line] 
+DISEASE = "asthma_GSE152004"  # diseases_of[cell_line] 
 
 disease_run_name = DISEASE + LM_flag_disease
 
@@ -113,7 +113,7 @@ TSR_OUT_DRUG_META=TSR_OUT_DRUG / 'LINCS_lorenzo' / 'metanalysis_mith3_drug_wise'
 TSR_OUT_CSCORE=TSR_OUT / 'connectivity_score'
 
 # Change here the data souce
-DISEASE_SIGNATURE_SOURCE = "tsr"  # options: "tsr", "cs_in", "other"
+DISEASE_SIGNATURE_SOURCE = "cs_in"  # options: "tsr", "cs_in", "other"
 
 ############################################
 # Connectivity score directories
