@@ -1,16 +1,20 @@
+# Raw-data root. Defaults to "data" (relative to the repo root, the working directory of the R pipeline);
+# set the environment variable NETCOS_DATA_DIR to use a data folder elsewhere.
+data_dir <- Sys.getenv("NETCOS_DATA_DIR", unset = "data")
+
 gene_meta_info_cfg <- list()
-gene_meta_info_cfg$filename <- "data/gene_meta.Rds"
+gene_meta_info_cfg$filename <- file.path(data_dir, "gene_meta.Rds")
 
 disease_signature_cfg <- list()
 disease_signature_cfg$gene_select_strategy_150_most_significant <- "gene_select_strategy_150_most_significant"
 disease_signature_cfg$gene_select_strategy_bin_chen <- "gene_select_strategy_bin_chen"
-disease_signature_cfg$Illumina_HiSeq_annot_filename <- "data/Illumina_HiSeq/Human.GRCh38.p13.annot.tsv.gz"
+disease_signature_cfg$Illumina_HiSeq_annot_filename <- file.path(data_dir, "Illumina_HiSeq/Human.GRCh38.p13.annot.tsv.gz")
 disease_signature_cfg$base_dir <- "tsr/output/disease_signature/"
 
 als_1_disease_signature_cfg <- list()
 als_1_disease_signature_cfg$name <- "ALS"
-als_1_disease_signature_cfg$gse_3307_GPL97_filename <- "data/ALS-1-GSE3307/GSE3307-GPL97_series_matrix.txt"
-als_1_disease_signature_cfg$gse_3307_GPL97_annot_dir <- "data/ALS-1-GSE3307/temp-annot"
+als_1_disease_signature_cfg$gse_3307_GPL97_filename <- file.path(data_dir, "ALS-1-GSE3307/GSE3307-GPL97_series_matrix.txt")
+als_1_disease_signature_cfg$gse_3307_GPL97_annot_dir <- file.path(data_dir, "ALS-1-GSE3307/temp-annot")
 als_1_disease_signature_cfg$signature_base_dir <- "tsr/output/disease_signature/als_1/"
 als_1_disease_signature_cfg$signature_filename <- "als_signature"
 als_1_disease_signature_cfg$als_1_150_most_significant_genes_filename <- paste0(als_1_disease_signature_cfg$signature_base_dir, "als_1_150_most_significant_genes.csv")
@@ -25,8 +29,8 @@ ipf_disease_signature_cfg <- list()
 # 1 = Control, 0 ipf
 ipf_disease_signature_cfg$samples_groups_map <- "000000000000000000001111111111111111111"
 ipf_disease_signature_cfg$name <- "IPF"
-ipf_disease_signature_cfg$gse_92592_filename <- "data/IPF-GSE92592/GSE92592_raw_counts_GRCh38.p13_NCBI.tsv"
-ipf_disease_signature_cfg$gse_92592_annot_filename <- "data/IPF-GSE92592/Human.GRCh38.p13.annot.tsv"
+ipf_disease_signature_cfg$gse_92592_filename <- file.path(data_dir, "IPF-GSE92592/GSE92592_raw_counts_GRCh38.p13_NCBI.tsv")
+ipf_disease_signature_cfg$gse_92592_annot_filename <- file.path(data_dir, "IPF-GSE92592/Human.GRCh38.p13.annot.tsv")
 ipf_disease_signature_cfg$signature_base_dir <- "tsr/output/disease_signature/ipf/"
 ipf_disease_signature_cfg$signature_filename <- "ipf_signature"
 ipf_disease_signature_cfg$ipf_150_most_significant_genes_filename <- paste0(ipf_disease_signature_cfg$signature_base_dir, "ipf_150_most_significant_genes.csv")
@@ -44,8 +48,8 @@ ipf_disease_signature_cfg$connectivity_score_bin_chen_filename <- "ipf_connectiv
 drug_signature_cfg <- list()
 # 65 GB file, download from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE92742 seperately and specify path:
 drug_signature_cfg$cell_name <- 'MCF7' # probably wont work with full dataset now...
-drug_signature_cfg$lincs_base_dir <- "data/LINCS-GSE92742/"
-drug_signature_cfg$drug_list <- "data/drugs.csv"
+drug_signature_cfg$lincs_base_dir <- file.path(data_dir, "LINCS-GSE92742/")
+drug_signature_cfg$drug_list <- file.path(data_dir, "drugs.csv")
 drug_signature_cfg$gene_info_filename <- paste0(drug_signature_cfg$lincs_base_dir, "GSE92742_Broad_LINCS_gene_info.txt")
 drug_signature_cfg$experiments_meta_data_filename <- paste0(drug_signature_cfg$lincs_base_dir, "GSE92742_Broad_LINCS_inst_info.txt")
 drug_signature_cfg$experiments_data_filename <- paste0(drug_signature_cfg$lincs_base_dir, "GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx")
@@ -56,10 +60,10 @@ drug_signature_cfg$genes_signature_full_path_dir <- paste0(drug_signature_cfg$si
 drug_signature_cfg$metanalysis_6h_24_dir <- "metanalysis/"
 drug_signature_cfg$metanalysis_6h_24h_full_path_dir <- paste0(drug_signature_cfg$signature_base_dir, drug_signature_cfg$metanalysis_6h_24_dir)
 drug_signature_cfg$perturbation_times <- c("6", "24")
-drug_signature_cfg$gene_symbols_filename <- "data/LINCS-GSE92742/bing_gene_symbols.csv"
+drug_signature_cfg$gene_symbols_filename <- file.path(data_dir, "LINCS-GSE92742/bing_gene_symbols.csv")
 drug_signature_cfg$skip_already_computed_genes <- T
 drug_signature_cfg$export_block_size <- 100
-drug_signature_cfg$bing_genes_filename <- "data/LINCS-GSE92742/bing_genes.csv"
+drug_signature_cfg$bing_genes_filename <- file.path(data_dir, "LINCS-GSE92742/bing_genes.csv")
 
 connectivity_score_cfg <- list()
 connectivity_score_cfg$cs_base_dir <- "tsr/output/connectivity_score/"

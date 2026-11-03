@@ -8,7 +8,7 @@ lincsExperimentMetaDataSetuper <- LINCSExperimentMetaDataSetuper$new(drug_signat
 lincsExperimentDataRowsLoader <- LINCSExperimentDataRowsLoader$new(drug_signature_cfg$experiments_data_filename)
 lincsExportByGeneList <- LINCSExportByGeneList$new(lincsExperimentDataRowsLoader, drug_signature_cfg$lincs_splitted_level3_dir)
 
-bing_genes <- read.table("data/LINCS-GSE92742/bing_genes.csv", sep = ";", header = T)
+bing_genes <- read.table(drug_signature_cfg$bing_genes_filename, sep = ";", header = T)
 experiments_env <- lincsExperimentMetaDataSetuper$setup(c("6", "24"))
 block_size <- 400
 gene_index <- 1
