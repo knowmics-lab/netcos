@@ -76,6 +76,7 @@ Thumbs.db
 /presentations/
 /data_exploration/old_exploration_with_bugged_CS
 /Van Vactor Colab/
+src/older_versions/
 
 # tsr model files
 tsr/data/
