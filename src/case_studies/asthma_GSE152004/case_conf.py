@@ -16,3 +16,4 @@ P = case_study_paths(Path(__file__).resolve().parent.name)
 
 NCBI_COUNTS = P.data_dir / 'GSE152004_raw_counts_GRCh38.p13_NCBI.tsv.gz'
 SERIES_MATRIX = P.data_dir / 'GSE152004_series_matrix.txt.gz'
+NCBI_TPM = P.data_dir / 'GSE152004_norm_counts_TPM_GRCh38.p13_NCBI.tsv.gz'
