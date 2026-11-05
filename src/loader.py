@@ -73,6 +73,7 @@ def pick_canonical_cs_run(
     mith=0,
     cs_on_LM=1,
     cs_on_pathways=0,
+    drug_run_id=None,
     require_file_on_disk=True,
     verbose=True,
 ):
@@ -105,6 +106,9 @@ def pick_canonical_cs_run(
         require_file_on_disk filesystem check.
     cs_method, mith, cs_on_LM, cs_on_pathways : filter values
         Pre-CS hyperparameters that identify the canonical Bin Chen run.
+    drug_run_id : str | None
+        If given, keep only runs on that drug input (cs_runs.tsv column
+        drug_run_id, e.g. 'all' or 'HEPG2_LM'). None = any drug input.
     require_file_on_disk : bool
         If True (default), skip rows whose .tsv is missing from disk.
     verbose : bool
@@ -138,6 +142,8 @@ def pick_canonical_cs_run(
         & (df["CS_ON_PATHWAYS"].astype(int) == int(cs_on_pathways))
         & (df["CS_METHOD"] == cs_method)
     )
+    if drug_run_id is not None:
+        mask &= df["drug_run_id"].astype(str) == str(drug_run_id)
     hits = df.loc[mask].copy()
     if hits.empty:
         if verbose:
@@ -294,6 +300,7 @@ def load_cs_run(
         mith=mith,
         cs_on_LM=cs_on_LM,
         cs_on_pathways=CS_ON_PATHWAYS,
+        drug_run_id=drug_run_id,
         require_file_on_disk=require_file_on_disk,
         verbose=verbose,
     )
