@@ -10,11 +10,16 @@ Design
 - Labels: repodb_signature_lincs_pairs.tsv rows with ind_id == ASTHMA_CUI;
   positives = 'approved', negatives = 'not_approved' ('conflict' excluded).
   LABELS_FILE can point to a filtered label table with the same columns.
-- Matching: per-instance route on the L1000 compound id (lincs_pert_ids,
-  '|'-separated); drug-collapsed route on the normalised L1000 name
+- Matching: per-instance route through the L1000 compound ids
+  (lincs_pert_ids, '|'-separated) to their L1000 name, the compound key of
+  03_srges_per_drug.py; drug-collapsed route on the normalised L1000 name
   (lincs_pert_inames, lower case, alphanumerics only; alias
   beclometasone -> beclomethasonedipropionate), pooled 6h_24h rows.
   A drug matched to several compounds takes the mean score.
+- Drug sets: 'all_scored' = every labelled drug with a score in that
+  route/configuration; 'matched_to_tsr' (per-instance route only) = the
+  labelled drugs that also have a score in the TSR run of the same
+  configuration, so that both routes are compared on the same drugs.
 - Score = -(per-drug score): AUROC > 0.5 means approved drugs have more
   negative (more reversing) scores. AUROC = Mann-Whitney U / (n_pos n_neg),
   exact two-sided p-value; 95% percentile bootstrap (2,000 resamples within
@@ -31,7 +36,7 @@ Inputs
 Outputs
 -------
 - P.oout_dir/<slug>_repodb_auroc_srges.tsv
-    one row per (route, config, collapse): n_approved, n_not_approved,
+    one row per (drug_set, route, config, collapse): n_approved, n_not_approved,
     AUROC, CI95_low, CI95_high, p_MannWhitney.
 - P.oout_dir/<slug>_repodb_labelled_drug_scores.tsv
     every labelled drug with its score in every (route, config, collapse) and
@@ -87,11 +92,14 @@ def labels():
 
 def per_instance_scores(lab):
     s = pd.read_csv(P.oout_dir / f'{P.slug}_srges_per_drug.tsv', sep='\t')
+    names = pd.read_csv(conf.LINCS_METADATA_PATH, usecols=['pert_id', 'pert_iname']).drop_duplicates('pert_id')
     ex = lab.assign(pert_id=lab['lincs_pert_ids'].astype(str).str.split('|')).explode('pert_id')
-    m = ex.merge(s, on='pert_id', how='left')
+    ex = ex.merge(names, on='pert_id', how='left').drop_duplicates(['drugbank_id', 'drug_name', 'label', 'pert_iname'])
+    m = ex.merge(s, on='pert_iname', how='left')
     g = m.groupby(['drugbank_id', 'drug_name', 'label', 'config', 'collapse'], dropna=False)
     out = g.agg(score=('score', 'mean'), n_instances=('n_instances', 'sum'),
-                n_cell_lines=('n_cell_lines', 'max')).reset_index()
+                n_cell_lines=('n_cell_lines', 'max'), n_names=('pert_iname', 'nunique')).reset_index()
+    out = out[out['config'].notna()]
     out.insert(0, 'route', 'per_instance_all_lines')
     return out
 
@@ -123,8 +131,14 @@ if __name__ == '__main__':
     print(f'labelled asthma drugs: {lab["label"].value_counts().to_dict()}')
     scores = pd.concat([per_instance_scores(lab), tsr_scores(lab)], ignore_index=True)
     res = []
+    tsr_ids = {(c, k) for c, k in zip(scores.loc[scores.route == 'tsr_lmm_collapsed'].dropna(subset=['score'])['config'],
+                                         scores.loc[scores.route == 'tsr_lmm_collapsed'].dropna(subset=['score'])['drugbank_id'])}
     for (route, config, coll), d in scores.groupby(['route', 'config', 'collapse']):
-        res.append({'route': route, 'config': config, 'collapse': coll, **auroc(d.dropna(subset=['score']))})
+        d = d.dropna(subset=['score'])
+        res.append({'drug_set': 'all_scored', 'route': route, 'config': config, 'collapse': coll, **auroc(d)})
+        if route == 'per_instance_all_lines':
+            dm = d[[(config, i) in tsr_ids for i in d['drugbank_id']]]
+            res.append({'drug_set': 'matched_to_tsr', 'route': route, 'config': config, 'collapse': coll, **auroc(dm)})
     res = pd.DataFrame(res)
     res.to_csv(P.oout_dir / f'{P.slug}_repodb_auroc_srges.tsv', sep='\t', index=False)
     scores.to_csv(P.oout_dir / f'{P.slug}_repodb_labelled_drug_scores.tsv', sep='\t', index=False)

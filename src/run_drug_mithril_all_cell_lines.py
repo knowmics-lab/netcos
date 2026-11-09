@@ -58,7 +58,7 @@ from step7_drug_mith_out_to_cs_in import convert_directory
 from step2b_7b_drug_and_disease_mith_out_to_cs_in import convert_one_file
 
 RUN_SUFFIX = '_LM'
-N_THREADS = 24
+N_THREADS = 28
 ONLY_CELL_LINES = None
 
 MITH_OUT_ROOT = MITH_OUT / 'drug_signature_2025'
