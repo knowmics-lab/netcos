@@ -10,6 +10,9 @@ Compared with the older NetCos step7 script, this version:
 - does NOT encode timepoint labels in perturbation column names;
 - can optionally append selected metadata columns from `lincs_sig_info_new.csv`.
 
+MITHrIL outputs may be plain (`.perturbations.txt`) or zstd-compressed
+(`.perturbations.txt.zst`); pandas decompresses them on read.
+
 This makes each output file represent one signature-item, while the choice to run
 6h-only, 24h-only, or pooled analyses is deferred to downstream analysis.
 """
@@ -58,11 +61,14 @@ def remove_special_gene_names(df: pd.DataFrame, gene_col: str = "gene") -> pd.Da
     return out
 
 
+PERTURBATION_SUFFIXES = (".perturbations.txt", ".perturbations.txt.zst")
+
+
 def infer_signature_id(path: Path) -> str:
-    suffix = ".perturbations.txt"
-    if not path.name.endswith(suffix):
-        raise ValueError(f"Unexpected MITHrIL output filename: {path.name}")
-    return path.name[: -len(suffix)]
+    for suffix in PERTURBATION_SUFFIXES:
+        if path.name.endswith(suffix):
+            return path.name[: -len(suffix)]
+    raise ValueError(f"Unexpected MITHrIL output filename: {path.name}")
 
 
 def load_metadata(metadata_csv: Optional[Path], id_column: str) -> Optional[pd.DataFrame]:
@@ -132,9 +138,9 @@ def build_output_frame(
 
 
 def iter_input_files(input_dir: Path) -> list[Path]:
-    files = sorted(input_dir.glob("*.perturbations.txt"))
+    files = sorted(p for suffix in PERTURBATION_SUFFIXES for p in input_dir.glob("*" + suffix))
     if not files:
-        raise FileNotFoundError(f"No '*.perturbations.txt' files found in {input_dir}")
+        raise FileNotFoundError(f"No '*.perturbations.txt[.zst]' files found in {input_dir}")
     return files
 
 
