@@ -51,8 +51,9 @@ Outputs
 - P.oout_dir/<slug>_lincs_ccle_mapping.tsv
     the 71 LINCS cell_id with their DepMap match.
 - P.img_dir/<slug>_ccle_cell_line_similarity_panel.png
-    A: per-sample correlations of the LINCS lines (primary set), ordered by
-    median; B: per-line median correlation, all CCLE vs LINCS lines vs the
+    A: per-sample correlations of the LINCS lines (primary set), asthmatic
+    and healthy-control samples side by side, ordered by median over all
+    samples; B: per-line median correlation, all CCLE vs LINCS lines vs the
     Chen 2017 tumour references; C: asthmatic vs healthy-control median per
     LINCS line; D: agreement of the LINCS-line ordering between gene sets.
 
@@ -127,17 +128,23 @@ def per_gene_set(x, s, ccle, gs, ref_models, lincs_models):
     return out, cor
 
 
-def panel(tab, cor_primary, mapping, tacle):
+def panel(tab, cor_primary, mapping, tacle, s):
     p = tab[tab['gene_set'] == PRIMARY]
     lin = p[p['lincs_cell_id'].notna()].sort_values('median_cor_all', ascending=False)
     fig, ax = plt.subplots(2, 2, figsize=(16, 12))
 
     a = ax[0, 0]
-    data = [cor_primary[m].values for m in lin["ModelID"]]
-    a.boxplot(data, showfliers=False, widths=.6)
-    a.scatter(range(1, len(lin) + 1), lin['cor_median_profile_control'], color=BLUE, s=14, zorder=3,
-              label='median healthy-control profile (w)')
-    a.set_xticks(range(1, len(lin) + 1))
+    pos = np.arange(1, len(lin) + 1)
+    for g, col, dx in (('asthmatic', RED, -0.2), ('control', BLUE, 0.2)):
+        idx = s.loc[s['group_code'] == GROUPS[g], 'GSM']
+        data = [cor_primary.loc[idx, m].values for m in lin['ModelID']]
+        a.boxplot(data, positions=pos + dx, widths=.35, showfliers=False, patch_artist=True,
+                  boxprops=dict(facecolor=col, alpha=.5, edgecolor=col),
+                  whiskerprops=dict(color=col), capprops=dict(color=col),
+                  medianprops=dict(color='k', linewidth=1), manage_ticks=False)
+        a.plot([], [], 's', color=col, alpha=.5, label=f'{g} samples (n={len(idx)})')
+    a.set_xticks(pos)
+    a.set_xlim(0.3, len(lin) + 0.7)
     a.set_xticklabels([f'{c} ({l})' for c, l in zip(lin['lincs_cell_id'], lin['OncotreeLineage'])],
                       rotation=90, fontsize=7)
     a.set_ylabel('Spearman correlation with GSE152004 samples')
@@ -226,7 +233,7 @@ if __name__ == '__main__':
     print(f'sRGES weights written for {len(w)} LINCS lines')
 
     tacle = load_tacle()
-    panel(tab, cor_primary, mapping, tacle)
+    panel(tab, cor_primary, mapping, tacle, s)
 
     p = tab[tab.gene_set == PRIMARY]
     lin = p[p.lincs_cell_id.notna()]
