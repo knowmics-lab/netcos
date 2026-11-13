@@ -559,6 +559,31 @@ def load_landmark_gene_ids(path):
 # Connectivity Score and Validation data
 #
 ###############################################################################
+# Instance ids of lincs_sig_info{_new}.csv that do not match the column names
+# of lincs_signatures_cmpd_landmark.RData. Id 0 is the A673 tanespimycin
+# instance CPC006_A673_6H:BRD-K81473043-001-04-7:0.35, whose signature column
+# is 18560: 18560 is the only column with no metadata row, it lies between the
+# A673 CPC006 6 h ids 18558 and 18562 (sig_id order BRD-K73... < BRD-K81... <
+# BRD-K89...), and its most correlated signatures are HSP90 inhibitors.
+LINCS_METADATA_ID_FIXES = {'0': '18560'}
+
+
+def read_lincs_metadata(path=None, **read_csv_kwargs):
+    """Read the LINCS instance metadata (default conf.LINCS_METADATA_PATH) with
+    pd.read_csv(**read_csv_kwargs), with the 'id' column corrected by
+    LINCS_METADATA_ID_FIXES so that every id is a signature column name.
+    The dtype of 'id' is kept (str or int)."""
+    if path is None:
+        path = _conf.LINCS_METADATA_PATH
+    md = pd.read_csv(path, **read_csv_kwargs)
+    if 'id' in md.columns:
+        is_str = md['id'].dtype == object
+        for old, new in LINCS_METADATA_ID_FIXES.items():
+            mask = md['id'].astype(str) == old
+            md.loc[mask, 'id'] = new if is_str else int(new)
+    return md
+
+
 def add_pert_id_to_cs( lincs_metadata_path,cs_df, cs_id_col='LINCS_id', metadata_id_col='id', metadata_pert_col='pert_id'):
     """
     Adds a 'pert_id' column to a CS dataframe by mapping LINCS_id via LINCS metadata.
@@ -579,7 +604,7 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df, cs_id_col='LINCS_id', metadata
 
     if not metadata_pert_col in cs_df.columns:
         # load only what we need
-        meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
+        meta = read_lincs_metadata(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
     
         # build mapping dict
         id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))
@@ -641,7 +666,7 @@ def add_lincs_metadata_to_cs(
     if lincs_metadata_path is None:
         lincs_metadata_path = _conf.LINCS_METADATA_PATH
     usecols = [metadata_id_col, *extra_cols]
-    meta = (pd.read_csv(lincs_metadata_path, usecols=usecols, dtype="str")
+    meta = (read_lincs_metadata(lincs_metadata_path, usecols=usecols, dtype="str")
               .drop_duplicates(subset=[metadata_id_col]))
     out = cs_df.merge(meta, left_on=cs_id_col, right_on=metadata_id_col, how="left")
     if metadata_id_col in out.columns and metadata_id_col != cs_id_col:

@@ -10,12 +10,7 @@ Design
 - Per-instance CS: for every configuration in CONFIGS and every LINCS cell
   line, the most recent cs_batch run of conf.DISEASE on drug input
   '<cell_id>_LM', resolved with loader.load_cs_run. A configuration is scored
-  only when every cell line has a run, except the lines in
-  LINES_ALLOWED_MISSING (A673: one LINCS metadata id has no landmark
-  signature, so its MITHrIL CS inputs are never complete and
-  run_cs_all_cell_lines.py does not run the MITHrIL configurations on it);
-  otherwise it is skipped. Lines left out are listed in the runs-used table
-  with an empty cs_run_id.
+  only when every cell line has a run; otherwise it is skipped.
 - Instance metadata (pert_id, pert_iname, cell_id, pert_dose, pert_time) from
   conf.LINCS_METADATA_PATH, joined on the LINCS instance id.
 - Three per-drug collapses (drug = pert_iname, the L1000 compound name, so
@@ -61,7 +56,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from case_conf import P
 import conf
-from loader import load_cs_run
+from loader import load_cs_run, read_lincs_metadata
 from scipy.stats import spearmanr
 from sRGES import build_reference_diff, compute_sRGES
 
@@ -72,7 +67,6 @@ CONFIGS = {  # label: (mith, cs_on_LM, CS_ON_PATHWAYS)
     'mith_pw': (1, 0, 1),
 }
 RUN_SUFFIX = '_LM'
-LINES_ALLOWED_MISSING = ['A673']
 DRUG = 'pert_iname'  # compound key: the L1000 name, pooling every BRD id with that name (as Chen 2017)
 
 
@@ -130,7 +124,7 @@ def diff_mode_check(inst, md):
 
 if __name__ == '__main__':
     assert conf.DISEASE == P.slug, f'conf.DISEASE is {conf.DISEASE!r}; this script needs the ipf conf'
-    md = pd.read_csv(conf.LINCS_METADATA_PATH, dtype={'id': str})
+    md = read_lincs_metadata(dtype={'id': str})
     md = md[['id', 'pert_id', 'pert_iname', 'cell_id', 'pert_dose', 'pert_time']]
     cells = sorted(md['cell_id'].unique())
     w = pd.read_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t')
@@ -143,10 +137,9 @@ if __name__ == '__main__':
         used_all += used
         print(f'{label}: {len(used)} cell lines, {len(inst)} instances; '
               f'no run for {len(missing)} lines' + (f': {", ".join(missing)}' if missing else ''))
-        if set(missing) - set(LINES_ALLOWED_MISSING):
+        if missing:
             print(f'{label}: CS runs missing for {len(missing)} of {len(cells)} lines, configuration skipped')
             continue
-        used_all += [{'config': label, 'cell_line': c, 'cs_run_id': None, 'n_rows': 0} for c in missing]
         r = collapse(inst, md, weights)
         if label == 'DEG':
             diff, rho, mx = diff_mode_check(inst, md)

@@ -99,7 +99,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from case_conf import P
 import conf
-from loader import load_cs_run
+from loader import load_cs_run, read_lincs_metadata
 import lfs_style
 
 KNOWN_DRUGS = ['pirfenidone', 'nintedanib']
@@ -284,7 +284,7 @@ def panel(rk, ag, kn, deg_names):
 if __name__ == '__main__':
     assert conf.DISEASE == P.slug, f'conf.DISEASE is {conf.DISEASE!r}; this script needs the ipf conf'
     lfs_style.apply()
-    md = pd.read_csv(conf.LINCS_METADATA_PATH, dtype={'id': str})
+    md = read_lincs_metadata(dtype={'id': str})
     md = md[['id', 'pert_id', 'pert_iname', 'cell_id', 'pert_dose', 'pert_time']]
     w = pd.read_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t')
     weights = dict(zip(w['lincs_cell_id'], w['cor']))

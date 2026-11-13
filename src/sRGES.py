@@ -71,6 +71,7 @@ import numpy as np
 import pandas as pd
 from typing import Iterable, Mapping, Optional, Union
 from conf import LINCS_METADATA_PATH
+from loader import read_lincs_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -320,7 +321,7 @@ def compute_sRGES(
                 f"dataframe (e.g. via loader.add_lincs_metadata_to_cs) "
                 f"or pass a drug_id_col that exists in the dataframe."
             )
-        lincs_metadata_df = pd.read_csv(
+        lincs_metadata_df = read_lincs_metadata(
             LINCS_METADATA_PATH,
             usecols=["id", cell_col, dose_col, time_col],
             dtype="str",

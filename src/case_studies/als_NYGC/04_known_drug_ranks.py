@@ -116,7 +116,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from case_conf import P, DISEASE_SIGNATURE
 import conf
-from loader import load_cs_run, load_single_signature_cs_input, standardize_disease_signature
+from loader import load_cs_run, load_single_signature_cs_input, standardize_disease_signature, read_lincs_metadata
 from connectivity_score import get_common_genes, bin_chen_connectivity
 from sRGES import compute_sRGES
 from joblib import Parallel, delayed
@@ -297,7 +297,7 @@ def known_answer_check(md):
 
 
 if __name__ == '__main__':
-    md = pd.read_csv(conf.LINCS_METADATA_PATH, dtype={'id': str})
+    md = read_lincs_metadata(dtype={'id': str})
     mapping = pd.read_csv(P.oout_dir / f'{P.slug}_lincs_ccle_mapping.tsv', sep='\t')
     no_w = set(mapping.loc[~mapping.has_expression, 'lincs_cell_id'])
 

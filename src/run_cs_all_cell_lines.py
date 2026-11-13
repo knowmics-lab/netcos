@@ -39,6 +39,7 @@ import pandas as pd
 
 import conf
 from cs_batch import run_cs_batch_for_conf
+from loader import read_lincs_metadata
 
 RUN_SUFFIX = '_LM'
 N_JOBS = 6
@@ -70,7 +71,7 @@ def already_run(log, run_name, cfg):
 
 
 if __name__ == '__main__':
-    md = pd.read_csv(conf.LINCS_METADATA_PATH)
+    md = read_lincs_metadata()
     md['id'] = md['id'].astype(str)
     cells = ONLY_CELL_LINES or md.groupby('cell_id').size().sort_values().index.tolist()
     last_minute = None

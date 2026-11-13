@@ -117,7 +117,7 @@ warnings.filterwarnings('ignore', message='Unknown extension is not supported', 
 
 import conf
 import lfs_style
-from loader import load_cs_run, load_IC50, cor_weights_for_disease
+from loader import load_cs_run, load_IC50, cor_weights_for_disease, read_lincs_metadata
 from logger import append_run_metadata
 from sRGES import compute_sRGES
 from validations.chembl.final_step_correlations_IC50_CS import (
@@ -347,7 +347,7 @@ def figure(res, per_drug_merged, boot):
 
 
 if __name__ == '__main__':
-    md = pd.read_csv(conf.LINCS_METADATA_PATH, dtype={'id': str})
+    md = read_lincs_metadata(dtype={'id': str})
     md = md[['id', 'pert_id', DRUG, 'cell_id', 'pert_dose', 'pert_time']]
     cells = sorted(md['cell_id'].unique())
     wt = pd.read_csv(OUT_DIR / 'tcga_cell_line_weights.tsv', sep='\t')

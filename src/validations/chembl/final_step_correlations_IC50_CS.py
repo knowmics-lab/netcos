@@ -106,7 +106,7 @@ from conf import DISEASE, CS_OUT, DATA_DIR, CS_DIR,IMG_DIR,\
 
 from logger import append_run_metadata
 
-from loader import load_drug_rankings, load_IC50, pick_canonical_cs_run
+from loader import load_drug_rankings, load_IC50, pick_canonical_cs_run, read_lincs_metadata
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -131,7 +131,7 @@ def add_pert_iname_to_cs(cs_df, lincs_metadata_path, cs_id_col="LINCS_id",
     use_cols = [metadata_id_col, metadata_name_col]
     if metadata_inchi_col in header_cols:
         use_cols.append(metadata_inchi_col)
-    meta = pd.read_csv(lincs_metadata_path, usecols=use_cols, dtype="str")\
+    meta = read_lincs_metadata(lincs_metadata_path, usecols=use_cols, dtype="str")\
         .drop_duplicates(subset=[metadata_id_col])
     return cs_df.merge(meta, left_on=cs_id_col, right_on=metadata_id_col, how="left")\
         .drop(columns=[metadata_id_col])

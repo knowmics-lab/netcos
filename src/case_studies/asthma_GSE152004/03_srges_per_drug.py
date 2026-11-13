@@ -53,7 +53,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from case_conf import P
 import conf
-from loader import load_cs_run
+from loader import load_cs_run, read_lincs_metadata
 from scipy.stats import spearmanr
 from sRGES import build_reference_diff, compute_sRGES
 
@@ -120,7 +120,7 @@ def diff_mode_check(inst, md):
 
 
 if __name__ == '__main__':
-    md = pd.read_csv(conf.LINCS_METADATA_PATH, dtype={'id': str})
+    md = read_lincs_metadata(dtype={'id': str})
     md = md[['id', 'pert_id', 'pert_iname', 'cell_id', 'pert_dose', 'pert_time']]
     cells = sorted(md['cell_id'].unique())
     w = pd.read_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t')

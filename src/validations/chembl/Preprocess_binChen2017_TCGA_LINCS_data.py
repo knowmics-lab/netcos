@@ -20,6 +20,7 @@ diseases_of, DATA_DIR, landmark_disease, landmark_drug, LM_flag_disease,\
     LM_flag_drug, BC_DATA, LINCS_BC_DATA, disease_run_name, cell_line_run_name, LOGS_DIR,\
         CS_IN_DISEASE, CS_IN_DRUG
 from logger import append_run_metadata
+from loader import read_lincs_metadata
 import pandas as pd
 import pyreadr
 import pickle
@@ -167,7 +168,7 @@ for current_cell_line, current_disease in diseases_of.items():
     # id for drug at given per time. 66511 drugs (is_gold = 1)
     # relevant columns: id  pert_iname pert_id pert_time cell_id 
     print('load perturbagen metadata')
-    drug_md_all = pd.read_csv(LINCS_BC_DATA / 'lincs_sig_info_new.csv') 
+    drug_md_all = read_lincs_metadata(LINCS_BC_DATA / 'lincs_sig_info_new.csv') 
     n_drug_md_all = len(drug_md_all)
     n_unique_compounds_all = drug_md_all["pert_id"].nunique() if "pert_id" in drug_md_all.columns else None
     print(drug_md_all.shape)

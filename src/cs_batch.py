@@ -19,6 +19,7 @@ from loader import load_disease_signature, load_single_signature_cs_input,\
 from preprocessing_utils import get_signature_ids_list_from_cs_input,\
     get_chunk_indexes
 import conf
+from loader import read_lincs_metadata
 from conf import cs_log_filename, lincs_metadata_path, make_cs_filename
 from logger import append_run_metadata
 from joblib import Parallel, delayed
@@ -70,7 +71,7 @@ def add_pert_id_to_cs( lincs_metadata_path,cs_df,
 
     if not metadata_pert_col in cs_df.columns:
         # load only what we need
-        meta = pd.read_csv(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
+        meta = read_lincs_metadata(lincs_metadata_path, usecols=[metadata_id_col, metadata_pert_col], dtype='str')
     
         # build mapping dict
         id_to_pert = dict(zip(meta[metadata_id_col], meta[metadata_pert_col]))

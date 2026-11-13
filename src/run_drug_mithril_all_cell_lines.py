@@ -51,6 +51,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from loader import read_lincs_metadata
+
 from conf import (CS_DIR, LINCS_METADATA_PATH, LOGS_DIR, MITH_APP, MITH_IN_DRUG, MITH_OUT,
                   mith_organism)
 from logger import append_run_metadata
@@ -132,7 +134,7 @@ def run_cell_line(cell_id, ids):
 
 
 if __name__ == '__main__':
-    md = pd.read_csv(LINCS_METADATA_PATH)
+    md = read_lincs_metadata(LINCS_METADATA_PATH)
     md['id'] = md['id'].astype(str)
     sizes = md.groupby('cell_id').size().sort_values()
     cells = ONLY_CELL_LINES or sizes.index.tolist()

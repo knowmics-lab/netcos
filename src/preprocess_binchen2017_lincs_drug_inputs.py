@@ -50,6 +50,7 @@ import pyreadr
 
 from conf import LINCS_BC_DATA, LINCS_METADATA_PATH, CS_DIR, MITH_IN_DRUG, LOGS_DIR
 from logger import append_run_metadata
+from loader import read_lincs_metadata
 
 RUN_SUFFIX = '_LM'
 N_WORKERS = 24
@@ -68,7 +69,7 @@ def load_inputs():
     FC = pyreadr.read_r(LINCS_RDATA)['lincs_signatures']
     FC.index = FC.index.astype(str)
     FC.columns = FC.columns.astype(str)
-    MD = pd.read_csv(LINCS_METADATA_PATH)
+    MD = read_lincs_metadata(LINCS_METADATA_PATH)
     MD['id'] = MD['id'].astype(str)
 
 
