@@ -804,6 +804,7 @@ def run_correlation_for_conf(
         mith=cs_mith,
         cs_on_LM=cs_on_LM,
         cs_on_pathways=CS_ON_PATHWAYS,
+        drug_run_id=drug_run_id,
         require_file_on_disk=True,
         verbose=True,
     )
