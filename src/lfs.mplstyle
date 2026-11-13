@@ -1,0 +1,41 @@
+# lfs.mplstyle — stile matplotlib di Lorenzo
+# Ricavato dalle Fig. 2, 3 e 7 di "protein self-entanglement" (J. Chem. Phys. 155, 115101, 2021).
+# Modificabile a mano: ogni riga e' un rcParam standard di matplotlib.
+
+# --- Font (Fig. 2/3: DejaVu Serif, il serif che matplotlib include gia') ---
+font.family        : serif
+font.serif         : DejaVu Serif, Bitstream Vera Serif, serif
+mathtext.fontset   : dejavuserif
+font.size          : 11
+axes.titlesize     : 12
+axes.labelsize     : 11
+xtick.labelsize    : 10
+ytick.labelsize    : 10
+legend.fontsize    : 9
+
+# --- Griglia grigia tratteggiata (attiva sempre) ---
+axes.grid          : True
+axes.grid.axis     : both
+axes.axisbelow     : True
+grid.color         : b0b0b0
+grid.linestyle     : --
+grid.linewidth     : 0.6
+grid.alpha         : 1.0
+
+# --- Colori: before/after (blu/rosso puri della Fig. 2) per primi ---
+axes.prop_cycle    : cycler('color', ['0000FF', 'FF0000', '000000', '808080'])
+
+# --- Legenda (Fig. 3: riquadro con ombra) ---
+legend.frameon     : True
+legend.shadow      : True
+legend.fancybox    : True
+legend.framealpha  : 1.0
+
+# --- Mappe di colore (Fig. 7: jet invertito, minimo = rosso scuro) ---
+image.cmap         : jet_r
+
+# --- Export ---
+savefig.dpi        : 300
+savefig.bbox       : tight
+pdf.fonttype       : 42
+ps.fonttype        : 42
