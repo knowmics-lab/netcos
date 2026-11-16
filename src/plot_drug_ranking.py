@@ -37,6 +37,9 @@ else:
 
 from conf import DISEASE, IMG_DIR, cell_line_run_name, disease_run_name  # noqa: E402
 from loader import load_cs_run  # noqa: E402
+import lfs_style  # noqa: E402
+
+lfs_style.apply()
 
 
 def plot_score_distribution(
@@ -64,8 +67,7 @@ def plot_score_distribution(
     ax.set_xlabel("Connectivity score")
     ax.set_ylabel("Number of drug profiles")
     ax.set_title(title)
-    ax.grid(linestyle="--", alpha=0.35)
-    ax.legend(frameon=False)
+    ax.legend()
 
     if xlim is not None:
         ax.set_xlim(*xlim)
