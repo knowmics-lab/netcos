@@ -464,7 +464,7 @@ if __name__ == '__main__':
 
     c = fig.add_subplot(gsp[1, 1])
     M = pd.DataFrame(np.eye(len(order)), index=order, columns=order)
-    for _, r in comp.iterrows():
+    for _, r in comp[comp.stratum == 'all'].iterrows():
         M.loc[r.ranking_a, r.ranking_b] = M.loc[r.ranking_b, r.ranking_a] = r.spearman
     im = c.imshow(M.values, vmin=-1, vmax=1, cmap='RdBu_r')
     c.set_xticks(range(len(order)))

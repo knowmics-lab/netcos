@@ -10,10 +10,8 @@ Design
 - Per-instance CS: for every configuration in CONFIGS and every LINCS cell
   line, the most recent cs_batch run of the slug (= DISEASE id) on drug input
   '<cell_id>_LM', resolved with loader.load_cs_run. A configuration is scored
-  when at most MAX_MISSING_LINES cell lines lack a run (a line whose CS
-  inputs can never be complete, e.g. a LINCS metadata id absent from the
-  signature matrix, never gets a MITHrIL run); the missing lines are printed
-  and listed in the runs-used table. Otherwise the configuration is skipped.
+  only when every cell line has a run; otherwise it is skipped. Lines without
+  a run are printed and listed in the runs-used table.
 - Instance metadata (pert_id, pert_iname, cell_id, pert_dose, pert_time) from
   conf.LINCS_METADATA_PATH, joined on the LINCS instance id.
 - Three per-drug collapses (drug = pert_iname, the L1000 compound name, so
@@ -70,7 +68,6 @@ CONFIGS = {  # label: (mith, cs_on_LM, CS_ON_PATHWAYS)
     'mith_pw': (1, 0, 1),
 }
 RUN_SUFFIX = '_LM'
-MAX_MISSING_LINES = 1
 DRUG = 'pert_iname'  # compound key: the L1000 name, pooling every BRD id with that name (as Chen 2017)
 
 
@@ -141,7 +138,7 @@ if __name__ == '__main__':
         print(f'{label}: {len(used)} cell lines, {len(inst)} instances; '
               f'no run for {len(missing)} lines' + (f': {", ".join(missing)}' if missing else ''))
         used_all += [{'config': label, 'cell_line': c, 'cs_run_id': None, 'n_rows': 0} for c in missing]
-        if len(missing) > MAX_MISSING_LINES or not used:
+        if missing:
             print(f'{label}: CS runs missing for {len(missing)} of {len(cells)} lines, configuration skipped')
             continue
         r = collapse(inst, md, weights)
