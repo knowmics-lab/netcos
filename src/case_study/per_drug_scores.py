@@ -18,6 +18,10 @@ Design
     'weights' (cor = median correlation with the case samples); instances of
     lines without a weight are left out.
   * 'sRGES_unweighted': sRGES.compute_sRGES with every weight = 1, all lines.
+  * 'sRGES_weighted_top_<cutoff>' / 'sRGES_unweighted_top_<cutoff>': the
+    same two sRGES restricted to the instances of the top cell lines of
+    step 'weights' for that cutoff (weights = cor, or 1). A cutoff with no
+    line above it gives no score.
   * 'best': the most negative CS among the drug's instances with
     pert_dose > 0 and pert_time in {6, 24} h (the instances sRGES keeps).
   sRGES uses the Chen 2017 dose/time correction with the index mapping of the
@@ -34,6 +38,7 @@ Inputs
 - conf.cs_log_filename and the CS files it points to
 - conf.LINCS_METADATA_PATH
 - P.oout_dir/<slug>_cell_line_weights.tsv
+- P.oout_dir/<slug>_top_cell_lines.tsv
 
 Outputs
 -------
@@ -83,17 +88,21 @@ def load_instances(label, cells):
     return inst, used, missing
 
 
-def collapse(inst, md, weights):
+def collapse(inst, md, weights, top):
     x = inst.assign(LINCS_id=inst['LINCS_id'].astype(str)).merge(md, left_on='LINCS_id', right_on='id')
     x['pert_dose'] = pd.to_numeric(x['pert_dose'], errors='coerce')
     x['pert_time'] = pd.to_numeric(x['pert_time'], errors='coerce')
     kept = x[(x['pert_dose'] > 0) & x['pert_time'].isin([6, 24])]
     n_ids = kept.groupby(DRUG)['pert_id'].nunique()
     out = []
-    for name, w in [('sRGES_weighted', weights), ('sRGES_unweighted', None)]:
+    variants = [('sRGES_weighted', weights), ('sRGES_unweighted', None)]
+    for cut, lines in top.items():
+        variants += [(f'sRGES_weighted_top_{cut}', {c: weights[c] for c in lines}),
+                     (f'sRGES_unweighted_top_{cut}', {c: 1.0 for c in lines})]
+    for name, w in variants:
         s = compute_sRGES(x, score_col='connectivity_score', drug_col=DRUG, cell_col='cell_id',
                           cell_line_weights=w, srges_diff_mode='binchen_r')
-        lines = (kept[kept['cell_id'].isin(weights)] if w is not None else kept).groupby(DRUG)['cell_id'].nunique()
+        lines = (kept[kept['cell_id'].isin(list(w))] if w is not None else kept).groupby(DRUG)['cell_id'].nunique()
         out.append(pd.DataFrame({'collapse': name, DRUG: s[DRUG], 'score': s['sRGES'],
                                  'n_instances': s['n'], 'n_cell_lines': s[DRUG].map(lines)}))
     g = kept.groupby(DRUG)
@@ -134,6 +143,11 @@ def run(cc):
     w = pd.read_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t')
     weights = dict(zip(w['lincs_cell_id'], w['cor']))
     print(f'{len(cells)} LINCS cell lines; {len(weights)} with a weight')
+    t = pd.read_csv(P.oout_dir / f'{P.slug}_top_cell_lines.tsv', sep='\t')
+    top = {cut: g['lincs_cell_id'].dropna().tolist() for cut, g in t.groupby('cutoff', sort=False)}
+    for cut, lines in top.items():
+        print(f'top cell lines, cutoff {cut}: {len(lines)}' + (f' ({", ".join(lines)})' if lines else ', no top-line sRGES'))
+    top = {cut: lines for cut, lines in top.items() if lines}
 
     tabs, used_all, offs = [], [], []
     for label in CONFIGS:
@@ -145,7 +159,7 @@ def run(cc):
         if missing:
             print(f'{label}: CS runs missing for {len(missing)} of {len(cells)} lines, configuration skipped')
             continue
-        r = collapse(inst, md, weights)
+        r = collapse(inst, md, weights, top)
         diff = offsets(inst, md)
         print(f'{label}: dose/time offsets (mean reference - other, per dose bin and time):', diff.round(4).to_dict())
         for k, v in diff.items():

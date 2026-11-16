@@ -17,6 +17,9 @@ Design
     'sRGES_unweighted', 'sRGES_weighted' and 'best' per-drug scores of step
     'srges', for every configuration present in its output; DEG_sRGES is
     required.
+  * '<config>_sRGES_topQ3', '_wsRGES_topQ3', '_sRGES_topMed',
+    '_wsRGES_topMed': the top-line sRGES collapses of step 'srges'
+    ('sRGES_(un)weighted_top_q3' / '_top_median'), when present.
   * Two more collapses of every TSR run, reported for the known drugs only:
     '<config>_TSR_mean3tp' = mean of the drug's 6h, 24h and 6h_24h scores,
     '<config>_TSR_besttp' = the most negative of them.
@@ -104,8 +107,11 @@ from loader import load_cs_run, read_lincs_metadata
 from case_study.common import figures, colours, config_colour
 
 TSR_CONFIGS = {'DEG': (0, 0, 0), 'DEG_LM': (0, 1, 0), 'mith': (1, 0, 0), 'mith_LM': (1, 1, 0), 'mith_pw': (1, 0, 1)}
-SCORE_TYPES = {'sRGES_unweighted': 'sRGES', 'sRGES_weighted': 'wsRGES', 'best': 'best'}
-MARKERS = {'TSR': 's', 'sRGES': 'o', 'wsRGES': 'D', 'best': '^'}
+SCORE_TYPES = {'sRGES_unweighted': 'sRGES', 'sRGES_weighted': 'wsRGES', 'best': 'best',
+               'sRGES_unweighted_top_q3': 'sRGES_topQ3', 'sRGES_weighted_top_q3': 'wsRGES_topQ3',
+               'sRGES_unweighted_top_median': 'sRGES_topMed', 'sRGES_weighted_top_median': 'wsRGES_topMed'}
+MARKERS = {'TSR': 's', 'sRGES': 'o', 'wsRGES': 'D', 'best': '^',
+           'sRGES_topQ3': 'v', 'wsRGES_topQ3': 'P', 'sRGES_topMed': '<', 'wsRGES_topMed': 'X'}
 TOP_K = [50, 100]
 STRATA = [0, 1, 2, 5, 9, 25, 50, np.inf]
 STRATA_LABELS = ['1', '2', '3-5', '6-9', '10-25', '26-50', '>50']
@@ -269,7 +275,8 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
                 f'missing = not scored)')
     configs = list(dict.fromkeys(meta[n][0] for n in order))
     h1 = [Line2D([], [], marker='o', ls='', color=config_colour(c), markeredgecolor='k', label=c) for c in configs]
-    h2 = [Line2D([], [], marker=m, ls='', color='0.6', markeredgecolor='k', label=t) for t, m in MARKERS.items()]
+    h2 = [Line2D([], [], marker=m, ls='', color='0.6', markeredgecolor='k', label=t) for t, m in MARKERS.items()
+          if t in {'TSR' if meta[n][1] == 'pooled' else meta[n][1] for n in order}]
     l1 = a.legend(handles=h1, title='configuration', loc='upper left', bbox_to_anchor=(1.0, 1.0))
     a.add_artist(l1)
     a.legend(handles=h2, title='score', loc='lower left', bbox_to_anchor=(1.0, 0.0))

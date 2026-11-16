@@ -39,6 +39,12 @@ Design
   (median_cor_<case>) on the primary gene set.
 - Among LINCS lines: OCTAD's one-sided paired Wilcoxon of the best line
   against every other line (all samples), BH FDR.
+- Cell line vs cell line reference (primary set): Spearman correlation of
+  every pair between two disjoint sets of REF_N random CCLE lines (seed
+  REF_SEED), and of every pair of LINCS lines; quartiles of each.
+- Top cell lines: the LINCS lines whose sRGES weight is above a cutoff of the
+  random-pair distribution, for each cutoff in TOP_CUTOFFS ('q3' = third
+  quartile, 'median'); these lines feed the top-line sRGES of step 'srges'.
 - Reference scale: the median tumour-cell line correlations of Chen 2017
   (BRCA, LIHC, COAD, ER+ BRCA; cell_line_<T>_tacle.csv, CCLE 2017 and TCGA,
   5,000 IQR genes) over all the CCLE lines they cover.
@@ -68,6 +74,13 @@ Outputs
     dropped by sRGES.compute_sRGES).
 - P.oout_dir/<slug>_lincs_ccle_mapping.tsv
     the LINCS cell_id with their DepMap match and n_lincs_instances.
+- P.oout_dir/<slug>_ccle_reference_scale.tsv
+    one row per comparison (random CCLE pairs, LINCS pairs): n_pairs, q1,
+    median, q3.
+- P.oout_dir/<slug>_top_cell_lines.tsv
+    one row per (cutoff, LINCS line above it): cutoff, threshold,
+    lincs_cell_id, cor; a cutoff with no line above it has one row with
+    empty lincs_cell_id.
 - P.img_dir/<slug>_ccle_cell_line_similarity_panel.png
     A: per-sample correlations of the LINCS lines (primary set), case and
     control samples side by side, ordered by median over all samples;
@@ -91,6 +104,9 @@ from case_study.common import figures, colours
 
 PRIMARY = 'binchen2017_iqr5000'
 TACLE = ['BRCA', 'LIHC', 'COAD', 'ER']
+REF_N = 200      # lines in each of the two random sets of the cell line vs cell line reference
+REF_SEED = 0
+TOP_CUTOFFS = {'q3': 'q3', 'median': 'median'}  # cutoff name: quantile of the random-pair distribution
 
 
 # ---------------------------------------------------------------- samples
@@ -258,6 +274,33 @@ def similarity_tables(x, s, groups, strata, ccle, models, mapping):
     return tab, cor_primary
 
 
+def reference_scale(ccle, lincs_models):
+    """Quartiles of cell line vs cell line correlations on the primary set: random CCLE pairs, LINCS pairs."""
+    x = ccle[cls.marker_genes(ccle, PRIMARY)].values
+    idx = np.random.default_rng(REF_SEED).choice(len(x), 2 * REF_N, replace=False)
+    rnd = cls.spearman_rows(x[idx[:REF_N]], x[idx[REF_N:]]).ravel()
+    lin = cls.spearman_rows(x[ccle.index.get_indexer(lincs_models)], x[ccle.index.get_indexer(lincs_models)])
+    lin = lin[np.triu_indices(len(lincs_models), 1)]
+    rows = []
+    for name, v in [(f'random CCLE pairs ({REF_N} x {REF_N})', rnd), ('LINCS line pairs', lin)]:
+        q1, med, q3 = np.percentile(v, [25, 50, 75])
+        rows.append({'comparison': name, 'n_pairs': len(v), 'q1': q1, 'median': med, 'q3': q3})
+    return pd.DataFrame(rows)
+
+
+def top_cell_lines(w, ref):
+    """LINCS lines with a weight above each cutoff of the random-pair distribution."""
+    r = ref.iloc[0]
+    rows = []
+    for cut, q in TOP_CUTOFFS.items():
+        top = w[w['cor'] > r[q]].sort_values('cor', ascending=False)
+        if top.empty:
+            rows.append({'cutoff': cut, 'threshold': r[q], 'lincs_cell_id': None, 'cor': None})
+        rows += [{'cutoff': cut, 'threshold': r[q], 'lincs_cell_id': c, 'cor': v}
+                 for c, v in zip(top['lincs_cell_id'], top['cor'])]
+    return pd.DataFrame(rows)
+
+
 # ----------------------------------------------------------------- figure
 
 def panel(cc, tab, cor_primary, tacle, s, groups, strata):
@@ -386,6 +429,17 @@ def run(cc):
     w = w[['lincs_cell_id', f'median_cor_{case}']].rename(columns={f'median_cor_{case}': 'cor'})
     w.to_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t', index=False)
     print(f'sRGES weights written for {len(w)} LINCS lines (range {w.cor.min():.3f}-{w.cor.max():.3f})')
+
+    ref = reference_scale(ccle, mapping.loc[mapping.has_expression, 'ModelID'].tolist())
+    ref.to_csv(P.oout_dir / f'{P.slug}_ccle_reference_scale.tsv', sep='\t', index=False)
+    print('\ncell line vs cell line reference (primary set):')
+    print(ref.round(3).to_string(index=False))
+    top = top_cell_lines(w, ref)
+    top.to_csv(P.oout_dir / f'{P.slug}_top_cell_lines.tsv', sep='\t', index=False)
+    for cut, g in top.groupby('cutoff', sort=False):
+        lines = g.dropna(subset=['lincs_cell_id'])
+        print(f'top cell lines, cutoff {cut} ({g.threshold.iloc[0]:.3f}): {len(lines)}'
+              + (f': {", ".join(f"{c} {v:.3f}" for c, v in zip(lines.lincs_cell_id, lines.cor))}' if len(lines) else ''))
 
     tacle = load_tacle()
     panel(cc, tab, cor_primary, tacle, s, groups, strata)
