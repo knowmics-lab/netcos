@@ -53,6 +53,10 @@ diseases_of = {'HEPG2':'LIHC',
 
 DISEASE = "asthma_GSE152004"  # diseases_of[cell_line] 
 
+# steps of case_study_pipeline.py for the case study DISEASE (= slug of
+# src/case_studies/<slug>/): any of weights, srges, validation
+CASE_STUDY_STEPS = ['weights', 'srges', 'validation']
+
 disease_run_name = DISEASE + LM_flag_disease
 
 ###############################################################################
@@ -120,6 +124,7 @@ DISEASE_SIGNATURE_SOURCE = "cs_in"  # options: "tsr", "cs_in", "other"
 ############################################
 CS_DIR=BASE_DIR / 'connectivity_score'
 CS_IN_DRUG=CS_DIR / 'input' / 'drug_signature_2025' / cell_line_run_name #Path(cell_line+'_'+pert_time)
+CS_IN_DRUG_DIR=CS_DIR / 'input' / 'drug_signature_2025'  # per-instance drug inputs, one folder per drug run id
 CS_IN_DISEASE=CS_DIR / 'input' / 'disease_signature_2025' / disease_run_name
 CS_OUT=CS_DIR / 'output' / disease_run_name #Path(DISEASE+'_2025_'+pert_time)
 
@@ -170,6 +175,8 @@ MIR29_OOUT_DIR = OOUT_DIR / 'case_studies' / 'mir29_antagomir'
 # src/case_studies/). Dataset-specific file names live in
 # src/case_studies/<slug>/case_conf.py; the data folder is DATA_DIR / <slug>.
 from types import SimpleNamespace
+
+CASE_STUDIES_SRC = BASE_DIR / 'src' / 'case_studies'  # one folder per case study, with its case_conf.py
 
 def case_study_paths(slug):
     """Standard locations of a case study, all derived from its slug."""
