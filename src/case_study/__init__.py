@@ -10,8 +10,7 @@ dataset-specific name from it:
 - per_drug_scores.py         step 'srges': per-drug sRGES / wsRGES / best from
                              the per-instance connectivity scores
 - repodb_auroc.py            step 'validation', when cc.REPODB is declared
-- known_drug_rankings.py     step 'validation', cc.KNOWN_DRUGS_REPORT = 'rankings'
-- known_drug_percentiles.py  step 'validation', cc.KNOWN_DRUGS_REPORT = 'percentiles'
 - cs_checks.py               step 'validation', when cc.CS_CHECKS is declared
-- common.py                  figure style shared by the steps
+- known_drugs.py             step 'validation', when cc.KNOWN_DRUGS is declared
+- common.py                  house figure style and configuration colours
 """

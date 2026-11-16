@@ -15,18 +15,18 @@ order:
 - 'srges'      case_study.per_drug_scores: per-drug sRGES_weighted,
                sRGES_unweighted and best from the per-instance CS runs.
 - 'validation' every validation the study declares in its case_conf:
-               REPODB              -> case_study.repodb_auroc
-               CS_CHECKS           -> case_study.cs_checks
-               KNOWN_DRUGS with
-               KNOWN_DRUGS_REPORT  -> case_study.known_drug_rankings ('rankings')
-                                      or case_study.known_drug_percentiles
-                                      ('percentiles')
+               REPODB       -> case_study.repodb_auroc
+               CS_CHECKS    -> case_study.cs_checks
+               KNOWN_DRUGS  -> case_study.known_drugs
                A field that is not declared means that validation is not run.
+               CS_CHECKS runs before KNOWN_DRUGS, which also reports the
+               known drugs in the 1-based rankings of cs_checks.
 
 Before any step, validate_case_conf checks that the case_conf declares every
 field the chosen steps need and stops with a readable message otherwise;
-conf.CS_METHOD must be 'bin_chen'. Figure style and text come from
-case_conf.FIGURES. Inputs and outputs of each
+conf.CS_METHOD must be 'bin_chen'. Every figure uses the house style
+(lfs_style); case_conf.FIGURES holds only figure text (FIGURES_TEXT_KEYS).
+Inputs and outputs of each
 step are listed in the module docstrings; tables go to
 other_outputs/case_studies/<slug>/, figures to imgs/case_studies/<slug>/.
 
@@ -54,9 +54,11 @@ FIGURES_KEYS = {  # step or report: FIGURES text keys it needs
     'weights': ['dataset', 'disease', 'case_axis', 'control_axis', 'panel_c_title'],
     'known_drugs': ['known_drugs_label'],
 }
+FIGURES_TEXT_KEYS = ['dataset', 'disease', 'group_labels', 'case_axis', 'control_axis', 'panel_c_title',
+                     'known_drugs_label']  # every key FIGURES may hold
 REPODB_KEYS = ['cui', 'negative_classes', 'negative_sets']
-CS_CHECKS_KEYS = ['disease_signature', 'cell_line', 'n_check', 'n_jobs']
-KNOWN_DRUGS_REPORTS = ('rankings', 'percentiles')
+CS_CHECKS_KEYS = ['cell_line']               # optional: n_check, n_jobs
+CS_CHECKS_OPTIONAL = ['n_check', 'n_jobs']
 
 
 def validate_case_conf(cc, steps):
@@ -65,8 +67,12 @@ def validate_case_conf(cc, steps):
     err = []
     fig = getattr(cc, 'FIGURES', None)
     if fig is None:
-        err.append('FIGURES is missing (figure text and style of every step)')
+        err.append('FIGURES is missing (figure text of every step)')
         fig = {}
+    extra = [k for k in fig if k not in FIGURES_TEXT_KEYS]
+    if extra:
+        err.append(f'FIGURES holds only figure text {FIGURES_TEXT_KEYS}; unknown keys {extra} '
+                   f'(figure style is the house style for every study)')
 
     def need(field, d, keys, why):
         miss = [k for k in keys if k not in d]
@@ -96,11 +102,12 @@ def validate_case_conf(cc, steps):
             need('REPODB', cc.REPODB, REPODB_KEYS, 'repoDB AUROC')
         if hasattr(cc, 'CS_CHECKS'):
             need('CS_CHECKS', cc.CS_CHECKS, CS_CHECKS_KEYS, 'CS checks')
+            extra = [k for k in cc.CS_CHECKS if k not in CS_CHECKS_KEYS + CS_CHECKS_OPTIONAL]
+            if extra:
+                err.append(f'CS_CHECKS: unknown keys {extra} (expected {CS_CHECKS_KEYS + CS_CHECKS_OPTIONAL})')
+        if hasattr(cc, 'KNOWN_DRUGS_REPORT'):
+            err.append('KNOWN_DRUGS_REPORT is no longer used: every study with KNOWN_DRUGS gets the same report')
         if hasattr(cc, 'KNOWN_DRUGS'):
-            report = getattr(cc, 'KNOWN_DRUGS_REPORT', None)
-            if report not in KNOWN_DRUGS_REPORTS:
-                err.append(f'KNOWN_DRUGS is declared, so KNOWN_DRUGS_REPORT must be one of '
-                           f'{list(KNOWN_DRUGS_REPORTS)} (it is {report!r})')
             if not isinstance(cc.KNOWN_DRUGS, dict) or not cc.KNOWN_DRUGS:
                 err.append('KNOWN_DRUGS must be a non-empty dict {drug name: class}')
             need('FIGURES', fig, FIGURES_KEYS['known_drugs'], 'text of the known-drug panel')
@@ -131,14 +138,9 @@ def run_validation(cc):
         rank1based = cs_checks.run(cc)
         ran.append('CS checks')
     if hasattr(cc, 'KNOWN_DRUGS'):
-        report = cc.KNOWN_DRUGS_REPORT
-        if report == 'rankings':
-            from case_study import known_drug_rankings
-            known_drug_rankings.run(cc)
-        else:
-            from case_study import known_drug_percentiles
-            known_drug_percentiles.run(cc, rank1based)
-        ran.append(f'known drugs ({report})')
+        from case_study import known_drugs
+        known_drugs.run(cc, rank1based)
+        ran.append('known drugs')
     print(f'validation: {", ".join(ran) if ran else "nothing declared in case_conf"}')
 
 
@@ -152,7 +154,7 @@ if __name__ == '__main__':
     if unknown:
         sys.exit(f'conf.CASE_STUDY_STEPS: unknown steps {unknown}; expected some of {list(STEPS)}')
     validate_case_conf(cc, steps)
-    apply_style(cc)
+    apply_style()
     print(f'case study {slug}; steps: {", ".join(s for s in STEPS if s in steps)}')
 
     if 'weights' in steps:

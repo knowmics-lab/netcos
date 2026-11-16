@@ -43,17 +43,19 @@ SAMPLES = {
     'check_sample_order': NCBI_COUNTS,
 }
 
-# step 'validation': known drugs (name: class) and the known-drug report
+# step 'validation': known drugs (name: class)
 KNOWN_DRUGS = {
     'pirfenidone': 'approved, disease-modifying',
     'nintedanib': 'approved, disease-modifying',
 }
-KNOWN_DRUGS_REPORT = 'rankings'
 
-# figure text and style
+# step 'validation': known-answer checks of the per-instance CS of every configuration
+CS_CHECKS = {
+    'cell_line': 'NEU',             # cell line of the recomputation check
+}
+
+# figure text
 FIGURES = {
-    'style': 'lfs',
-    'rc': {'savefig.dpi': 130},
     'dataset': 'GSE92592',
     'disease': 'IPF',
     'group_labels': {'ipf': 'IPF'},

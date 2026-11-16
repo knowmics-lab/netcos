@@ -75,7 +75,7 @@ Outputs
     tumour references; C: case vs control median per LINCS line;
     D: agreement of the LINCS-line ordering between gene sets; with strata,
     E: median correlation of the LINCS lines per sample class.
-    Text and style from cc.FIGURES.
+    Figure text from cc.FIGURES; house style (case_study.common).
 """
 
 import gzip
@@ -263,10 +263,10 @@ def similarity_tables(x, s, groups, strata, ccle, models, mapping):
 def panel(cc, tab, cor_primary, tacle, s, groups, strata):
     P = cc.P
     F = figures(cc)
-    BLUE, RED = colours(cc)
+    BLUE, RED = colours()
     case = list(groups)[0]
     glabel = F.get('group_labels', {})
-    box_alpha = F.get('box_alpha', .4)
+    box_alpha = .4
     p = tab[tab['gene_set'] == PRIMARY]
     lin = p[p['lincs_cell_id'].notna()].sort_values('median_cor_all', ascending=False)
     if strata:
@@ -293,16 +293,16 @@ def panel(cc, tab, cor_primary, tacle, s, groups, strata):
     a.set_xticklabels([f'{c} ({l})' for c, l in zip(lin['lincs_cell_id'], lin['OncotreeLineage'])],
                       rotation=90, fontsize=7)
     a.set_ylabel(f'Spearman correlation with {F["dataset"]} samples')
-    a.set_title(f'A. {F.get("panel_a_title", "LINCS lines")}, per-sample correlations '
+    a.set_title(f'A. LINCS lines with CCLE expression, per-sample correlations '
                 f'({PRIMARY}, {int(p.n_genes.iloc[0])} genes)')
-    a.legend(loc=F.get('panel_a_legend', 'lower left'))
+    a.legend(loc='best')
 
     a = ax['B']
     bins = np.linspace(min(p['median_cor_all'].min(), tacle['cor'].min()) - .02,
                        max(p['median_cor_all'].max(), tacle['cor'].max()) + .02, 50)
     a.hist(p['median_cor_all'], bins=bins, color='0.6', alpha=.7,
            label=f'{F["disease"]}, all CCLE lines (n={len(p)})')
-    a.hist(lin['median_cor_all'], bins=bins, color=RED, alpha=F.get('lincs_hist_alpha', .6),
+    a.hist(lin['median_cor_all'], bins=bins, color=RED, alpha=.6,
            label=f'{F["disease"]}, LINCS lines (n={len(lin)})')
     for t, ls in zip(TACLE, ['-', '--', ':', '-.']):
         v = tacle.loc[tacle['tumour'] == t, 'cor']

@@ -43,17 +43,16 @@ REPODB = {
     'name_alias': {'beclometasone': 'beclomethasonedipropionate'},   # repoDB name key -> L1000 name key
 }
 
-# figure text and style
+# step 'validation': known-answer checks of the per-instance CS of every configuration
+CS_CHECKS = {
+    'cell_line': 'NEU',             # cell line of the recomputation check
+}
+
+# figure text
 FIGURES = {
-    'style': 'matplotlib',
-    'rc': {'axes.grid': True, 'grid.color': '0.7', 'grid.linestyle': '--', 'grid.linewidth': 0.6,
-           'font.size': 10, 'savefig.dpi': 130},
-    'colours': ('#1f4e9c', '#c0392b'),   # control, case
     'dataset': 'GSE152004',
     'disease': 'asthma',
     'case_axis': 'asthmatics',
     'control_axis': 'healthy controls',
     'panel_c_title': 'asthmatic vs healthy-control samples',
-    'box_alpha': .5,
-    'lincs_hist_alpha': .8,
 }

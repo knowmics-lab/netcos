@@ -1,17 +1,29 @@
 """
-Figure style of a case study, from the FIGURES block of its case_conf.
+Figure style and figure text of a case study.
 
-FIGURES['style'] = 'lfs' (default) applies lfs_style (lfs.mplstyle);
-'matplotlib' keeps the matplotlib defaults. FIGURES['rc'] (rcParams) is
-applied on top in both cases. FIGURES['colours'] = (control colour, case
-colour), default (lfs_style.BEFORE, lfs_style.AFTER).
+Every figure uses the house style lfs_style (lfs.mplstyle: DejaVu Serif,
+grey dashed grid, pure blue / pure red pair). The FIGURES block of the
+case_conf holds only figure text (dataset, disease, axis and panel labels).
+
+CONFIG_COLOURS gives one colour per CS configuration, the same in every
+figure: the DEG family in blues, the MITHrIL node family in reds, MITHrIL
+pathways in black.
 """
 
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 import lfs_style
+
+BLUE, RED = lfs_style.BEFORE, lfs_style.AFTER
+
+CONFIG_COLOURS = {
+    'DEG': BLUE,
+    'DEG_LM': '#00A0C8',
+    'mith': RED,
+    'mith_LM': '#FF8C00',
+    'mith_pw': '#8B00C8',
+}
 
 
 def figures(cc):
@@ -21,14 +33,14 @@ def figures(cc):
     return cc.FIGURES
 
 
-def apply_style(cc):
-    f = figures(cc)
-    if f.get('style', 'lfs') == 'lfs':
-        lfs_style.apply(**f.get('rc', {}))
-    else:
-        plt.rcParams.update(f.get('rc', {}))
+def apply_style():
+    lfs_style.apply()
 
 
-def colours(cc):
+def colours():
     """(BLUE, RED): control / case colour of the study figures."""
-    return figures(cc).get('colours', (lfs_style.BEFORE, lfs_style.AFTER))
+    return BLUE, RED
+
+
+def config_colour(config):
+    return CONFIG_COLOURS.get(config, '0.5')

@@ -21,8 +21,12 @@ Design
   * 'best': the most negative CS among the drug's instances with
     pert_dose > 0 and pert_time in {6, 24} h (the instances sRGES keeps).
   sRGES uses the Chen 2017 dose/time correction with the index mapping of the
-  published R code (srges_diff_mode 'binchen_r'); for DEG the offsets and the
-  agreement with the 'corrected' mapping are printed.
+  published R code (srges_diff_mode 'binchen_r'). The correction table
+  (sRGES.build_reference_diff: mean CS of the reference instance, 10 uM /
+  24 h, minus the CS of another instance of the same compound and cell line,
+  per dose bin and time of the other instance) is written for every scored
+  configuration; for DEG the agreement with the 'corrected' index mapping
+  is printed.
 - Sign convention: more negative = stronger reversal of the disease signature.
 
 Inputs
@@ -39,6 +43,10 @@ Outputs
 - P.oout_dir/<slug>_srges_cs_runs_used.tsv
     the cs_run_id used for every (config, cell line); empty cs_run_id = no
     run for that line.
+- P.oout_dir/<slug>_srges_offsets.tsv
+    one row per (config, dose_bin, pert_time) of the dose/time correction
+    table: offset (mean CS difference, reference - other); dose_bin 'low'
+    = dose < 10 uM, 'high' = dose >= 10 uM.
 """
 
 import pandas as pd
@@ -97,17 +105,25 @@ def collapse(inst, md, weights):
     return res
 
 
-def diff_mode_check(inst, md):
-    """Dose/time offsets of the Chen 2017 model and effect of the 'corrected' index mapping."""
+def offsets(inst, md):
+    """Dose/time correction table of the Chen 2017 model, as compute_sRGES builds it."""
     x = inst.assign(LINCS_id=inst['LINCS_id'].astype(str)).merge(md, left_on='LINCS_id', right_on='id')
     for c in ('pert_dose', 'pert_time', 'connectivity_score'):
         x[c] = pd.to_numeric(x[c], errors='coerce')
-    diff = build_reference_diff(x.dropna(subset=['pert_dose', 'pert_time']), score_col='connectivity_score',
-                                drug_col=DRUG, cell_col='cell_id')
+    x = x.dropna(subset=['connectivity_score', 'pert_dose', 'pert_time', DRUG, 'cell_id'])
+    diff = build_reference_diff(x, score_col='connectivity_score', drug_col=DRUG, cell_col='cell_id')
+    return diff
+
+
+def diff_mode_check(inst, md):
+    """Effect of the 'corrected' index mapping on sRGES_unweighted."""
+    x = inst.assign(LINCS_id=inst['LINCS_id'].astype(str)).merge(md, left_on='LINCS_id', right_on='id')
+    for c in ('pert_dose', 'pert_time', 'connectivity_score'):
+        x[c] = pd.to_numeric(x[c], errors='coerce')
     a = compute_sRGES(x, score_col='connectivity_score', drug_col=DRUG, srges_diff_mode='binchen_r').set_index(DRUG)['sRGES']
     b = compute_sRGES(x, score_col='connectivity_score', drug_col=DRUG, srges_diff_mode='corrected').set_index(DRUG)['sRGES']
     d = pd.concat([a, b], axis=1, keys=['binchen_r', 'corrected']).dropna()
-    return diff, spearmanr(d['binchen_r'], d['corrected']).statistic, (d['binchen_r'] - d['corrected']).abs().max()
+    return spearmanr(d['binchen_r'], d['corrected']).statistic, (d['binchen_r'] - d['corrected']).abs().max()
 
 
 def run(cc):
@@ -119,7 +135,7 @@ def run(cc):
     weights = dict(zip(w['lincs_cell_id'], w['cor']))
     print(f'{len(cells)} LINCS cell lines; {len(weights)} with a weight')
 
-    tabs, used_all = [], []
+    tabs, used_all, offs = [], [], []
     for label in CONFIGS:
         inst, used, missing = load_instances(label, cells)
         used_all += used
@@ -130,9 +146,13 @@ def run(cc):
             print(f'{label}: CS runs missing for {len(missing)} of {len(cells)} lines, configuration skipped')
             continue
         r = collapse(inst, md, weights)
+        diff = offsets(inst, md)
+        print(f'{label}: dose/time offsets (mean reference - other, per dose bin and time):', diff.round(4).to_dict())
+        for k, v in diff.items():
+            dose_bin, t = k.split()
+            offs.append({'config': label, 'dose_bin': dose_bin, 'pert_time': int(t), 'offset': v})
         if label == 'DEG':
-            diff, rho, mx = diff_mode_check(inst, md)
-            print('dose/time offsets (mean reference - other, per dose bin and time):', diff.round(4).to_dict())
+            rho, mx = diff_mode_check(inst, md)
             print(f"sRGES_unweighted, 'binchen_r' vs 'corrected' index mapping: Spearman {rho:.4f}, max |diff| {mx:.4f}")
         r.insert(0, 'config', label)
         tabs.append(r)
@@ -142,3 +162,4 @@ def run(cc):
     P.oout_dir.mkdir(parents=True, exist_ok=True)
     pd.concat(tabs, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_srges_per_drug.tsv', sep='\t', index=False)
     pd.DataFrame(used_all).to_csv(P.oout_dir / f'{P.slug}_srges_cs_runs_used.tsv', sep='\t', index=False)
+    pd.DataFrame(offs).to_csv(P.oout_dir / f'{P.slug}_srges_offsets.tsv', sep='\t', index=False)

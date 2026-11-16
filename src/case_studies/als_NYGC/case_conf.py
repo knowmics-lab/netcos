@@ -57,7 +57,7 @@ SAMPLES = {
     },
 }
 
-# step 'validation': known drugs (name: class) and the known-drug report
+# step 'validation': known drugs (name: class)
 KNOWN_DRUGS = {
     'riluzole': 'approved, disease-modifying',
     'edaravone': 'approved, disease-modifying',
@@ -65,26 +65,20 @@ KNOWN_DRUGS = {
     'quinidine': 'approved, symptomatic (Nuedexta component)',
     'phenylbutyrate': 'failed phase 3 (AMX0035 component)',
 }
-KNOWN_DRUGS_REPORT = 'percentiles'
 
-# step 'validation': known-answer checks of the per-instance DEG CS
+# step 'validation': known-answer checks of the per-instance CS of every configuration
 CS_CHECKS = {
-    'disease_signature': DISEASE_SIGNATURE,
     'cell_line': 'NEU',             # cell line of the recomputation check
     'n_check': 20,                  # instances recomputed
     'n_jobs': 12,                   # parallel jobs of the position-convention check
 }
 
-# figure text and style
+# figure text
 FIGURES = {
-    'style': 'lfs',
-    'rc': {'savefig.dpi': 130, 'font.size': 10, 'legend.shadow': False},
     'dataset': 'GSE153960',
     'disease': 'ALS CNS',
     'case_axis': 'als samples',
     'control_axis': 'control samples',
     'panel_c_title': 'als vs control samples',
-    'panel_a_title': 'LINCS lines with CCLE expression',
-    'panel_a_legend': 'upper right',
     'known_drugs_label': 'ALS',
 }
