@@ -371,7 +371,7 @@ def run(cc, rank1based=None):
     rk = {n: add_ranks(r) for n, r in {**tsr, **pi}.items()}
     extra = {n: add_ranks(r) for n, r in tsr_extra.items()}
     order = [n for c in list(TSR_CONFIGS) + sorted({m[0] for m in meta_pi.values()} - set(TSR_CONFIGS))
-             for n in (f'{c}_TSR', f'{c}_sRGES', f'{c}_wsRGES', f'{c}_best') if n in rk]
+             for n in [f'{c}_TSR'] + [f'{c}_{t}' for t in SCORE_TYPES.values()] if n in rk]
     print('rankings: ' + ', '.join(f'{n} ({len(rk[n])})' for n in order))
 
     shared = set(rk['DEG_TSR']['drug_key']) & set(rk['DEG_sRGES']['drug_key'])
