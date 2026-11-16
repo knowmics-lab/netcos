@@ -131,7 +131,8 @@ Each analysis has one slug, mirrored across `src/`, `imgs/` and `other_outputs/`
   - `03_` repoDB × disease signatures, joined on UMLS CUI;
   - `04_` repoDB drugs → LINCS L1000;
   - `05_` hierarchy roll-up for CUIs without their own signature, through the UMLS source vocabularies (NCIt, MeSH; UTS REST API).
-- `src/case_studies/` — single-dataset applications that produce new disease-side inputs:
+- `src/case_study_pipeline.py` + `src/case_study/` — the analysis pipeline shared by every case study (cell-line weights, per-drug sRGES, validation); see "Running a new disease (case study)".
+- `src/case_studies/` — single-dataset applications: one `case_conf.py` per study (read by `case_study_pipeline.py`) and the scripts that produce the study's disease-side inputs:
   - `stan_als_tdp43/` — TDP-43 iPSC motor-neuron bulk RNA-seq: `01_` edgeR QLF + QC from counts, `02_` contrast → DEG CS input (`"cs_in"`) and MITHrIL `.mi`, one disease run per contrast.
   - `mir29_antagomir/` — mouse miR-29 antagomiR log2FC signature: `01_` mouse → human 1:1 orthologs (MGI homology report) → DEG CS input and MITHrIL `.mi`. No p-values in the input (`adj.p.value` = NaN). Mimicking study: read the most positive CS.
   - `asthma_GSE152004/` — asthmatic vs healthy-control nasal airway epithelium RNA-seq (GSE152004, 440 vs 254), a disease of the labelled pair benchmark: `00_` inspection of the GEO download and sample-group map, `01_` disease signature with the `modules/disease_signature/` R classes on NCBI GeneIDs → DEG CS input (`"cs_in"`) and MITHrIL `.mi`.
@@ -154,7 +155,10 @@ src/                        Python pipeline — code only, no outputs
   validations/binchen2017/  BinChen2017 RGES/sRGES replication (upstream ground-truth check)
   validations/known_drug_benchmark/       Known-drug positioning across representations
   validations/drug_disease_pairs_validation/   Labelled pair benchmark construction (01_–05_)
-  case_studies/             Single-dataset applications (stan_als_tdp43, mir29_antagomir, asthma_GSE152004)
+  case_study_pipeline.py    Case-study analysis entry point (steps weights, srges, validation) for conf.DISEASE
+  case_study/               Generic case-study steps (weights, per_drug_scores, repodb_auroc, cs_checks, known_drugs, common)
+  case_studies/             One folder per case study: case_conf.py + disease-side scripts
+                             (asthma_GSE152004, ipf, als_NYGC, stan_als_tdp43, mir29_antagomir)
   run_disease_pipeline.sh   Disease side + CS grid for the disease set in conf.py
 modules/                    R algorithm modules (connectivity_score, disease_signature, drug_signature) — abstract-class architecture
 tsr/                        R workflows per disease (als_1, als_2, als_NYGC, ipf, colon_tumor)
@@ -173,26 +177,97 @@ logs/                       cs_runs.tsv = registry of every CS run; per-step run
 
 ## Running a new disease (case study)
 
-A new disease from a public RNA-seq dataset is run as a case study, with the drug side already
-computed (`connectivity_score/input/drug_signature_2025/all`, drugs collapsed before CS).
+A new disease from a public RNA-seq dataset is run as a case study. The disease side is computed by
+the study's own scripts; the analysis after the connectivity score is the same code for every study,
+`src/case_study_pipeline.py`, driven by the study's `case_conf.py`.
 
-1. **Locations.** The slug is the folder name `src/case_studies/<slug>/`. `conf.case_study_paths(slug)`
-   derives the standard locations: data in `data/<slug>/`, outputs in `other_outputs/case_studies/<slug>/`
-   and `imgs/case_studies/<slug>/`, DEG CS input in `connectivity_score/input/disease_signature_2025/<slug>/`.
-   `src/case_studies/<slug>/case_conf.py` adds only the dataset's file names; no case-study variables
-   go into `conf.py`.
-2. **Download** the counts (for GEO RNA-seq, the NCBI-recomputed `<GSE>_raw_counts_GRCh38.p13_NCBI.tsv.gz`,
-   rows = NCBI GeneID) and the series matrix into `data/<slug>/`.
-3. **`00_`** inspects the download (dimensions, integer counts, covariates, sample alignment) and writes
-   the sample-group map; **`01_`** computes the disease signature with the R classes of
+### Locations
+
+The slug is the folder name `src/case_studies/<slug>/` (`conf.CASE_STUDIES_SRC / <slug>`).
+`conf.case_study_paths(slug)` derives the standard locations, available in the case_conf as `P`:
+data in `DATA_DIR/<slug>/` (`P.data_dir`), tables in `other_outputs/case_studies/<slug>/` (`P.oout_dir`),
+figures in `imgs/case_studies/<slug>/` (`P.img_dir`), DEG CS input in
+`connectivity_score/input/disease_signature_2025/<slug>/` (`P.cs_in_disease`). No case-study variables
+go into `conf.py`.
+
+### Disease side and connectivity score
+
+1. **Download** the counts (for GEO RNA-seq, the NCBI-recomputed `<GSE>_raw_counts_GRCh38.p13_NCBI.tsv.gz`
+   and `<GSE>_norm_counts_TPM_GRCh38.p13_NCBI.tsv.gz`, rows = NCBI GeneID) and the series matrix into `DATA_DIR/<slug>/`.
+2. **`00_`** inspects the download (dimensions, integer counts, covariates, sample alignment) and writes
+   the sample-group map `<slug>_samples.tsv`; **`01_`** computes the disease signature with the R classes of
    `modules/disease_signature/` (`LogarithmGeneFilter`, upper-quartile normalisation, voom / limma,
-   `topTable(coef = 2)`, as for IPF) keeping NCBI GeneIDs, and writes the DEG CS input and the MITHrIL `.mi`.
-   This replaces `tsr/<disease>/` + `step1`.
-4. **`conf.py`:** `DISEASE = "<slug>"`, `DISEASE_SIGNATURE_SOURCE = "cs_in"`.
-5. **MITHrIL and CS:** `bash src/run_disease_pipeline.sh` runs the case-study scripts, `step2 run`, `step3`,
+   `topTable(coef = 2)`) keeping NCBI GeneIDs, and writes the DEG CS input and the MITHrIL `.mi`.
+   A study whose signature comes from `tsr/<disease>/` (ipf, als_NYGC) has no `00_` / `01_`.
+3. **`conf.py`:** `DISEASE = "<slug>"`, `DISEASE_SIGNATURE_SOURCE = "cs_in"`.
+4. **MITHrIL and CS:** `bash src/run_disease_pipeline.sh` runs the case-study scripts, `step2 run`, `step3`,
    `step2b_7b` and `run_cs_batch_grid.py --disease <disease_run_name>`; a stage name as argument
-   restarts from that stage, `DRY_RUN=1` prints the stages only.
-6. **Exploration:** `data_exploration/data_exploration_<slug>_CS_and_rankings.ipynb`, on the model of the
+   restarts from that stage, `DRY_RUN=1` prints the stages only. Two drug inputs are scored, both under
+   `conf.CS_IN_DRUG_DIR` (`connectivity_score/input/drug_signature_2025/`): `all` (drugs collapsed by the
+   TSR/LMM model before CS) and `<cell_id>_LM`, one per LINCS cell line (per-instance signatures, drugs not
+   collapsed before CS). The case-study pipeline reads the per-instance runs of every cell line and the
+   drug-collapsed runs, resolved from `logs/cs_runs.tsv` with `loader.load_cs_run`.
+
+### Case-study pipeline
+
+```
+cd src && PYTHONPATH=. python case_study_pipeline.py
+```
+
+The study is `conf.DISEASE` (= slug); the steps run are `conf.CASE_STUDY_STEPS`, a subset of
+`['weights', 'srges', 'validation']`, always in that order. `conf.CS_METHOD` must be `"bin_chen"`.
+Before any step, `validate_case_conf` checks that the case_conf declares every field the chosen steps
+need and stops with the list of missing or malformed fields. Every figure uses the house style
+(`lfs_style`). Tables go to `P.oout_dir`, figures to `P.img_dir`, all prefixed `<slug>_`.
+
+| Step | Module | Computes | Reads | Writes |
+|---|---|---|---|---|
+| `weights` | `case_study/weights.py` | Spearman similarity of every CCLE line (LINCS lines among them) to the disease samples, on three marker-gene sets (primary `binchen2017_iqr5000`); median over the samples of each group (Chen 2017 / OCTAD). sRGES weight of a LINCS line = its median correlation with the case samples on the primary set | `NCBI_TPM`, `SAMPLES`, DepMap expression, `conf.LINCS_METADATA_PATH`, Chen 2017 tumour references | `_samples.tsv` (formats `series_matrix`, `csv`), `_ccle_cell_line_similarity.tsv`, `_cell_line_weights.tsv`, `_lincs_ccle_mapping.tsv`, `_ccle_cell_line_similarity_panel.png` |
+| `srges` | `case_study/per_drug_scores.py` | Per-drug scores from the per-instance CS of every LINCS cell line, per configuration (DEG, mith, mith_LM, mith_pw); drug = L1000 compound name: `sRGES_weighted` (cell-line weights), `sRGES_unweighted`, `best` (most negative CS, dose > 0, 6 h / 24 h). A configuration is scored only when every cell line has a run | `logs/cs_runs.tsv` + CS files, `conf.LINCS_METADATA_PATH`, `_cell_line_weights.tsv` | `_srges_per_drug.tsv`, `_srges_cs_runs_used.tsv`, `_srges_offsets.tsv` (dose/time correction) |
+| `validation` | `case_study/repodb_auroc.py` (if `REPODB`) | AUROC of approved vs negative repoDB drugs of the indication, per-instance and drug-collapsed routes, score = −(per-drug score) | `_srges_per_drug.tsv`, repoDB labels of `drug_disease_pairs_validation`, drug-collapsed runs | `_repodb_auroc_srges.tsv`, `_repodb_labelled_drug_scores.tsv` |
+| | `case_study/cs_checks.py` (if `CS_CHECKS`) | Known-answer recomputation of stored per-instance CS on one cell line; independent RGES with 0-based vs 1-based positions on every instance | `_srges_cs_runs_used.tsv`, `_cell_line_weights.tsv`, run inputs | `_cs_known_answer_check.tsv`, `_cs_position_convention.tsv` |
+| | `case_study/known_drugs.py` (if `KNOWN_DRUGS`) | Drug rankings (drug-collapsed TSR per configuration; per-instance sRGES / wsRGES / best), rank and percentiles of the known drugs, agreement between rankings (Spearman, top-k overlap), per-instance CS of the known drugs | `_srges_per_drug.tsv`, `_srges_cs_runs_used.tsv`, `_cell_line_weights.tsv`, `_lincs_ccle_mapping.tsv`, drug-collapsed runs | `_drug_rankings.tsv`, `_known_drug_ranks.tsv`, `_ranking_agreement.tsv`, `_known_drug_instances.tsv`, `_tsr_vs_srges_panel.png` |
+
+Within `validation`, an analysis whose field is not declared is not run; `cs_checks` runs before
+`known_drugs`, which also reports the known drugs in the 1-based rankings of `cs_checks`. Sign
+convention throughout: more negative = stronger reversal of the disease signature.
+
+### case_conf.py
+
+`src/case_studies/<slug>/case_conf.py` sets `P = conf.case_study_paths(<folder name>)`, the dataset's
+file names (e.g. `NCBI_COUNTS`, `SERIES_MATRIX`, `NCBI_TPM`) and the analysis fields:
+
+- **`NCBI_TPM`** (step `weights`) — NCBI TPM matrix of the study, rows = NCBI GeneID.
+- **`SAMPLES`** (step `weights`) — the disease samples. `groups`: `{case_group: value, 'control': value}`,
+  exactly two groups, the case group first. `format` and the keys it needs:
+  - `'samples_table'`: `group_column` (column of the existing `P.oout_dir/<slug>_samples.tsv`);
+  - `'series_matrix'`: `file`, `characteristic` (sample characteristic of the group), `control_value`
+    (any other value = case); optional `check_group_coding`, `check_sample_order`;
+  - `'csv'`: `file`, `sample_column`, `group_column`, `columns`; optional `read_csv` (pandas arguments),
+    `subset_of_tpm`.
+  Optional `strata` (sample classes from a metadata column): `name`, `from_column`, `prefixes`,
+  `classes`, `label`, `short_label`.
+- **`REPODB`** (step `validation`, optional) — `cui` (repoDB `ind_id`), `negative_classes`,
+  `negative_sets` (`{name: column whose value must be in negative_classes}`); optional `name_alias`.
+- **`CS_CHECKS`** (step `validation`, optional) — `cell_line`; optional `n_check` (default 20),
+  `n_jobs` (default 12).
+- **`KNOWN_DRUGS`** (step `validation`, optional) — non-empty dict `{drug name: class}`.
+- **`FIGURES`** (always) — figure text only, keys among `dataset`, `disease`, `group_labels`,
+  `case_axis`, `control_axis`, `panel_c_title`, `known_drugs_label`. Step `weights` needs `dataset`,
+  `disease`, `case_axis`, `control_axis`, `panel_c_title`; `KNOWN_DRUGS` needs `known_drugs_label`.
+
+Current studies: `asthma_GSE152004` (`samples_table`; REPODB, CS_CHECKS), `ipf` (`series_matrix`;
+KNOWN_DRUGS, CS_CHECKS), `als_NYGC` (`csv` with CNS region strata; KNOWN_DRUGS, CS_CHECKS).
+
+### Adding a case study
+
+1. Create `src/case_studies/<slug>/case_conf.py` on the model of an existing one, choosing the
+   `SAMPLES` format that fits the metadata and declaring only the validations the study has data for.
+2. Run the disease side and the CS (steps above) for `DISEASE = "<slug>"`, on drug input `all` and on
+   every `<cell_id>_LM`.
+3. Set `conf.CASE_STUDY_STEPS` and run `case_study_pipeline.py`; missing case_conf fields are reported
+   before any computation.
+4. **Exploration:** `data_exploration/data_exploration_<slug>_CS_and_rankings.ipynb`, on the model of the
    IPF / ALS notebooks (section 0: the three disease inputs before CS; then CS distributions, rankings,
    agreement between representations).
 
