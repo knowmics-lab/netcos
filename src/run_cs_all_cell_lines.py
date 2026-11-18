@@ -13,7 +13,7 @@ Design
   scored with conf.CS_METHOD. A MITHrIL configuration is run on a cell line
   only when every instance of the line has its MITHrIL-derived input.
 - A (cell line, configuration) already present in conf.cs_log_filename for
-  this disease is skipped. Runs start in different minutes, so the
+  this disease, logged at or after NOT_BEFORE, is skipped. Runs start in different minutes, so the
   minute-stamped CS file names of cs_batch never collide.
 
 Inputs
@@ -51,6 +51,7 @@ CONFIGS = {  # label: (cs_mith, cs_on_LM, CS_ON_PATHWAYS)
     'mith_pw': (1, 0, True),
 }
 RUN_CONFIGS = ['DEG', 'mith', 'mith_LM', 'mith_pw']
+NOT_BEFORE = datetime(2026, 11, 17, 19, 30)  # runs logged earlier do not count as done (1-based KS positions)
 
 
 def mith_inputs_complete(cs_dir, ids, pathways):
@@ -66,7 +67,8 @@ def already_run(log, run_name, cfg):
     sel = log[(log['disease_run_id'] == conf.DISEASE) & (log['drug_run_id'] == run_name)
               & (log['mith'] == m) & (log['cs_on_LM'] == lm)
               & (log['CS_ON_PATHWAYS'].astype(str).isin([str(pw), str(int(pw))]))
-              & (log['CS_METHOD'] == conf.CS_METHOD) & (log['drug_collapsed_before_cs'] == 0)]
+              & (log['CS_METHOD'] == conf.CS_METHOD) & (log['drug_collapsed_before_cs'] == 0)
+              & (pd.to_datetime(log['timestamp'], format='mixed', dayfirst=True, errors='coerce') >= NOT_BEFORE)]
     return len(sel) > 0
 
 

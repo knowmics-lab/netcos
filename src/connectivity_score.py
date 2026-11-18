@@ -88,15 +88,17 @@ def rank_genes(drug_signature, disease_signature, drug_col_name, disease_col_nam
         - disease_col_name: str, column name to sort disease_signature by
         - id_col: str, column name of gene IDs
      Output:
-        NumPy array where the indices are sorted disease gene indexes 
-        and the values are indexes of corresponding sorted drug genes.
+        NumPy array where the indices are sorted disease gene indexes
+        and the values are the 1-based positions (1 = most up-regulated)
+        of the corresponding genes in the drug ranking, as in the KS
+        statistic of Lamb 2006 / Chen 2017 (compute_KS).
     '''
     sorted_drug_genes = drug_signature.sort_values(by=drug_col_name, ascending=False).reset_index(drop=True)
     sorted_disease_genes = disease_signature.sort_values(by=disease_col_name)
 
     merged_data_on_disease_indexes = pd.merge(sorted_disease_genes,sorted_drug_genes.reset_index(), on=id_col)
 
-    V = merged_data_on_disease_indexes['index'].to_numpy()
+    V = merged_data_on_disease_indexes['index'].to_numpy() + 1
     return V
 
 def compute_KS_disease_sorted(disease_disregulated_genes, V, drug_genes):
@@ -289,7 +291,7 @@ def montecarlo_connectivity(s_up, s_down, r, n_iterations=1000, score_type='bin_
     
     for i in range(n_iterations):
         
-        random_idx = np.random.choice(r, s_up + s_down, replace=False)
+        random_idx = np.random.choice(r, s_up + s_down, replace=False) + 1  # 1-based positions
 
         random_V_up = np.sort(random_idx[:s_up])
         random_V_down = np.sort(random_idx[s_up:])
@@ -336,7 +338,7 @@ def montecarlo_connectivity_disease_sorted(s_up, s_down, r, n_iterations=1000, s
     for i in range(n_iterations):
         
         # Generate random indexes for up and downregulated genes
-        random_up_and_down_indexes=np.random.choice(r, s_up + s_down, replace=False)
+        random_up_and_down_indexes=np.random.choice(r, s_up + s_down, replace=False) + 1  # 1-based positions
          
         # Create random index dictionary:
         random_V_up=random_up_and_down_indexes[:s_up]
