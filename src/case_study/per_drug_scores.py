@@ -24,13 +24,15 @@ Design
     line above it gives no score.
   * 'best': the most negative CS among the drug's instances with
     pert_dose > 0 and pert_time in {6, 24} h (the instances sRGES keeps).
-  sRGES uses the Chen 2017 dose/time correction with the index mapping of the
-  published R code (srges_diff_mode 'binchen_r'). The correction table
+  sRGES uses the Chen 2017 dose/time correction with the offset-to-instance
+  mapping conf.srges_diff_mode: 'corrected' gives each instance the offset of
+  its own dose bin and time; 'binchen_r' reproduces the integer indexing of
+  the published R code. The correction table
   (sRGES.build_reference_diff: mean CS of the reference instance, 10 uM /
   24 h, minus the CS of another instance of the same compound and cell line,
   per dose bin and time of the other instance) is written for every scored
-  configuration; for DEG the agreement with the 'corrected' index mapping
-  is printed.
+  configuration; for DEG the agreement between the two mappings is
+  printed.
 - Sign convention: more negative = stronger reversal of the disease signature.
 
 Inputs
@@ -101,7 +103,7 @@ def collapse(inst, md, weights, top):
                      (f'sRGES_unweighted_top_{cut}', {c: 1.0 for c in lines})]
     for name, w in variants:
         s = compute_sRGES(x, score_col='connectivity_score', drug_col=DRUG, cell_col='cell_id',
-                          cell_line_weights=w, srges_diff_mode='binchen_r')
+                          cell_line_weights=w, srges_diff_mode=conf.srges_diff_mode)
         lines = (kept[kept['cell_id'].isin(list(w))] if w is not None else kept).groupby(DRUG)['cell_id'].nunique()
         out.append(pd.DataFrame({'collapse': name, DRUG: s[DRUG], 'score': s['sRGES'],
                                  'n_instances': s['n'], 'n_cell_lines': s[DRUG].map(lines)}))
@@ -125,7 +127,7 @@ def offsets(inst, md):
 
 
 def diff_mode_check(inst, md):
-    """Effect of the 'corrected' index mapping on sRGES_unweighted."""
+    """Agreement of sRGES_unweighted between the 'binchen_r' and 'corrected' mappings."""
     x = inst.assign(LINCS_id=inst['LINCS_id'].astype(str)).merge(md, left_on='LINCS_id', right_on='id')
     for c in ('pert_dose', 'pert_time', 'connectivity_score'):
         x[c] = pd.to_numeric(x[c], errors='coerce')
@@ -142,7 +144,7 @@ def run(cc):
     cells = sorted(md['cell_id'].unique())
     w = pd.read_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t')
     weights = dict(zip(w['lincs_cell_id'], w['cor']))
-    print(f'{len(cells)} LINCS cell lines; {len(weights)} with a weight')
+    print(f'{len(cells)} LINCS cell lines; {len(weights)} with a weight; srges_diff_mode = {conf.srges_diff_mode}')
     t = pd.read_csv(P.oout_dir / f'{P.slug}_top_cell_lines.tsv', sep='\t')
     top = {cut: g['lincs_cell_id'].dropna().tolist() for cut, g in t.groupby('cutoff', sort=False)}
     for cut, lines in top.items():
