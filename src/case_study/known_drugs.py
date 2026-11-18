@@ -23,10 +23,6 @@ Design
   * Two more collapses of every TSR run, reported for the known drugs only:
     '<config>_TSR_mean3tp' = mean of the drug's 6h, 24h and 6h_24h scores,
     '<config>_TSR_besttp' = the most negative of them.
-  * With cc.CS_CHECKS, the per-compound sRGES / wsRGES recomputed by
-    cs_checks from 1-based per-instance scores
-    ('<config>_sRGES_rank1based', '<config>_wsRGES_rank1based'), reported
-    for the known drugs only.
 - Drug key: the L1000 compound name in lower case, alphanumerics only
   (pert_iname in the per-instance route, the drug part of pert_id in the TSR
   route); names that collapse to the same key take the mean score (per-
@@ -74,7 +70,7 @@ Outputs
     only), cs_run_id (TSR only).
 - P.oout_dir/<slug>_known_drug_ranks.tsv
     one row per (known drug, ranking), main rankings plus the extra TSR
-    collapses and the 1-based rankings: drug, drug_key, class, config,
+    collapses: drug, drug_key, class, config,
     collapse, score, rank, n_drugs, percentile, percentile_shared_DEG,
     n_instances, n_cell_lines, stratum, n_drugs_stratum, percentile_stratum,
     cs_run_id; empty score = drug not scored by that ranking.
@@ -348,8 +344,7 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
 
 # ------------------------------------------------------------------- run
 
-def run(cc, rank1based=None):
-    """rank1based: the 1-based per-compound rankings returned by cs_checks.run, or None."""
+def run(cc):
     P = cc.P
     known = pd.DataFrame({'class': pd.Series(cc.KNOWN_DRUGS)})
     known.index.name = 'drug'
@@ -425,10 +420,6 @@ def run(cc, rank1based=None):
     # known drugs in every ranking
     allr = {n: rk[n] for n in order}
     allr.update(extra)
-    for n, s in (rank1based or {}).items():
-        allr[n] = add_ranks(pd.DataFrame({'drug_key': s.index, 'score': s.values}))
-        meta[n] = (n.split('_sRGES')[0].split('_wsRGES')[0],
-                   'wsRGES_rank1based' if '_wsRGES_' in n else 'sRGES_rank1based')
     kcols = ['score', 'rank', 'percentile', 'percentile_shared_DEG', 'n_instances', 'n_cell_lines', 'stratum',
              'n_drugs_stratum', 'percentile_stratum', 'cs_run_id']
     krows = []
@@ -457,7 +448,7 @@ def run(cc, rank1based=None):
     print('\nknown drugs, percentile within the instance-count stratum (per-instance rankings):')
     print(kn[kn['percentile_stratum'].notna()].pivot_table(index=['drug', 'stratum'], columns='ranking',
                                                            values='percentile_stratum').round(1).to_string())
-    print('\nknown drugs, percentile in the extra TSR collapses and 1-based rankings:')
+    print('\nknown drugs, percentile in the extra TSR collapses:')
     print(kn[~kn['ranking'].isin(order)].pivot_table(index='drug', columns='ranking', values='percentile')
           .round(1).to_string())
 

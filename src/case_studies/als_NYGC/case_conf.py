@@ -70,7 +70,7 @@ KNOWN_DRUGS = {
 CS_CHECKS = {
     'cell_line': 'NEU',             # cell line of the recomputation check
     'n_check': 20,                  # instances recomputed
-    'n_jobs': 12,                   # parallel jobs of the position-convention check
+    'n_jobs': 12,                   # parallel jobs of the independent-RGES check
 }
 
 # figure text

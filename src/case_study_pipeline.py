@@ -19,8 +19,6 @@ order:
                CS_CHECKS    -> case_study.cs_checks
                KNOWN_DRUGS  -> case_study.known_drugs
                A field that is not declared means that validation is not run.
-               CS_CHECKS runs before KNOWN_DRUGS, which also reports the
-               known drugs in the 1-based rankings of cs_checks.
 
 Before any step, validate_case_conf checks that the case_conf declares every
 field the chosen steps need and stops with a readable message otherwise;
@@ -132,14 +130,13 @@ def run_validation(cc):
         from case_study import repodb_auroc
         repodb_auroc.run(cc)
         ran.append('repoDB AUROC')
-    rank1based = None
     if hasattr(cc, 'CS_CHECKS'):
         from case_study import cs_checks
-        rank1based = cs_checks.run(cc)
+        cs_checks.run(cc)
         ran.append('CS checks')
     if hasattr(cc, 'KNOWN_DRUGS'):
         from case_study import known_drugs
-        known_drugs.run(cc, rank1based)
+        known_drugs.run(cc)
         ran.append('known drugs')
     print(f'validation: {", ".join(ran) if ran else "nothing declared in case_conf"}')
 

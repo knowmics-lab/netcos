@@ -22,34 +22,28 @@ Design
     (seed 0) and every configuration, the stored connectivity_score is
     recomputed with cs_batch.run_connectivity_score_drugs_batch (the
     function of the run) on the run's inputs, and with an independent RGES
-    on 1-based positions of the disease items in the drug ranking
-    (ks = a if a > b else -b, score ks_up - ks_down).
-(ii) Position convention: for every instance of every cell line and every
-    configuration, an independent implementation of the Chen 2017 RGES
-    (cmap_score_new: KS statistics a, b of the up- and down-regulated
-    disease items on the positions of the drug ranking, ks = a if a > b else
-    -b, score ks_up - ks_down, also when the two have the same sign) is
-    computed with the 1-based positions of the published code and with the
-    0-based positions of connectivity_score.rank_genes (a + 1/r, b - 1/r),
-    both on the drug ranking ordered as in rank_genes (descending pandas
-    sort, so tied drug values keep the same order). The 0-based score is
+    (see (ii)).
+(ii) Independent RGES on every instance: for every instance of every cell
+    line and every configuration, an independent implementation of the
+    Chen 2017 RGES (cmap_score_new: KS statistics a, b of the up- and
+    down-regulated disease items on their positions 1..r in the drug
+    ranking, ks = a if a > b else -b, score ks_up - ks_down, also when the
+    two have the same sign), on the drug ranking ordered as in rank_genes
+    (descending pandas sort, so tied drug values keep the same order), is
     compared with the stored CS (overall and per cell line), leaving out
     the instances where a KS statistic is a tie (|a - b| < TIE for ks_up or
     ks_down: the choice ks = a or -b is then decided by floating-point
     rounding and differs between equivalent implementations; their number is
-    reported and they are flagged in 'ks_tie'); the 1-based
-    score is collapsed per compound with sRGES.compute_sRGES (unweighted and
-    weighted, cell-line weights of step 'weights') to measure the effect of
-    the position convention on the per-compound ranking. The share of
-    instances whose ks_up and ks_down have the same sign is reported (Lamb
-    2006 scores those instances 0; Chen 2017 and this pipeline do not).
+    reported and they are flagged in 'ks_tie'). The share of instances
+    whose ks_up and ks_down have the same sign is reported (Lamb 2006
+    scores those instances 0; Chen 2017 and this pipeline do not).
 - CS_CHECKS = {'cell_line': ..., 'n_check': ..., 'n_jobs': ...}; n_check
   (instances of (i), default N_CHECK) and n_jobs (parallel jobs of (ii),
   default N_JOBS) are optional.
 
 Inputs
 ------
-- P.oout_dir/<slug>_srges_cs_runs_used.tsv, P.oout_dir/<slug>_cell_line_weights.tsv
+- P.oout_dir/<slug>_srges_cs_runs_used.tsv
 - conf.cs_log_filename and the CS files and input folders it points to
 - conf.LINCS_METADATA_PATH, conf.LINCS_BC_DATA (landmark genes)
 
@@ -58,12 +52,9 @@ Outputs
 - P.oout_dir/<slug>_cs_known_answer_check.tsv
     per (config, checked instance) of (i): cs_run_id, LINCS_id, pert_iname,
     cs_stored, cs_pipeline_recomputed, cs_independent, ks_up, ks_down.
-- P.oout_dir/<slug>_cs_position_convention.tsv
+- P.oout_dir/<slug>_cs_independent_rges.tsv
     per (config, instance) of (ii): LINCS_id, cell_id, cs_stored,
-    cs_0based, cs_1based, ks_up_0based, ks_down_0based, ks_tie.
-- returned to the known-drug report: per-compound sRGES / wsRGES from the
-  1-based per-instance scores ('<config>_sRGES_rank1based',
-  '<config>_wsRGES_rank1based').
+    cs_independent, ks_up, ks_down, ks_tie.
 """
 
 from pathlib import Path
@@ -78,7 +69,6 @@ from loader import (load_cs_run, load_disease_signature, load_single_signature_c
                     load_landmark_gene_ids, read_lincs_metadata)
 from connectivity_score import get_common_genes
 from cs_batch import run_connectivity_score_drugs_batch
-from sRGES import compute_sRGES
 from case_study.per_drug_scores import CONFIGS
 
 N_CHECK = 20   # instances recomputed in (i)
@@ -135,7 +125,7 @@ def disease_common(rec, lm_ids, first_drug):
 # ----------------------------------------------------- independent RGES
 
 def _ab(v, r):
-    """KS statistics a, b of the sorted 1-based positions v among r items."""
+    """KS statistics a, b of the sorted positions v (1..r) among r items."""
     s = len(v)
     j = np.arange(1, s + 1)
     return np.max(j / s - v / r), np.max(v / r - (j - 1) / s)
@@ -146,7 +136,7 @@ def _ks(a, b):
 
 
 def positions(drug, idc, val):
-    """1-based positions of the drug items, ordered as connectivity_score.rank_genes orders them."""
+    """Positions 1..r of the drug items (1 = most up-regulated), ordered as connectivity_score.rank_genes orders them."""
     order = drug.sort_values(by=val, ascending=False)[idc].values
     return pd.Series(np.arange(1, len(order) + 1), index=order)
 
@@ -159,11 +149,9 @@ def ks_one_line(cell, ids_cs, rec, up, down, lm_ids):
         r = len(d)
         pos = positions(d, idc, val)
         (au, bu), (ad, bd) = (_ab(np.sort(pos.loc[g].values), r) for g in (up, down))
-        k0u, k0d = _ks(au + 1 / r, bu - 1 / r), _ks(ad + 1 / r, bd - 1 / r)
-        tie = abs((au + 1 / r) - (bu - 1 / r)) < TIE or abs((ad + 1 / r) - (bd - 1 / r)) < TIE
-        rows.append({'LINCS_id': i, 'cell_id': cell, 'cs_stored': cs, 'cs_0based': k0u - k0d,
-                     'cs_1based': _ks(au, bu) - _ks(ad, bd), 'ks_up_0based': k0u, 'ks_down_0based': k0d,
-                     'ks_tie': tie})
+        ku, kd = _ks(au, bu), _ks(ad, bd)
+        rows.append({'LINCS_id': i, 'cell_id': cell, 'cs_stored': cs, 'cs_independent': ku - kd,
+                     'ks_up': ku, 'ks_down': kd, 'ks_tie': abs(au - bu) < TIE or abs(ad - bd) < TIE})
     return rows
 
 
@@ -187,7 +175,7 @@ def known_answer_check(label, run_id, C, md, lm_ids):
     rows = []
     for i in ids:
         drug = load_drug(i, rec, lm_ids)
-        # independent RGES: 1-based positions of the disease items in the drug ranking (most up = 1)
+        # independent RGES: positions 1..r of the disease items in the drug ranking (most up = 1)
         pos = pd.Series(drug[val].rank(ascending=False, method='first').values, index=drug[idc].values)
         r = len(drug)
         ks = {}
@@ -211,7 +199,7 @@ def known_answer_check(label, run_id, C, md, lm_ids):
     return ch
 
 
-def position_convention_check(label, runs, C, md, weights, lm_ids):
+def independent_rges_check(label, runs, C, lm_ids):
     """runs: {cell line: cs_run_id} of the configuration."""
     jobs, recs = [], []
     for c, run_id in sorted(runs.items()):
@@ -230,51 +218,33 @@ def position_convention_check(label, runs, C, md, weights, lm_ids):
     chunks = [(c, rec, ids[k:k + CHUNK]) for c, rec, ids in jobs for k in range(0, len(ids), CHUNK)]
     res = Parallel(n_jobs=C['n_jobs'])(delayed(ks_one_line)(c, ids, rec, up, down, lm_ids) for c, rec, ids in chunks)
     ch = pd.DataFrame([r for rr in res for r in rr])
-    d0 = (ch.cs_stored - ch.cs_0based).abs().where(~ch.ks_tie, 0.0)
-    d1 = (ch.cs_1based - ch.cs_0based).abs()
-    print(f'\n{label}: position convention, all {len(ch)} instances ({len(up)} up, {len(down)} down disease items):')
+    d = (ch.cs_stored - ch.cs_independent).abs().where(~ch.ks_tie, 0.0)
+    print(f'\n{label}: independent RGES, all {len(ch)} instances ({len(up)} up, {len(down)} down disease items):')
     print(f'  KS ties (|a - b| < {TIE:g} for ks_up or ks_down, branch decided by rounding; excluded below): '
           f'{int(ch.ks_tie.sum())}')
-    print(f'  non-tie instances: max |stored - independent 0-based| = {d0.max():.2e}; '
-          f'with |diff| > 1e-12: {(d0 > 1e-12).sum()}')
-    bad = ch[d0 > 1e-12].assign(diff=d0[d0 > 1e-12]).groupby('cell_id')['diff'].agg(['size', 'max'])
+    print(f'  non-tie instances: max |stored - independent| = {d.max():.2e}; with |diff| > 1e-12: {(d > 1e-12).sum()}')
+    bad = ch[d > 1e-12].assign(diff=d[d > 1e-12]).groupby('cell_id')['diff'].agg(['size', 'max'])
     if len(bad):
-        print('  cell lines with |stored - independent 0-based| > 1e-12 (instances, max |diff|):')
+        print('  cell lines with |stored - independent| > 1e-12 (instances, max |diff|):')
         print(bad.to_string())
-    print(f'  1-based vs 0-based: differ in {(d1 > 1e-12).mean():.1%} of instances, by > 0.01 in '
-          f'{(d1 > 0.01).mean():.1%}; max {d1.max():.4f}')
     print(f'  instances with ks_up and ks_down of the same sign: '
-          f'{(np.sign(ch.ks_up_0based) == np.sign(ch.ks_down_0based)).mean():.1%}')
-    x = ch.drop(columns='cell_id').merge(md, left_on='LINCS_id', right_on='id')
-    out = {}
-    for name, w in (('sRGES', None), ('wsRGES', weights)):
-        a = compute_sRGES(x, score_col='cs_stored', drug_col='pert_iname', cell_col='cell_id',
-                          cell_line_weights=w, srges_diff_mode='binchen_r').set_index('pert_iname')['sRGES']
-        b = compute_sRGES(x, score_col='cs_1based', drug_col='pert_iname', cell_col='cell_id',
-                          cell_line_weights=w, srges_diff_mode='binchen_r').set_index('pert_iname')['sRGES']
-        dd = pd.concat([a, b], axis=1, keys=['stored', 'r1']).dropna()
-        print(f'  {label}_{name}, stored vs 1-based per-instance CS: Spearman {spearmanr(dd.stored, dd.r1).statistic:.4f}, '
-              f'max |diff| {(dd.stored - dd.r1).abs().max():.4f}')
-        b.index = key(b.index)
-        out[f'{label}_{name}_rank1based'] = b.groupby(level=0).mean()
+          f'{(np.sign(ch.ks_up) == np.sign(ch.ks_down)).mean():.1%}')
     ch.insert(0, 'config', label)
-    return ch, out
+    return ch
 
 
 def run(cc):
-    """Write both check tables; return the 1-based per-compound rankings of (ii)."""
+    """Write both check tables."""
     P = cc.P
     C = {'n_check': N_CHECK, 'n_jobs': N_JOBS, **cc.CS_CHECKS}
     md = read_lincs_metadata(dtype={'id': str})
     md = md[['id', 'pert_id', 'pert_iname', 'cell_id', 'pert_dose', 'pert_time']]
-    w = pd.read_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t')
-    weights = dict(zip(w['lincs_cell_id'], w['cor']))
     used = pd.read_csv(P.oout_dir / f'{P.slug}_srges_cs_runs_used.tsv', sep='\t')
     lm_ids = [str(x) for x in load_landmark_gene_ids(conf.LINCS_BC_DATA)]
     if C['cell_line'] not in set(md['cell_id']):
         raise ValueError(f"CS_CHECKS['cell_line'] = {C['cell_line']!r} is not a LINCS cell line")
 
-    known, conv, r1 = [], [], {}
+    known, conv = [], []
     for label in CONFIGS:
         u = used[used['config'] == label]
         if u.empty or u['cs_run_id'].isna().any():
@@ -282,13 +252,10 @@ def run(cc):
             continue
         runs = dict(zip(u['cell_line'], u['cs_run_id']))
         known.append(known_answer_check(label, runs[C['cell_line']], C, md, lm_ids))
-        ch, out = position_convention_check(label, runs, C, md, weights, lm_ids)
-        conv.append(ch)
-        r1.update(out)
+        conv.append(independent_rges_check(label, runs, C, lm_ids))
     P.oout_dir.mkdir(parents=True, exist_ok=True)
     if known:
         pd.concat(known, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_cs_known_answer_check.tsv',
                                                    sep='\t', index=False)
-        pd.concat(conv, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_cs_position_convention.tsv',
+        pd.concat(conv, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_cs_independent_rges.tsv',
                                                   sep='\t', index=False)
-    return r1
