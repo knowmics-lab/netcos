@@ -12,7 +12,7 @@ Typical use (run from anywhere; the script self-locates src/):
     python src/plot_drug_ranking.py                              # use conf.py defaults
     python src/plot_drug_ranking.py --cs-run-id 13_05_2026_14_57_..._connectivity_score
     python src/plot_drug_ranking.py --cs-file path/to/run.tsv
-    python src/plot_drug_ranking.py --cs-method bin_chen_disease_sorted
+    python src/plot_drug_ranking.py --cs-method bin_chen
     python src/plot_drug_ranking.py --score-col connectivity_score --bins 100
 """
 
@@ -116,7 +116,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disease", default=None,
                         help="Override conf.DISEASE.")
     parser.add_argument("--cs-method", default=None,
-                        help="Override conf.CS_METHOD (e.g. 'bin_chen', 'bin_chen_disease_sorted').")
+                        help="Override conf.CS_METHOD (e.g. 'bin_chen').")
     parser.add_argument("--mith", type=int, default=None,
                         help="Override conf.cs_mith (0 or 1).")
     parser.add_argument("--cs-on-lm", type=int, default=None,

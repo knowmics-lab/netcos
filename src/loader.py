@@ -219,7 +219,7 @@ def load_cs_run(
 
     Common partial overrides::
 
-        df, path, run_id = load_cs_run(CS_METHOD='bin_chen_disease_sorted')
+        df, path, run_id = load_cs_run(CS_METHOD='bin_chen')
         df, path, run_id = load_cs_run(disease='BRCA', landmark_disease=False)
         df, path, run_id = load_cs_run(selected_cs_run_id='13_05_2026_..._connectivity_score')
         df, path, run_id = load_cs_run(cs_file_path='/abs/path/to/run.tsv')
