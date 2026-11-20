@@ -247,9 +247,11 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
     BLUE, RED = colours()
     F = figures(cc)
     nk = len(known)
-    fig = plt.figure(figsize=(18, 14.5 + max(4.5, 0.9 * nk + 2)))
-    gsp = fig.add_gridspec(3, 2, height_ratios=[max(4.5, 0.9 * nk + 2), 9, 5.5], width_ratios=[1, 1.15],
-                           wspace=0.35, hspace=0.45)
+    n = len(order)
+    hc = max(8, 0.5 * n)                                 # panel C row: ~0.5 in per matrix cell
+    ha = max(4.5, 0.9 * nk + 2)
+    fig = plt.figure(figsize=(18, ha + hc + 7.5 + 2.5), layout='constrained')
+    gsp = fig.add_gridspec(3, 2, height_ratios=[ha, hc, 7.5], width_ratios=[1, 1.15])
 
     # A: percentile of the known drugs in every ranking
     a = fig.add_subplot(gsp[0, :])
@@ -273,12 +275,13 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
     h1 = [Line2D([], [], marker='o', ls='', color=config_colour(c), markeredgecolor='k', label=c) for c in configs]
     h2 = [Line2D([], [], marker=m, ls='', color='0.6', markeredgecolor='k', label=t) for t, m in MARKERS.items()
           if t in {'TSR' if meta[n][1] == 'pooled' else meta[n][1] for n in order}]
-    l1 = a.legend(handles=h1, title='configuration', loc='upper left', bbox_to_anchor=(1.0, 1.0))
+    l1 = a.legend(handles=h1, title='configuration', loc='upper left', bbox_to_anchor=(1.01, 1.0),
+                  ncol=2 if len(h1) > 4 else 1)
     a.add_artist(l1)
-    a.legend(handles=h2, title='score', loc='lower left', bbox_to_anchor=(1.0, 0.0))
+    a.legend(handles=h2, title='score', loc='upper left', bbox_to_anchor=(1.01, 0.45), ncol=2)
 
     # B: DEG_TSR vs DEG_sRGES on the shared drugs
-    b = fig.add_subplot(gsp[1, 0])
+    b = fig.add_subplot(gsp[2, 0])
     x = rk['DEG_TSR'].set_index('drug_key')['percentile_shared_DEG'].dropna()
     y = rk['DEG_sRGES'].set_index('drug_key')['percentile_shared_DEG'].dropna()
     sh = x.index.intersection(y.index)
@@ -296,32 +299,31 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
     b.set_title(f'B. DEG_TSR vs DEG_sRGES on {len(sh):,} shared drugs (Spearman {rho:.2f})')
 
     # C: Spearman between rankings
-    c = fig.add_subplot(gsp[1, 1])
+    c = fig.add_subplot(gsp[1, :])
     M = pd.DataFrame(np.eye(len(order)), index=order, columns=order)
     for _, r in ag[ag['stratum'] == 'all'].iterrows():
         M.loc[r.ranking_a, r.ranking_b] = M.loc[r.ranking_b, r.ranking_a] = r.spearman
     im = c.imshow(M.values, vmin=-1, vmax=1, cmap='bwr')
     c.set_xticks(range(len(order)))
-    n = len(order)
-    lfs = min(8, 160 / max(n, 1))                        # tick-label size scaled to the matrix size
+    lfs = min(9, 225 / max(n, 1))                        # tick-label size scaled to the matrix size
     c.set_xticklabels(order, rotation=60, ha='right', fontsize=lfs)
     c.set_yticks(range(n))
     c.set_yticklabels(order, fontsize=lfs)
     c.tick_params(axis='y', pad=2)
-    vfs = min(8, 150 / max(n, 1))                        # cell-value size scaled to the matrix size
+    vfs = min(9, 175 / max(n, 1))                        # cell-value size scaled to the matrix size
     for i in range(n):
         for j in range(n):
             v = M.values[i, j]
             if np.isnan(v):
                 continue
-            t = '1' if round(v, 1) == 1 else f'{v + 0:.1f}'.replace('-0.0', '0.0').replace('0.', '.')   # 2-char values: .5, -.3
+            t = f'{v + 0:.2f}'.replace('-0.00', '0.00')
             c.text(j, i, t, ha='center', va='center', fontsize=vfs)
     c.grid(False)
     c.set_title('C. Spearman correlation between rankings (shared drugs)')
     fig.colorbar(im, ax=c, fraction=.046)
 
     # D: per-instance CS of the known drugs
-    d = fig.add_subplot(gsp[2, :])
+    d = fig.add_subplot(gsp[2, 1])
     u = inst[inst['used_by_srges']]
     cfgs = list(u['config'].cat.categories) if hasattr(u['config'], 'cat') else list(dict.fromkeys(u['config']))
     w = 0.8 / max(len(cfgs), 1)
@@ -339,11 +341,10 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
     d.set_xticklabels(known.index)
     d.set_xlim(-0.5, nk - 0.5)
     d.set_ylabel('per-instance connectivity score')
-    d.set_title('D. Per-instance CS of the known drugs (instances with dose > 0, 6 or 24 h; bar = median)')
+    d.set_title('D. Per-instance CS of the known drugs\n(instances with dose > 0, 6 or 24 h; bar = median)')
     d.legend(handles=[Line2D([], [], marker='o', ls='', color=config_colour(c), markeredgecolor='k', label=c)
                       for c in cfgs], title='configuration', loc='upper left', bbox_to_anchor=(1.0, 1.0))
 
-    fig.tight_layout()
     P.img_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(P.img_dir / f'{P.slug}_tsr_vs_srges_panel.png')
     plt.close(fig)
