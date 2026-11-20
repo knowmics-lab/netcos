@@ -55,6 +55,7 @@ We expose `srges_diff_mode` to switch between:
   - 'binchen_r'           — bit-exact reproduction of the R behaviour above.
   - 'corrected' (default) — semantically corrected mapping
                             (long&low -> "low 24", short&high -> "high 6").
+  - 'none'                — no dose/time offset (plain mean of the CS).
 
 NetCoS sign convention
 ----------------------
@@ -208,9 +209,12 @@ def _get_sRGES_one(
         if bin_dose == "high" and bin_time == "short":
             out += diff_lookup.get("high 6", 0.0)
 
+    elif srges_diff_mode == "none":
+        pass
+
     else:
         raise ValueError(
-            f"srges_diff_mode must be 'binchen_r' or 'corrected', got "
+            f"srges_diff_mode must be 'binchen_r', 'corrected' or 'none', got "
             f"{srges_diff_mode!r}"
         )
 
@@ -274,10 +278,10 @@ def compute_sRGES(
         If False, skip the final (cor / max_cor) multiplication even when
         weights are provided.
 
-    srges_diff_mode : {'binchen_r', 'corrected'}
+    srges_diff_mode : {'binchen_r', 'corrected', 'none'}
         See module docstring. Default 'corrected' gives each dose/time bin its
         own offset; 'binchen_r' reproduces the integer-index mapping of the
-        upstream R code.
+        upstream R code; 'none' applies no offset.
 
     return_full : bool
         If True (default), return all the columns the R pipeline emits:

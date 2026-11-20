@@ -31,8 +31,13 @@ Design
   (sRGES.build_reference_diff: mean CS of the reference instance, 10 uM /
   24 h, minus the CS of another instance of the same compound and cell line,
   per dose bin and time of the other instance) is written for every scored
-  configuration; for DEG the agreement between the two mappings is
-  printed.
+  configuration.
+- Offset assignments compared: for every scored configuration,
+  sRGES_unweighted and sRGES_weighted are also computed with each of
+  'corrected', 'binchen_r' and 'none' (no offset), and every compound gets its
+  percentile in each; compounds are keyed by the normalised name of step
+  'validation' (lower case, letters and digits). The Spearman correlation and
+  the largest score difference between assignments are printed.
 - Sign convention: more negative = stronger reversal of the disease signature.
 
 Inputs
@@ -54,6 +59,11 @@ Outputs
     one row per (config, dose_bin, pert_time) of the dose/time correction
     table: offset (mean CS difference, reference - other); dose_bin 'low'
     = dose < 10 uM, 'high' = dose >= 10 uM.
+- P.oout_dir/<slug>_dose_time_mapping_percentiles.tsv
+    one row per (config, collapse, assignment, drug_key): pert_iname, score
+    (sRGES, CS units), percentile (rank(pct=True) x 100 of the score among
+    the compounds of that config, collapse and assignment; low = stronger
+    reversal).
 """
 
 import pandas as pd
@@ -126,15 +136,40 @@ def offsets(inst, md):
     return diff
 
 
-def diff_mode_check(inst, md):
-    """Agreement of sRGES_unweighted between the 'binchen_r' and 'corrected' mappings."""
+ASSIGNMENTS = ('corrected', 'binchen_r', 'none')
+
+
+def compound_key(s):
+    """Compound name normalised as in step 'validation' (lower case, letters and digits only)."""
+    return s.astype(str).str.lower().str.replace(r'[^a-z0-9]', '', regex=True)
+
+
+def assignment_percentiles(inst, md, weights, label):
+    """Score and percentile of every compound under each dose/time offset assignment."""
     x = inst.assign(LINCS_id=inst['LINCS_id'].astype(str)).merge(md, left_on='LINCS_id', right_on='id')
     for c in ('pert_dose', 'pert_time', 'connectivity_score'):
         x[c] = pd.to_numeric(x[c], errors='coerce')
-    a = compute_sRGES(x, score_col='connectivity_score', drug_col=DRUG, srges_diff_mode='binchen_r').set_index(DRUG)['sRGES']
-    b = compute_sRGES(x, score_col='connectivity_score', drug_col=DRUG, srges_diff_mode='corrected').set_index(DRUG)['sRGES']
-    d = pd.concat([a, b], axis=1, keys=['binchen_r', 'corrected']).dropna()
-    return spearmanr(d['binchen_r'], d['corrected']).statistic, (d['binchen_r'] - d['corrected']).abs().max()
+    out = []
+    for name, w in (('sRGES_unweighted', None), ('sRGES_weighted', weights)):
+        scores = {}
+        for a in ASSIGNMENTS:
+            s = compute_sRGES(x, score_col='connectivity_score', drug_col=DRUG, cell_col='cell_id',
+                              cell_line_weights=w, srges_diff_mode=a)
+            r = (s.assign(drug_key=compound_key(s[DRUG]))
+                 .groupby('drug_key').agg(score=('sRGES', 'mean'), **{DRUG: (DRUG, 'first')}).reset_index())
+            r['percentile'] = r['score'].rank(pct=True) * 100
+            r.insert(0, 'assignment', a)
+            r.insert(0, 'collapse', name)
+            r.insert(0, 'config', label)
+            scores[a] = r.set_index('drug_key')['score']
+            out.append(r)
+        d = pd.concat(scores, axis=1).dropna()
+        print(f"{label} {name}: Spearman (max |score difference|) of 'corrected' vs 'binchen_r' "
+              f"{spearmanr(d['corrected'], d['binchen_r']).statistic:.4f} "
+              f"({(d['corrected'] - d['binchen_r']).abs().max():.4f}), vs 'none' "
+              f"{spearmanr(d['corrected'], d['none']).statistic:.4f} "
+              f"({(d['corrected'] - d['none']).abs().max():.4f}), {len(d)} compounds")
+    return pd.concat(out, ignore_index=True)
 
 
 def run(cc):
@@ -151,7 +186,7 @@ def run(cc):
         print(f'top cell lines, cutoff {cut}: {len(lines)}' + (f' ({", ".join(lines)})' if lines else ', no top-line sRGES'))
     top = {cut: lines for cut, lines in top.items() if lines}
 
-    tabs, used_all, offs = [], [], []
+    tabs, used_all, offs, pcts = [], [], [], []
     for label in CONFIGS:
         inst, used, missing = load_instances(label, cells)
         used_all += used
@@ -167,9 +202,7 @@ def run(cc):
         for k, v in diff.items():
             dose_bin, t = k.split()
             offs.append({'config': label, 'dose_bin': dose_bin, 'pert_time': int(t), 'offset': v})
-        if label == 'DEG':
-            rho, mx = diff_mode_check(inst, md)
-            print(f"sRGES_unweighted, 'binchen_r' vs 'corrected' index mapping: Spearman {rho:.4f}, max |diff| {mx:.4f}")
+        pcts.append(assignment_percentiles(inst, md, weights, label))
         r.insert(0, 'config', label)
         tabs.append(r)
         print(r.groupby('collapse').agg(n_drugs=(DRUG, 'size'), median_score=('score', 'median')).round(4)
@@ -179,3 +212,5 @@ def run(cc):
     pd.concat(tabs, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_srges_per_drug.tsv', sep='\t', index=False)
     pd.DataFrame(used_all).to_csv(P.oout_dir / f'{P.slug}_srges_cs_runs_used.tsv', sep='\t', index=False)
     pd.DataFrame(offs).to_csv(P.oout_dir / f'{P.slug}_srges_offsets.tsv', sep='\t', index=False)
+    pd.concat(pcts, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_dose_time_mapping_percentiles.tsv',
+                                              sep='\t', index=False)
