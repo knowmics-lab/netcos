@@ -43,7 +43,7 @@ For non-threshold params, also add the field to EvalConfig and to the
 cell_lines        = ['HEPG2', 'MCF7', 'HT29']
 landmark_diseases = [False, True]
 landmark_drugs    = [True]                                    # BinChen drug data is already LM only
-CS_METHODs        = [ 'bin_chen_disease_sorted']#'bin_chen']#
+CS_METHODs        = ['bin_chen']
 cs_miths          = [0, 1]
 cs_on_LMs         = [0, 1]
 CS_ON_PATHWAYSs   = [False, True]
