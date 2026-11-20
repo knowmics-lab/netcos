@@ -66,7 +66,7 @@ KNOWN_DRUGS = {
     'phenylbutyrate': 'failed phase 3 (AMX0035 component)',
 }
 
-# step 'validation': known-answer checks of the per-instance CS of every configuration
+# step 'validation': recomputation checks of the per-instance CS of every configuration
 CS_CHECKS = {
     'cell_line': 'NEU',             # cell line of the recomputation check
     'n_check': 20,                  # instances recomputed

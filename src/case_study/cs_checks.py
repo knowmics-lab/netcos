@@ -1,6 +1,6 @@
 """
 Step 'validation', CS checks (run when cc.CS_CHECKS is declared):
-known-answer checks of the per-instance connectivity scores of the study,
+recomputation checks of the per-instance connectivity scores of the study,
 for every configuration scored by step 'srges' (DEG, mith, mith_LM,
 mith_pw).
 
@@ -18,7 +18,7 @@ Design
   mith_pw = MITHrIL Corrected Accumulator per pathway; with cs_on_LM both
   are restricted to the LINCS landmark genes; the disease signature is then
   restricted to the items of the drug signature.
-(i) Known answer: for n_check random instances of CS_CHECKS['cell_line']
+(i) Recomputation check: for n_check random instances of CS_CHECKS['cell_line']
     (seed 0) and every configuration, the stored connectivity_score is
     recomputed with cs_batch.run_connectivity_score_drugs_batch (the
     function of the run) on the run's inputs, and with an independent RGES
@@ -49,7 +49,7 @@ Inputs
 
 Outputs
 -------
-- P.oout_dir/<slug>_cs_known_answer_check.tsv
+- P.oout_dir/<slug>_cs_recomputation_check.tsv
     per (config, checked instance) of (i): cs_run_id, LINCS_id, pert_iname,
     cs_stored, cs_pipeline_recomputed, cs_independent, ks_up, ks_down.
 - P.oout_dir/<slug>_cs_independent_rges.tsv
@@ -157,7 +157,7 @@ def ks_one_line(cell, ids_cs, rec, up, down, lm_ids):
 
 # ---------------------------------------------------------------- checks
 
-def known_answer_check(label, run_id, C, md, lm_ids):
+def recomputation_check(label, run_id, C, md, lm_ids):
     cell = C['cell_line']
     rec = run_record(run_id)
     idc, val, _ = columns(rec['mith'], rec['pw'])
@@ -189,7 +189,7 @@ def known_answer_check(label, run_id, C, md, lm_ids):
     d1 = (ch.cs_stored - ch.cs_pipeline_recomputed).abs().max()
     d2 = (ch.cs_stored - ch.cs_independent).abs().max()
     same = (np.sign(ch.ks_up) == np.sign(ch.ks_down)).mean()
-    print(f'\n{label}: known-answer check, {cell} ({run_id}), {len(ch)} instances, '
+    print(f'\n{label}: recomputation check, {cell} ({run_id}), {len(ch)} instances, '
           f'{len(dis_c)} disease items on the drug items ({(dis_c[val] > 0).sum()} up, '
           f'{(dis_c[val] < 0).sum()} down), r = {r}:')
     print(f'  max |stored - pipeline recomputed| = {d1:.2e}')
@@ -251,11 +251,11 @@ def run(cc):
             print(f'\n{label}: per-instance runs incomplete in {P.slug}_srges_cs_runs_used.tsv, not checked')
             continue
         runs = dict(zip(u['cell_line'], u['cs_run_id']))
-        known.append(known_answer_check(label, runs[C['cell_line']], C, md, lm_ids))
+        known.append(recomputation_check(label, runs[C['cell_line']], C, md, lm_ids))
         conv.append(independent_rges_check(label, runs, C, lm_ids))
     P.oout_dir.mkdir(parents=True, exist_ok=True)
     if known:
-        pd.concat(known, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_cs_known_answer_check.tsv',
+        pd.concat(known, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_cs_recomputation_check.tsv',
                                                    sep='\t', index=False)
         pd.concat(conv, ignore_index=True).to_csv(P.oout_dir / f'{P.slug}_cs_independent_rges.tsv',
                                                   sep='\t', index=False)

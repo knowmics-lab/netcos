@@ -43,7 +43,7 @@ REPODB = {
     'name_alias': {'beclometasone': 'beclomethasonedipropionate'},   # repoDB name key -> L1000 name key
 }
 
-# step 'validation': known-answer checks of the per-instance CS of every configuration
+# step 'validation': recomputation checks of the per-instance CS of every configuration
 CS_CHECKS = {
     'cell_line': 'NEU',             # cell line of the recomputation check
 }
