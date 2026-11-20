@@ -52,8 +52,8 @@ which R sorts alphabetically as
     short & high -> diff[1]   ("high 24") ← integer-indexed in R source; we mirror
 
 We expose `srges_diff_mode` to switch between:
-  - 'binchen_r' (default) — bit-exact reproduction of the R behaviour above.
-  - 'corrected'           — semantically corrected mapping
+  - 'binchen_r'           — bit-exact reproduction of the R behaviour above.
+  - 'corrected' (default) — semantically corrected mapping
                             (long&low -> "low 24", short&high -> "high 6").
 
 NetCoS sign convention
@@ -179,7 +179,7 @@ def _get_sRGES_one(
     low_dose_threshold: float = 10.0,
     short_time_threshold: float = 24.0,
     apply_cor_weight: bool = True,
-    srges_diff_mode: str = "binchen_r",
+    srges_diff_mode: str = "corrected",
 ) -> float:
     """Port of Bin Chen's R::getsRGES (core_functions.R)."""
     if pd.isna(rges) or pd.isna(pert_dose) or pd.isna(pert_time):
@@ -242,7 +242,7 @@ def compute_sRGES(
     cell_lines: Union[None, str, Iterable[str]] = None,
     cell_line_weights: Optional[Mapping[str, float]] = None,
     apply_cor_weight: bool = True,
-    srges_diff_mode: str = "binchen_r",
+    srges_diff_mode: str = "corrected",
     return_full: bool = True,
 ) -> pd.DataFrame:
     """
@@ -275,8 +275,9 @@ def compute_sRGES(
         weights are provided.
 
     srges_diff_mode : {'binchen_r', 'corrected'}
-        See module docstring. Default 'binchen_r' faithfully reproduces the
-        upstream R code; 'corrected' fixes the integer-index mapping.
+        See module docstring. Default 'corrected' gives each dose/time bin its
+        own offset; 'binchen_r' reproduces the integer-index mapping of the
+        upstream R code.
 
     return_full : bool
         If True (default), return all the columns the R pipeline emits:

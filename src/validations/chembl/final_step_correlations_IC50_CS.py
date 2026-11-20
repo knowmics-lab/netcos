@@ -160,7 +160,8 @@ def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="p
         restrict to specific LINCS cell lines — yields the Fig.3 per-cell-line
         variant; None yields the SD6 full-sRGES variant), cell_line_weights
         (dict mapping cell_id -> cor for the cor*RGES weighting; None to skip
-        it), filter_is_gold, srges_diff_mode.
+        it), filter_is_gold, srges_diff_mode (default here 'binchen_r', the
+        index mapping of the published R code).
     """
     df = in_df.copy()
     if drug_col not in df.columns:
@@ -179,7 +180,7 @@ def collapse_profiles_to_drug(in_df, score_col="connectivity_score", drug_col="p
     if how == "srges":
         # Lazy import to keep sRGES.py optional for callers that never use it.
         from sRGES import compute_sRGES
-        srges_kwargs = dict(srges_kwargs or {})
+        srges_kwargs = {"srges_diff_mode": "binchen_r", **(srges_kwargs or {})}
         out = compute_sRGES(df, score_col=score_col, drug_col=drug_col,
             return_full=False, **srges_kwargs)
         # Match the return shape of the median/mean/best branch: drug_col +

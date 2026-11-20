@@ -314,9 +314,11 @@ DEFAULT_CELL_LINE = {
     "COAD": "HT29",
 }
 
-# sRGES algorithmic mode: 'binchen_r' faithfully reproduces the R source;
-# 'corrected' fixes the integer-index quirk (see src/sRGES.py docstring).
-srges_diff_mode = "binchen_r"
+# sRGES algorithmic mode: 'corrected' gives each dose/time bin its own offset;
+# 'binchen_r' reproduces the integer-index mapping of the published R source
+# (see src/sRGES.py docstring). The TCGA / ChEMBL IC50 validations and the
+# Bin Chen 2017 replication set 'binchen_r' explicitly.
+srges_diff_mode = "corrected"
 
 # Apply per-cell-line cor*RGES weighting (Bin Chen sRGES_all_cmpds.R).
 srges_use_cor = False

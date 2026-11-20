@@ -192,7 +192,7 @@ def _maybe_save(merged, metrics, *, out_dir, disease, tag, title):
 # ---------------------------------------------------------------------------
 
 def run_full_sRGES(disease, *, use_cor=False,
-                   srges_diff_mode=conf.srges_diff_mode,
+                   srges_diff_mode="binchen_r",
                    out_dir=None):
     """Scope A: BinChen RGES -> my sRGES vs BinChen sRGES (aggregation only)."""
     inp = load_binchen_all_lincs_score(disease)
@@ -223,7 +223,7 @@ def run_full_sRGES(disease, *, use_cor=False,
 def run_full_sRGES_netcos(disease, cs_files=None, *,
                           landmark_disease_pref=False,
                           use_cor=False,
-                          srges_diff_mode=conf.srges_diff_mode,
+                          srges_diff_mode="binchen_r",
                           out_dir=None):
     """Scope C: NetCoS RGES -> my sRGES vs BinChen sRGES (end-to-end test).
 
@@ -276,7 +276,7 @@ def run_full_sRGES_netcos(disease, cs_files=None, *,
 
 
 def run_fig3_sRGES(disease, *, cell_line=None, use_cor=False,
-                   srges_diff_mode=conf.srges_diff_mode, out_dir=None):
+                   srges_diff_mode="binchen_r", out_dir=None):
     """Scope B: BinChen RGES restricted to one cell line (Fig.3)."""
     cell_line = cell_line or conf.DEFAULT_CELL_LINE[disease]
     inp = load_binchen_all_lincs_score(disease)
@@ -345,7 +345,7 @@ def main(argv=None):
                              "Default from conf.srges_use_cor.")
     parser.add_argument("--srges-diff-mode",
                         choices=["binchen_r", "corrected"],
-                        default=conf.srges_diff_mode)
+                        default="binchen_r")
     parser.add_argument("--out-dir", default=None,
                         help="If set, write joined.tsv / summary.tsv / scatter.png "
                              "there. Defaults to conf.BINCHEN_VALIDATION_OUT_DIR.")

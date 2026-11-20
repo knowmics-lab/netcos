@@ -128,9 +128,11 @@ def test_per_cell_line_restriction():
     from sRGES import compute_sRGES
     df = build_synthetic()
     only_hep = compute_sRGES(df, score_col="RGES", cell_lines=["HEPG2"],
-                              apply_cor_weight=False, filter_is_gold=False)
+                              apply_cor_weight=False, filter_is_gold=False,
+                              srges_diff_mode="binchen_r")
     full = compute_sRGES(df, score_col="RGES", cell_lines=None,
-                          apply_cor_weight=False, filter_is_gold=False)
+                          apply_cor_weight=False, filter_is_gold=False,
+                              srges_diff_mode="binchen_r")
     # per-cell-line and full diffs are typically different -> sRGES differs.
     same = (only_hep.sort_values("pert_iname").reset_index(drop=True)["sRGES"]
             == full.sort_values("pert_iname").reset_index(drop=True)["sRGES"]).all()
@@ -143,10 +145,12 @@ def test_cor_weighting_smoke():
     df = build_synthetic()
     out = compute_sRGES(df, score_col="RGES",
                         cell_line_weights={"HEPG2": 0.5, "MCF7": 0.3},
-                        apply_cor_weight=True, filter_is_gold=False)
+                        apply_cor_weight=True, filter_is_gold=False,
+                        srges_diff_mode="binchen_r")
     out_noweights = compute_sRGES(df, score_col="RGES",
                                    apply_cor_weight=False,
-                                   filter_is_gold=False)
+                                   filter_is_gold=False,
+                                   srges_diff_mode="binchen_r")
     # cor weighting shrinks magnitudes (since cor/max_cor < 1 for some cells).
     assert abs(out["sRGES"].abs().sum()) < abs(out_noweights["sRGES"].abs().sum()), \
         "cor weighting should shrink overall sRGES magnitudes"
