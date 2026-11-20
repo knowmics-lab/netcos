@@ -247,8 +247,8 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
     BLUE, RED = colours()
     F = figures(cc)
     nk = len(known)
-    fig = plt.figure(figsize=(18, 13 + max(4.5, 0.9 * nk + 2)))
-    gsp = fig.add_gridspec(3, 2, height_ratios=[max(4.5, 0.9 * nk + 2), 7.5, 5.5], width_ratios=[1, 1.15],
+    fig = plt.figure(figsize=(18, 14.5 + max(4.5, 0.9 * nk + 2)))
+    gsp = fig.add_gridspec(3, 2, height_ratios=[max(4.5, 0.9 * nk + 2), 9, 5.5], width_ratios=[1, 1.15],
                            wspace=0.35, hspace=0.45)
 
     # A: percentile of the known drugs in every ranking
@@ -302,13 +302,20 @@ def panel(cc, rk, meta, order, ag, kn, inst, known):
         M.loc[r.ranking_a, r.ranking_b] = M.loc[r.ranking_b, r.ranking_a] = r.spearman
     im = c.imshow(M.values, vmin=-1, vmax=1, cmap='bwr')
     c.set_xticks(range(len(order)))
-    c.set_xticklabels(order, rotation=60, ha='right', fontsize=8)
-    c.set_yticks(range(len(order)))
-    c.set_yticklabels(order, fontsize=8)
+    n = len(order)
+    lfs = min(8, 160 / max(n, 1))                        # tick-label size scaled to the matrix size
+    c.set_xticklabels(order, rotation=60, ha='right', fontsize=lfs)
+    c.set_yticks(range(n))
+    c.set_yticklabels(order, fontsize=lfs)
     c.tick_params(axis='y', pad=2)
-    for i in range(len(order)):
-        for j in range(len(order)):
-            c.text(j, i, f'{M.values[i, j]:.1f}', ha='center', va='center', fontsize=8)
+    vfs = min(8, 150 / max(n, 1))                        # cell-value size scaled to the matrix size
+    for i in range(n):
+        for j in range(n):
+            v = M.values[i, j]
+            if np.isnan(v):
+                continue
+            t = '1' if round(v, 1) == 1 else f'{v + 0:.1f}'.replace('-0.0', '0.0').replace('0.', '.')   # 2-char values: .5, -.3
+            c.text(j, i, t, ha='center', va='center', fontsize=vfs)
     c.grid(False)
     c.set_title('C. Spearman correlation between rankings (shared drugs)')
     fig.colorbar(im, ax=c, fraction=.046)
