@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import time
 from conf import IMG_DIR
-from connectivity_score import montecarlo_connectivity, calculate_RGES, montecarlo_connectivity_disease_sorted
+from connectivity_score import montecarlo_connectivity, calculate_RGES
 import matplotlib.pyplot as plt
 import  matplotlib
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
