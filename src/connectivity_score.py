@@ -365,52 +365,6 @@ def montecarlo_connectivity_disease_sorted(s_up, s_down, r, n_iterations=1000, s
 
     return random_RGES_list
 
-def random_disease_bin_chen_connectivity(drug_signature, rank_on='magnitude', id_col='gene_id'):
-    '''temp
-    calculates the Reverse Gene Expression Score (RGES), a
-   connectivity score, as defined in Bin, Chen, 2017, of a drug signature versus
-   a random genes  ranking
-    Input:
-        - drug_signature: pd.DataFrame with columns ['gene_id', signature data, p value]
-        - rank_on: str ranking column. default='magnitude' 
-                options: {'p_value', 'magnitude'}. Do not change unless you
-                know what you're doing'
-                    
-    Output:
-        -   measured_RGES: float, calculated RGES value
-        -   p_value: float, p-value from Monte Carlo simulation
-    '''
-    
-    
-    if rank_on=='p_value':
-        ranking_col_name=drug_signature.columns[2]
-    if rank_on=='magnitude':
-        ranking_col_name=drug_signature.columns[1]
-    
-    # generate random up and down regulated disease genes
-    r= drug_signature.shape[0]
-    l=np.random.randint(1,r)
-    s_up = r-l
-    s_down = l
-    gene_id_list = drug_signature[id_col]
-    shuffled_gene_ids = gene_id_list[np.random.choice(gene_id_list.index, len(gene_id_list), replace=False)]
-    random_disease_up = shuffled_gene_ids[:s_up]
-    random_disease_down = shuffled_gene_ids[-s_down:]
-     
-    # Calculate rank map V for up and down regulated genes:
-    V_up = rank_genes(drug_signature, pd.DataFrame({id_col: random_disease_up})  , ranking_col_name, id_col, id_col=id_col)
-    V_down = rank_genes(drug_signature, pd.DataFrame({id_col: random_disease_down}), ranking_col_name, id_col, id_col=id_col)
-    
-    # Compute random KS stats:
-    a_up, b_up, _, _ = compute_KS(random_disease_up, V_up, drug_signature[id_col])
-    a_down , b_down, _, _ = compute_KS(random_disease_down, V_down, drug_signature[id_col])
-    
-    # Compute RGES:
-    measured_RGES_for_random_disease = calculate_RGES(a_up, a_down, b_up, b_down)
-    
-    return measured_RGES_for_random_disease
-
-
 def bin_chen_connectivity(disease_signature, drug_signature, rank_on='magnitude', id_col='gene_id',\
     drug_ranking_col_name=None, disease_ranking_col_name=None):
     '''
