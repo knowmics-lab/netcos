@@ -11,7 +11,12 @@ order:
 
 - 'weights'    case_study.weights: CCLE / LINCS cell-line similarity to the
                disease samples (case_conf.SAMPLES, NCBI_TPM) and the sRGES
-               cell-line weights.
+               cell-line weights; with conf.CASE_STUDY_EXTERNAL_WEIGHTS = True
+               (default False when the conf does not define it) the weights
+               also cover the LINCS lines without CCLE expression that have an
+               HPA or GEO profile (cell_line_similarity.EXTERNAL_PROFILES,
+               GEO_PROFILES; CASE_STUDY_EXTERNAL_OPTIONAL, default (), adds the
+               optional lines), with their checks.
 - 'srges'      case_study.per_drug_scores: per-drug sRGES_weighted,
                sRGES_unweighted and best from the per-instance CS runs.
 - 'validation' every validation the study declares in its case_conf:
@@ -157,7 +162,8 @@ if __name__ == '__main__':
     if 'weights' in steps:
         print('\n=== step weights')
         from case_study import weights
-        weights.run(cc)
+        weights.run(cc, external_weights=getattr(conf, 'CASE_STUDY_EXTERNAL_WEIGHTS', False),
+                     external_optional=getattr(conf, 'CASE_STUDY_EXTERNAL_OPTIONAL', ()))
     if 'srges' in steps:
         print('\n=== step srges')
         from case_study import per_drug_scores

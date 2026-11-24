@@ -363,7 +363,7 @@ def run(cc):
     w = pd.read_csv(P.oout_dir / f'{P.slug}_cell_line_weights.tsv', sep='\t')
     weights = dict(zip(w['lincs_cell_id'], w['cor']))
     mapping = pd.read_csv(P.oout_dir / f'{P.slug}_lincs_ccle_mapping.tsv', sep='\t')
-    no_w = set(mapping.loc[~mapping['has_expression'], 'lincs_cell_id'])
+    no_w = set(mapping['lincs_cell_id']) - set(weights)
 
     tsr, tsr_extra, meta = tsr_rankings()
     pi, meta_pi = per_instance_rankings(P)

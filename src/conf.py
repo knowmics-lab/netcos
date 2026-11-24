@@ -140,6 +140,17 @@ DSA_CATALOGUE = DSA_DIR / 'dis_info_datasets.csv'
 
 # CCLE / DepMap baseline expression of cell lines (recent DepMap release)
 CCLE_DIR = DATA_DIR / 'CCLE'
+DEPMAP_PROFILES_DIR = CCLE_DIR / 'DepMap_OmicsProfiles'
+
+# Cell-line weights from external profiles (HPA, GEO) for LINCS lines with no CCLE expression
+CASE_STUDY_EXTERNAL_WEIGHTS = True
+CASE_STUDY_EXTERNAL_OPTIONAL = ()             # opt-in lines, e.g. ('ASC',)
+HPA_DIR = DATA_DIR / 'HPA'
+HPA_CELL_LINE = HPA_DIR / 'rna_celline.tsv.zip'
+HPA_TISSUE = HPA_DIR / 'rna_tissue_consensus.tsv.zip'
+GEO_GSE144279_COUNTS = DATA_DIR / 'GEO' / 'GSE144279' / 'GSE144279_all.cnts.txt.gz'  # 8330-8 NPC / neurons
+ENSEMBL75_GTF = DATA_DIR / 'Ensembl' / 'release75' / 'Homo_sapiens.GRCh37.75.gtf.gz'
+GENE2ENSEMBL = DATA_DIR / 'NCBI_gene' / 'gene2ensembl.gz'
 
 # repoDB drug-repurposing gold standard (approved + failed indications)
 REPODB_DIR = DATA_DIR / 'repoDB'
