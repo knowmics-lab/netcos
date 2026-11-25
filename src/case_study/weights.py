@@ -494,6 +494,10 @@ def panel(cc, tab, cor_primary, tacle, s, groups, strata, ext_tab=None, cor_ext=
                       label=f'{r.replace("_", " ")} (n={n_reg.get(r, 0)})')
         v = lin['median_cor_all']
         a.plot([v.min(), v.max()], [v.min(), v.max()], color='k', lw=.6)
+        regs = [f'median_cor_{r}' for r in strata['classes']]
+        for _, r in lin.head(3).iterrows():  # the three lines most similar to the samples
+            a.annotate(r['lincs_cell_id'], (r['median_cor_all'], r[regs].max()),
+                       xytext=(3, 3), textcoords='offset points', fontsize=7)
         a.set_xlabel('median correlation, all samples')
         a.set_ylabel(f'median correlation, samples of one {strata["short_label"]}')
         a.set_title(f'E. LINCS lines: median correlation per {strata["label"]}')
