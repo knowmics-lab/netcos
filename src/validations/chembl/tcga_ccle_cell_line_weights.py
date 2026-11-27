@@ -21,6 +21,16 @@ Design
   per-sample Spearman correlations (Chen 2017 / OCTAD).
 - sRGES weight of a LINCS line for a cancer: its median correlation with the
   tumour samples on the primary gene set.
+- LINCS lines without DepMap expression: the lines of
+  cell_line_similarity.EXTERNAL_PROFILES are weighted from their HPA cell-line
+  profile (log2(TPM + 1)), those of cell_line_similarity.GEO_PROFILES from
+  their GEO RNA-seq profile, with the same marker genes and the same median
+  over the tumour samples; the other LINCS lines without DepMap expression
+  stay unweighted. Scale check: every DepMap line with expression that also
+  has an HPA profile (match on the stripped cell-line name) is weighted from
+  both sources, and the two weights are compared (case_study.weights.paired_summary),
+  over all paired lines and over the paired lines of each lineage of
+  EXTERNAL_PROFILES.
 - Known answer: Chen 2017 per-line median tumour correlations
   (cell_line_<T>_tacle.csv: CCLE 2017 and TCGA, 5,000 IQR genes). Agreement
   is the Spearman correlation of the two orderings, over the LINCS lines both
@@ -36,7 +46,8 @@ Inputs
 ------
 - TCGA_DIR/TCGA-<T>.star_tpm.tsv.gz, TCGA_DIR/gencode.v36.annotation.gtf.gene.probemap
   (TCGA_DIR = conf.DATA_DIR / 'TCGA_xena_gdc')
-- cell_line_similarity.CCLE_EXPRESSION, CCLE_MODEL
+- cell_line_similarity.CCLE_EXPRESSION, CCLE_MODEL, HPA_CELL_LINE, the GEO
+  counts of GEO_PROFILES
 - conf.LINCS_METADATA_PATH
 - conf.BC_DISEASE_DATA/<T>/cell_line_<T>_tacle.csv,
   conf.BC_DISEASE_DATA/raw/cell_line_lincs_ccle.csv
@@ -50,7 +61,15 @@ Outputs (OUT_DIR = conf.BINCHEN_VALIDATION_OUT_DIR, IMG_OUT = conf.IMG_DIR / 'bi
     tacle_cor (Chen 2017, when the line is covered).
 - OUT_DIR/tcga_cell_line_weights.tsv
     sRGES weights: cancer, lincs_cell_id, cor (median correlation with the
-    tumour samples, primary gene set); LINCS lines with DepMap expression only.
+    tumour samples, primary gene set), source ('DepMap', 'HPA <line>, <match>'
+    or 'GEO <profile>, <match>').
+- OUT_DIR/tcga_external_cell_line_weights.tsv
+    one row per (cancer, LINCS line weighted from HPA or GEO): cor, source,
+    n_genes, percentile of cor among all CCLE lines with expression, rank among
+    the weighted LINCS lines (1 = most similar).
+- OUT_DIR/tcga_hpa_depmap_paired_weights.tsv
+    per cancer, the agreement of the HPA and DepMap weights of the paired
+    lines (columns of case_study.weights.paired_summary).
 - OUT_DIR/tcga_cell_line_weights_vs_chen2017.tsv
     per cancer and gene set: Spearman of the orderings vs Chen 2017, over the
     shared LINCS lines and over all shared CCLE lines, with the numbers of lines.
@@ -127,6 +146,39 @@ def load_tacle(cancer, models, lincs_ccle):
     return by_model, by_lincs, len(t)
 
 
+def external_weights(tumours, ccle, models, genes):
+    """Weights of the LINCS lines without DepMap expression from HPA / GEO profiles, and the
+    HPA vs DepMap scale check on the paired lines; same marker genes and median as the DepMap weights."""
+    from case_study.weights import paired_summary
+    hpa = cls.load_hpa_cell_lines(None, cls.ccle_gene_symbols())
+    geo = cls.load_geo_profiles()
+    hpa_by_name = {_strip(n): n for n in hpa.index}
+    mod = models.set_index('ModelID')
+    rows, summ = [], []
+    for cancer, x in tumours.items():
+        w_ccle = cls.similarity(x, ccle, genes)[0].median(axis=0)
+        c_hpa, n_hpa = cls.similarity(x, hpa, genes)
+        c_geo, n_geo = cls.similarity(x, geo, genes)
+        w_hpa, w_geo = c_hpa.median(axis=0), c_geo.median(axis=0)
+        print(f'{cancer}: HPA {len(hpa)} lines over {n_hpa} genes; GEO {len(geo)} profiles over {n_geo} genes')
+        for lid, (h, match, _) in cls.EXTERNAL_PROFILES.items():
+            rows.append({'cancer': cancer, 'lincs_cell_id': lid, 'cor': w_hpa[h],
+                         'source': f'HPA {h}, {match}', 'n_genes': n_hpa})
+        for lid, (name, match, _, _) in cls.GEO_PROFILES.items():
+            rows.append({'cancer': cancer, 'lincs_cell_id': lid, 'cor': w_geo[name],
+                         'source': f'GEO {name}, {match}', 'n_genes': n_geo})
+        for r in rows:
+            if r['cancer'] == cancer:
+                r['pct_among_ccle'] = 100 * (w_ccle < r['cor']).mean()
+        pair = pd.DataFrame([{'OncotreeLineage': mod.loc[m, 'OncotreeLineage'], 'cor_depmap': w_ccle[m],
+                              'cor_hpa': w_hpa[hpa_by_name[mod.loc[m, 'stripped']]]}
+                             for m in ccle.index if mod.loc[m, 'stripped'] in hpa_by_name])
+        summ.append({'cancer': cancer, **paired_summary('all', pair)})
+        for lin in sorted({v[2] for v in cls.EXTERNAL_PROFILES.values() if v[2]}):
+            summ.append({'cancer': cancer, **paired_summary(f'lineage {lin}', pair[pair['OncotreeLineage'] == lin])})
+    return pd.DataFrame(rows), pd.DataFrame(summ)
+
+
 def panel(tab, cors):
     lfs_style.apply()
     fig, ax = plt.subplots(2, 3, figsize=(20, 11), gridspec_kw={'height_ratios': [1.3, 1]})
@@ -173,9 +225,10 @@ if __name__ == '__main__':
     lincs_ccle = pd.read_csv(conf.BC_DISEASE_DATA / 'raw' / 'cell_line_lincs_ccle.csv')
     genes = {gs: cls.marker_genes(ccle, gs, reference_models=lincs_models) for gs in cls.GENE_SETS}
 
-    tabs, agree, cors = [], [], {}
+    tabs, agree, cors, tumours = [], [], {}, {}
     for cancer in CANCERS:
         x = load_tumours(cancer, sym2id)
+        tumours[cancer] = x
         tac_model, tac_lincs, n_tac = load_tacle(cancer, models, lincs_ccle)
         print(f'{cancer}: Chen 2017 lines {n_tac}; matched to DepMap {len(tac_model)}; to LINCS {len(tac_lincs)}')
         for gs in cls.GENE_SETS:
@@ -208,7 +261,16 @@ if __name__ == '__main__':
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     tab.to_csv(OUT_DIR / 'tcga_ccle_cell_line_similarity.tsv', sep='\t', index=False)
     w = tab[(tab.gene_set == PRIMARY) & tab.lincs_cell_id.notna()][['cancer', 'lincs_cell_id', 'median_cor']]
-    w.rename(columns={'median_cor': 'cor'}).to_csv(OUT_DIR / 'tcga_cell_line_weights.tsv', sep='\t', index=False)
+    w = w.rename(columns={'median_cor': 'cor'}).assign(source='DepMap')
+    ext, paired = external_weights(tumours, ccle, models, genes[PRIMARY])
+    w = pd.concat([w, ext[['cancer', 'lincs_cell_id', 'cor', 'source']]], ignore_index=True)
+    w = w.sort_values(['cancer', 'cor'], ascending=[True, False])
+    w.to_csv(OUT_DIR / 'tcga_cell_line_weights.tsv', sep='\t', index=False)
+    ext['rank_lincs'] = [int((w[w.cancer == c]['cor'] > v).sum()) + 1 for c, v in zip(ext['cancer'], ext['cor'])]
+    ext.to_csv(OUT_DIR / 'tcga_external_cell_line_weights.tsv', sep='\t', index=False)
+    paired.to_csv(OUT_DIR / 'tcga_hpa_depmap_paired_weights.tsv', sep='\t', index=False)
+    print('\nexternal weights\n' + ext.round(3).to_string(index=False))
+    print('\nHPA vs DepMap, paired lines\n' + paired.round(3).to_string(index=False))
     ag = pd.DataFrame(agree)
     ag.to_csv(OUT_DIR / 'tcga_cell_line_weights_vs_chen2017.tsv', sep='\t', index=False)
     print('\n' + ag.round(3).to_string(index=False))
