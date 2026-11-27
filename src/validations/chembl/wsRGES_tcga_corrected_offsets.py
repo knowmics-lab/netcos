@@ -10,11 +10,11 @@ Design
 - Instances: the CS runs listed in OUT_DIR/tcga_wsRGES_cs_runs_used.tsv
   (cancer x configuration x LINCS cell line), loaded with loader.load_cs_run
   (selected_cs_run_id); instance metadata from conf.LINCS_METADATA_PATH;
-  cell-line weights: configuration 'DEG' uses the 58 DepMap lines of
-  OUT_DIR/tcga_cell_line_weights_ccle58.tsv (the Chen 2017 line set); the
-  MITHrIL configurations use the 64 lines of OUT_DIR/tcga_cell_line_weights.tsv
-  (TCGA tumour correlation of the DepMap, HPA and GEO profiles); one weight set
-  per configuration, shared by every offset assignment and filter; plus
+  cell-line weights: the 64 lines of OUT_DIR/tcga_cell_line_weights.tsv (TCGA
+  tumour correlation of the DepMap, HPA and GEO profiles) in every
+  configuration, offset assignment and filter variant; the 58 DepMap lines of
+  OUT_DIR/tcga_cell_line_weights_ccle58.tsv (the Chen 2017 line set) only in
+  the Chen 2017 reproduction ('binchen_r', unfiltered); plus
   loader.cor_weights_for_disease (Chen 2017 correlation).
 - Collapses of wsRGES_IC50_correlations.collapse (drug = pert_iname):
   'wsRGES', 'wsRGES_chen2017w', 'sRGES_all', 'best_all' over all lines, and
@@ -27,7 +27,7 @@ Design
   weights only (OUT_DIR/tcga_cell_line_weights_ccle58.tsv, the weights of
   that table) reproduces OUT_DIR/tcga_wsRGES_per_drug.tsv; the largest absolute score difference and
   the Spearman correlation between the two assignments (both with the
-  weight set of the configuration) are written to
+  64-line weights) are written to
   OUT_DIR/tcga_wsRGES_corrected_offsets_summary.tsv. The 'DEG' rows of that
   reproduction are the Chen 2017 reproduction table
   OUT_DIR/tcga_wsRGES_per_drug_DEG__binchen_r.tsv.
@@ -157,13 +157,12 @@ if __name__ == '__main__':
             f_all = offsets_of(inst, md)
             f_line = offsets_of(inst[inst['LINCS_id'].astype(str).isin(
                 md.loc[md['cell_id'] == line, 'id'])], md)
-            w = w_58 if label == 'DEG' else w_tcga
             res = {
                 'binchen_r58': collapse(inst, md, line, w_58, w_chen, 'binchen_r'),
-                'binchen_r': collapse(inst, md, line, w, w_chen, 'binchen_r'),
-                'corrected': collapse(inst, md, line, w, w_chen, CORR_MODE),
-                'bh05': collapse(inst[keep], md, line, w, w_chen, CORR_MODE),
-                'bh05f': collapse(inst[keep], md, line, w, w_chen, CORR_MODE, f_all, f_line)}
+                'binchen_r': collapse(inst, md, line, w_tcga, w_chen, 'binchen_r'),
+                'corrected': collapse(inst, md, line, w_tcga, w_chen, CORR_MODE),
+                'bh05': collapse(inst[keep], md, line, w_tcga, w_chen, CORR_MODE),
+                'bh05f': collapse(inst[keep], md, line, w_tcga, w_chen, CORR_MODE, f_all, f_line)}
             for m, t in res.items():
                 tabs[m].append(t.assign(cancer=cancer, config=label)[COLS])
             o = old[(old['cancer'] == cancer) & (old['config'] == label)]
