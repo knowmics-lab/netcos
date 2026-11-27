@@ -10,8 +10,11 @@ Design
 - Instances: the CS runs listed in OUT_DIR/tcga_wsRGES_cs_runs_used.tsv
   (cancer x configuration x LINCS cell line), loaded with loader.load_cs_run
   (selected_cs_run_id); instance metadata from conf.LINCS_METADATA_PATH;
-  cell-line weights from OUT_DIR/tcga_cell_line_weights.tsv (TCGA tumour
-  correlation of the DepMap, HPA and GEO profiles) and
+  cell-line weights: configuration 'DEG' uses the 58 DepMap lines of
+  OUT_DIR/tcga_cell_line_weights_ccle58.tsv (the Chen 2017 line set); the
+  MITHrIL configurations use the 64 lines of OUT_DIR/tcga_cell_line_weights.tsv
+  (TCGA tumour correlation of the DepMap, HPA and GEO profiles); one weight set
+  per configuration, shared by every offset assignment and filter; plus
   loader.cor_weights_for_disease (Chen 2017 correlation).
 - Collapses of wsRGES_IC50_correlations.collapse (drug = pert_iname):
   'wsRGES', 'wsRGES_chen2017w', 'sRGES_all', 'best_all' over all lines, and
@@ -24,8 +27,10 @@ Design
   weights only (OUT_DIR/tcga_cell_line_weights_ccle58.tsv, the weights of
   that table) reproduces OUT_DIR/tcga_wsRGES_per_drug.tsv; the largest absolute score difference and
   the Spearman correlation between the two assignments (both with the
-  weights of tcga_cell_line_weights.tsv) are written to
-  OUT_DIR/tcga_wsRGES_corrected_offsets_summary.tsv.
+  weight set of the configuration) are written to
+  OUT_DIR/tcga_wsRGES_corrected_offsets_summary.tsv. The 'DEG' rows of that
+  reproduction are the Chen 2017 reproduction table
+  OUT_DIR/tcga_wsRGES_per_drug_DEG__binchen_r.tsv.
 - Filter (src/case_study/cs_pvalue_filter.flag): p' = (k + 1) / 1001 with
   k = cs_p_value x 1000, Benjamini-Hochberg adjustment within one CS run (one
   cancer x configuration x cell line), instances with p_adj <= 0.05 are kept.
@@ -44,6 +49,8 @@ Inputs
 
 Outputs (OUT_DIR = conf.BINCHEN_VALIDATION_OUT_DIR)
 -------
+- OUT_DIR/tcga_wsRGES_per_drug_DEG__binchen_r.tsv
+    configuration 'DEG', assignment 'binchen_r', 58 lines.
 - OUT_DIR/tcga_wsRGES_per_drug_corrected.tsv
     columns of tcga_wsRGES_per_drug.tsv.
 - OUT_DIR/tcga_wsRGES_per_drug_corrected_pvalue_filtered.tsv
@@ -150,12 +157,13 @@ if __name__ == '__main__':
             f_all = offsets_of(inst, md)
             f_line = offsets_of(inst[inst['LINCS_id'].astype(str).isin(
                 md.loc[md['cell_id'] == line, 'id'])], md)
+            w = w_58 if label == 'DEG' else w_tcga
             res = {
                 'binchen_r58': collapse(inst, md, line, w_58, w_chen, 'binchen_r'),
-                'binchen_r': collapse(inst, md, line, w_tcga, w_chen, 'binchen_r'),
-                'corrected': collapse(inst, md, line, w_tcga, w_chen, CORR_MODE),
-                'bh05': collapse(inst[keep], md, line, w_tcga, w_chen, CORR_MODE),
-                'bh05f': collapse(inst[keep], md, line, w_tcga, w_chen, CORR_MODE, f_all, f_line)}
+                'binchen_r': collapse(inst, md, line, w, w_chen, 'binchen_r'),
+                'corrected': collapse(inst, md, line, w, w_chen, CORR_MODE),
+                'bh05': collapse(inst[keep], md, line, w, w_chen, CORR_MODE),
+                'bh05f': collapse(inst[keep], md, line, w, w_chen, CORR_MODE, f_all, f_line)}
             for m, t in res.items():
                 tabs[m].append(t.assign(cancer=cancer, config=label)[COLS])
             o = old[(old['cancer'] == cancer) & (old['config'] == label)]
@@ -178,6 +186,8 @@ if __name__ == '__main__':
                   ('bh05', 'tcga_wsRGES_per_drug_corrected_pvalue_filtered.tsv'),
                   ('bh05f', 'tcga_wsRGES_per_drug_corrected_pvalue_filtered_frozen_offsets.tsv')]:
         pd.concat(tabs[m], ignore_index=True).to_csv(OUT_DIR / fn, sep='\t', index=False)
+    deg = pd.concat(tabs['binchen_r58'], ignore_index=True)
+    deg[deg['config'] == 'DEG'].to_csv(OUT_DIR / 'tcga_wsRGES_per_drug_DEG__binchen_r.tsv', sep='\t', index=False)
     pd.DataFrame(summ).to_csv(OUT_DIR / 'tcga_wsRGES_corrected_offsets_summary.tsv', sep='\t', index=False)
     s = pd.DataFrame(summ)
     print(s.groupby('collapse')[['max_abs_diff_binchen_r_vs_stored', 'n_drugs_only_one_table']].max())
